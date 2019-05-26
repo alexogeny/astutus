@@ -1,7 +1,7 @@
 ---
 name: Feature request
 about: Suggest an idea for astutus
-title: ":wrench: [FEATURE] <title goes here>"
+title: "[FEATURE] <title goes here>"
 labels: enhancement, good first issue
 assignees: lxmcneill
 
