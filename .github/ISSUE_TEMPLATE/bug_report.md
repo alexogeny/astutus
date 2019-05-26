@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Create a report to help improve the bot code
-title: ":bug: [BUG] <title goes here>"
+title: "[BUG] <title goes here>"
 labels: bug
 assignees: lxmcneill
 
