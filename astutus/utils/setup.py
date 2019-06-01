@@ -1,5 +1,6 @@
 import asyncio
 import discord
+from .redis import Redis
 
 
 def setup_bot(bot):
@@ -17,3 +18,14 @@ def setup_bot(bot):
                 ctx.channel.id in blacklists["channels"],
             )
         )
+
+    pool = Redis()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        pool.connect_pool(
+            bot.config["REDIS"]["host"],
+            bot.config["REDIS"]["port"],
+            pw=bot.config["REDIS"].get("password", None),
+        )
+    )
+    bot.db = pool

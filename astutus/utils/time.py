@@ -19,7 +19,9 @@ class HumanTimeDelta(cmd.Converter):
         match = COMPILED.fullmatch(argument)
         if match is None or not match.group(0):
             match = COMPILED.fullmatch("1y")
-            raise cmd.BadArgument('No valid expiry date provided for moderation action.')
+            raise cmd.BadArgument(
+                "No valid expiry date provided for moderation action."
+            )
         data = {key: int(value) for key, value in match.groupdict(default=0).items()}
         now = arrow.utcnow()
         return now.shift(**data)

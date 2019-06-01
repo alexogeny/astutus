@@ -27,6 +27,7 @@ class AstutusBot(cmds.AutoShardedBot):
         self.config = config
         self.exit_code = None
         self.prefixes = {}
+        self.db = None
         self.blacklists = dict(users=[], channels=[], servers=[])
         for module in Path("./astutus/modules").rglob("*.py"):
             module = str(module).replace(".py", "").replace("\\", ".")
@@ -60,7 +61,7 @@ class AstutusBot(cmds.AutoShardedBot):
             import sys
 
             sys.exit(exit_code)
-
+        self.db.disconnect()
         self.loop.stop()
         self.exit_code = exit_code
 
