@@ -45,10 +45,11 @@ class AstutusBot(cmds.AutoShardedBot):
         self.link_admin = oauth.format("8")
         self.link_normal = oauth.format("2146954487")
         print(f"Ready: {self.user} (ID: {self.user.id})")
+        print(f"Invite link: {self.link_admin}")
 
     async def process_commands(self, message: discord.Message):
         context = await self.get_context(message)
-        if context.command is None:
+        if context.command is None or context.author.bot:
             return
 
         await self.invoke(context)

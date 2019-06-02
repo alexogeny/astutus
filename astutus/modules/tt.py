@@ -2,14 +2,12 @@ from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 from astutus.utils import Delta
 from typing import Optional
-import asyncpg
 
 
 class TapTitans(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.timers = []
-        self.raid_timer.add_exception_type(asyncpg.PostgresConnectionError)
         self.raid_timer.start()
 
     @tsk.loop(minutes=1.0)

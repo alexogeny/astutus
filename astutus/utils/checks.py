@@ -62,6 +62,13 @@ async def has_permissions(*, check=all, **perms):
     return cmd.check(predicate)
 
 
+def is_bot_owner():
+    async def predicate(ctx: cmd.Context):
+        return str(ctx.author.id) == ctx.bot.config["DEFAULT"]["owner"]
+
+    return cmd.check(predicate)
+
+
 def is_mod():
     async def predicate(ctx: cmd.Context):
         return await check_guild_permissions(ctx, {"manage_guild": True})
