@@ -1,6 +1,5 @@
 from discord.ext import commands as cmd
-
-import time
+import psutil
 import arrow
 import discord
 from astutus.utils import MemberID, download_image
@@ -9,6 +8,7 @@ from astutus.utils import MemberID, download_image
 class InfoModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
+        self.process = psutil.Process()
 
     @cmd.command()
     async def avatar(self, ctx, user: MemberID = None):
@@ -25,6 +25,24 @@ class InfoModule(cmd.Cog):
                 filename=f"{user_profile}_avatar.{ext}",
             )
         await ctx.send(content=f"**{user_profile}**'s avatar:", file=discord_file)
+
+    @cmd.group()
+    async def info(self, ctx):
+        pass
+
+    @info.command(name="bot")
+    @cmd.guild_only()
+    async def info_bot(self, ctx: cmd.Context):
+        mem = self.process.memory_full_info().uss / 1024 ** 2
+        cpu = self.process.cpu_percent() / psutil.cpu_count()
+        result = "**Bot Information**:\nCPU - {:.2f}%\nRAM - {:.2f}M\n".format(cpu, mem)
+        await ctx.send(result)
+
+    @info.command(name="db")
+    @cmd.guild_only()
+    async def info_db(self, ctx: cmd.Context):
+        size = await self.bot.db.size()
+        await ctx.send(f"Current database size: **{size}**")
 
 
 def setup(bot):

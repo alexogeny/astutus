@@ -46,6 +46,17 @@ class UtilityModule(cmd.Cog):
             await ctx.send(f"**{ping:.0f} ms**")
 
     @cmd.command()
+    async def invite(self, ctx, kind: str = "admin"):
+        if kind.lower() not in "admin.normal":
+            await ctx.send("Choose between **admin**/**normal** for bot invite links.")
+            return
+        await ctx.send(f"{kind.title()} link: <{getattr(self.bot, f'link_{kind}')}>")
+
+    @cmd.command()
+    async def shutdown(self, ctx, when: str = None):
+        await self.bot.logout()
+
+    @cmd.command()
     @is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:

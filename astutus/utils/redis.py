@@ -74,6 +74,9 @@ class Redis:
     async def exists(self, *values):
         return await self.execute("EXISTS", *values) == len(values)
 
+    async def size(self):
+        return await self.execute("DBSIZE")
+
     async def execute(self, command, *args):
         if self.connection_pool is None or self.connection_pool.closed:
             try:
