@@ -41,6 +41,9 @@ class Redis:
     async def zadd(self, key, member, value):
         return await self.execute("ZADD", key, value, member)
 
+    async def zrem(self, key, member):
+        return await self.execute("ZREM", key, member)
+
     async def zrank(self, key, member):
         return await self.execute("ZREVRANK", key, member)
 

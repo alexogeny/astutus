@@ -80,17 +80,6 @@ class ModerationModule(cmd.Cog):
     async def before_unmute_timer(self):
         await self.bot.wait_until_ready()
 
-    # async def warn_count(self, member: int, guild: int):
-    #     return len(
-    #         [
-    #             warning
-    #             for warning in self.warnings
-    #             if warning[0] == member
-    #             and warning[1] == guild
-    #             and warning[2] < arrow.utcnow().timestamp
-    #         ]
-    #     )
-
     async def mute_muted_role(self, role: discord.Role, guild: discord.Guild):
         for channel in guild.channels:
             perms = channel.overwrites_for(role)
@@ -189,6 +178,28 @@ class ModerationModule(cmd.Cog):
 
     @cmd.command()
     @cmd.guild_only()
+    @checks.can_kick()
+    async def unmute(
+        self,
+        ctx: cmd.Context,
+        members: cmd.Greedy[MemberID],
+        *,
+        reason: ActionReason = None,
+    ):
+        role = await self.get_or_create_muted_role(ctx.guild)
+        await self.mute_muted_role(role, ctx.guild)
+        result = []
+        for m in members:
+            mem = ctx.guild.get_member(m)
+            if mem:
+                await mem.remove_roles(role)
+                await self.bot.db.zrem(f"{ctx.guild.id}:mutes", m)
+                result.append(mem)
+        result = ", ".join([f"**{k}**" for k in result])
+        await ctx.send(f"**{ctx.author}** unmuted {result}.")
+
+    @cmd.command()
+    @cmd.guild_only()
     @checks.can_ban()
     async def ban(
         self,
@@ -222,8 +233,57 @@ class ModerationModule(cmd.Cog):
         reason: ActionReason = None,
     ):
         unbanned = await bulk_mod(ctx, "unban", members, reason)
+        for b in unbanned:
+            await self.bot.db.zrem(f"{ctx.guild.id}:bans", b.id)
         unbanned = ", ".join([f"**{k}**" for k in unbanned])
         await ctx.send(f"**{ctx.author}** unbanned {unbanned}.")
+
+    @cmd.command(aliases=["nick"])
+    @cmd.guild_only()
+    @checks.can_manage_nicknames()
+    async def nickname(self, ctx, member: MemberID, *nickname):
+        member = discord.utils.get(ctx.guild.members, id=member)
+        if member.top_role > ctx.author.top_role:
+            await ctx.send(
+                f"Sorry **{ctx.author}** - you must be higher in the rolelist to do that."
+            )
+            return
+        old_nick = str(member.display_name)
+        nickname = " ".join(nickname)[0:32]
+        if not nickname:
+            nickname = member.name
+        try:
+            await member.edit(
+                reason=f"{ctx.author} (ID: {ctx.author.id})", nick=nickname
+            )
+        except discord.errors.Forbidden:
+            await ctx.send(
+                "Oops, I do not have permission. A server admin should fix this."
+            )
+        else:
+            await ctx.send(
+                f"Changed **{member}**'s nick from **{old_nick}** to **{nickname}**."
+            )
+
+    @cmd.Cog.listener()
+    async def on_member_join(self, member):
+        result = await self.bot.db.zscore(f"{member.guild.id}:mutes", member.id)
+        if result <= 0 or result == None:
+            return
+        role = await self.get_or_create_muted_role(member.guild)
+        await self.mute_muted_role(role, member.guild)
+        await member.add_roles(role)
+
+    @cmd.Cog.listener()
+    async def on_guild_role_update(self, b, a):
+        r = await self.get_or_create_muted_role(b.guild)
+        if b.id == r.id:
+            await self.mute_muted_role(r, b.guild)
+
+    @cmd.Cog.listener()
+    async def on_guild_role_delete(self, r):
+        r2 = await self.get_or_create_muted_role(r.guild)
+        await self.mute_muted_role(r2, r.guild)
 
 
 def setup(bot):
