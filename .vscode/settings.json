@@ -17,7 +17,6 @@
     "python.formatting.provider": "black",
     "python.pythonPath": "${workspaceFolder}/.venv/Scripts/python",
     "python.venvPath": "${workspaceFolder}/.venv",
-    "editor.formatOnPaste": true,
     "editor.formatOnType": true,
     "files.autoSaveDelay": 750,
     "python.linting.pylintEnabled": true,

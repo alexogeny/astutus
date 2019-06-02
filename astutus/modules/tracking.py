@@ -12,7 +12,7 @@ class TrackingModule(cmd.Cog):
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
-        self.cap = self.bot.config["TRACKING"]["history"]
+        self.cap = int(self.bot.config["TRACKING"]["history"])
 
     @cmd.command()
     async def seen(self, ctx: cmd.Context, user: MemberID = None):
@@ -25,6 +25,36 @@ class TrackingModule(cmd.Cog):
             return
         now = arrow.get(obj)
         await ctx.send(f"The last time I saw **{user}** was **{now.humanize()}**")
+
+    @cmd.command()
+    async def nicknames(self, ctx: cmd.Context, user: MemberID = None):
+        if user is None:
+            user = ctx.author.id
+        obj = f"tr:nn:{ctx.guild.id}:{user}"
+        user = await self.bot.fetch_user(user)
+        previous_nicks = await self.bot.db.lrange(obj, 0, -1)
+        if not previous_nicks:
+            await ctx.send(f"Looks like **{user}** has no previous nicknames.")
+        else:
+            previous_nicks = [f"**{n}**" for n in previous_nicks]
+            await ctx.send(
+                f"Previous nicknames for **{user}** include: {', '.join(previous_nicks)}."
+            )
+
+    @cmd.command()
+    async def usernames(self, ctx: cmd.Context, user: MemberID = None):
+        if user is None:
+            user = ctx.author.id
+        obj = f"tr:un:{ctx.guild.id}:{user}"
+        user = await self.bot.fetch_user(user)
+        previous_nicks = await self.bot.db.lrange(obj, 0, -1)
+        if not previous_nicks:
+            await ctx.send(f"Looks like **{user}** has no previous usernames.")
+        else:
+            previous_nicks = [f"**{n}**" for n in previous_nicks]
+            await ctx.send(
+                f"Previous usernames for **{user}** include: {', '.join(previous_nicks)}."
+            )
 
     async def track_last_seen(self, member):
         await self.bot.db.hset("tr:ls", member, arrow.utcnow().timestamp)

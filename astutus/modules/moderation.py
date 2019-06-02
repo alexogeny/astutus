@@ -16,7 +16,7 @@ async def bulk_mod(ctx, kind: str, members: List[int], reason: str):
     return done
 
 
-class ModerationModule(object):
+class ModerationModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.mutes = []
@@ -30,7 +30,7 @@ class ModerationModule(object):
                 for warning in self.warnings
                 if warning[0] == member
                 and warning[1] == guild
-                and warning[2] < arrow.utcnow().timestamp()
+                and warning[2] < arrow.utcnow().timestamp
             ]
         )
 
