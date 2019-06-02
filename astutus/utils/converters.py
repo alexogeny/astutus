@@ -41,32 +41,10 @@ class MemberID(cmd.Converter):
         except cmd.BadArgument:
             try:
                 return int(argument, base=10)
-            except ValueError:
-                try:
-                    m = next(
-                        (
-                            m
-                            for m in ctx.guild.members
-                            if any(
-                                (
-                                    m.name.lower() == argument.lower(),
-                                    argument.lower() in m.name.lower(),
-                                    getattr(m, "nickname", "").lower()
-                                    == argument.lower(),
-                                    argument.lower()
-                                    in getattr(m, "nickname", "").lower(),
-                                )
-                            )
-                        ),
-                        None,
-                    )
-                except:
-                    pass
-                if not m:
-                    raise cmd.BadArgument(
-                        f"Sorry, the phrase **{argument}** did not return any members."
-                    )
-
+            except:
+                raise cmd.BadArgument(
+                    f"Sorry, the phrase **{argument}** did not return any members."
+                )
         return m.id
 
 

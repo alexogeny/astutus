@@ -1,5 +1,7 @@
 import aiohttp
 import io
+import discord
+from discord.ext import commands as cmd
 
 
 async def download_image(path):

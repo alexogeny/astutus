@@ -38,8 +38,17 @@ class Redis:
     async def zscore(self, key, member):
         return await self.execute("ZSCORE", key, member)
 
+    async def zadd(self, key, member, value):
+        return await self.execute("ZADD", key, value, member)
+
     async def zrank(self, key, member):
         return await self.execute("ZREVRANK", key, member)
+
+    async def zbyscore(self, key, min, max):
+        return await self.execute("ZRANGEBYSCORE", key, min, max)
+
+    async def zrembyscore(self, key, min, max):
+        return await self.execute("ZREMRANGEBYSCORE", key, min, max)
 
     async def rpush(self, key, *values):
         return await self.execute("RPUSH", key, *values)
@@ -70,6 +79,9 @@ class Redis:
 
     async def hget(self, key, member):
         return await self.execute("HGET", key, member)
+
+    async def hgetall(self, key):
+        return await self.execute("HGETALL", key)
 
     async def exists(self, *values):
         return await self.execute("EXISTS", *values) == len(values)

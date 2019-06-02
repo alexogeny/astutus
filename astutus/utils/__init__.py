@@ -1,7 +1,8 @@
 from .setup import setup_bot
 from .etc import download_image
 from .converters import MemberID, ActionReason, BannedMember, ChannelID
-from .time import HumanTimeDelta as Delta
+from .time import convert as delta_convert
+from .time import Duration
 
 __all__ = (
     "checks",
@@ -11,5 +12,6 @@ __all__ = (
     "ActionReason",
     "BannedMember",
     "ChannelID",
-    "Delta"
+    "delta_convert",
+    "Duration",
 )
