@@ -102,7 +102,7 @@ class TrackingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
-        await asyncio.gather(self.track_last_seen(member.id))
+        await self.track_last_seen(member.id)
 
 
 def setup(bot):

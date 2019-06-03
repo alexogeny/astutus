@@ -1,29 +1,122 @@
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
-from astutus.utils import Delta
+from astutus.utils import Duration, checks, Truthy
 from typing import Optional
+import arrow
+from datetime import datetime
 
 
-class TapTitans(cmd.Cog):
+class TTKey(cmd.Converter):
+    async def convert(self, ctx: cmd.Context, arg):
+        if arg.lower() not in [
+            "grandmaster",
+            "gm",
+            "master",
+            "captain",
+            "knight",
+            "recruit",
+            "guest",
+            "applicant",
+            "timer",
+            "tier",
+            "zone",
+            "average",
+            "avg",
+            "announce",
+            "farm",
+        ]:
+            await ctx.send(f"**{arg}** is not a valid settings key for TT2 module.")
+            raise cmd.BadArgument("Bad key for TT2 settings")
+        if arg == "average":
+            arg == "avg"
+        elif arg == "grandmaster":
+            arg == "gm"
+        if (
+            arg in "gmmastercaptainknightrecruitapplicantguest"
+            and not checks.can_manage_roles()
+        ):
+            raise cmd.BadArgument()
+        elif arg == "announce" and not checks.can_manage_channels():
+            raise cmd.BadArgument()
+        return arg.lower()
+
+
+class TapTitansModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
-        self.timers = []
         self.raid_timer.start()
 
     @tsk.loop(minutes=1.0)
     async def raid_timer(self):
-        print("check timers")
+        return
+
+    @raid_timer.before_loop
+    async def before_unban_timer(self):
+        await self.bot.wait_until_ready()
 
     @cmd.group(case_insensitive=True)
-    async def tt(self):
-        return
+    async def tt(self, ctx):
+        pass
+
+    @tt.group(name="set")
+    @cmd.guild_only()
+    async def tt_set(self, ctx, key: TTKey, val):
+        if key in "gmmastercaptainknightrecruitapplicantguest":
+            val = await cmd.RoleConverter().convert(ctx, val)
+            await self.bot.db.hset(f"{ctx.guild.id}:tt", key, val.id)
+        elif key == "announce":
+            val = await cmd.TextChannelConverter().convert(ctx, val)
+            await self.bot.db.hset(f"{ctx.guild.id}:tt", key, val.id)
+        elif key in "zonetier":
+            try:
+                val = int(val)
+            except:
+                raise cmd.BadArgument(f"Bad value for raid {key}")
+            else:
+                if not 1 <= val <= 10:
+                    raise cmd.BadArgument()
+                await self.bot.db.hset(f"{ctx.guild.id}:tt", key, val)
+        elif key == "farm":
+            val = await Truthy().convert(ctx, val)
+            await self.bot.db.hset(f"{ctx.guild.id}:tt", key, val)
+        else:
+            await self.bot.db.hset(f"{ctx.guild.id}:tt", key, val)
+        await ctx.send(f"Set the TT2 **{key}** key to **{val}**")
 
     @tt.group(name="raid", aliases=["boss", "rd"], case_insensitive=True)
-    async def tt_raid(self):
-        return
+    async def tt_raid(self, ctx, level: cmd.Greedy[int], time: Optional[Duration]):
+        roles = (
+            await self.bot.db.hget(f"{ctx.guild.id}:tt", "gm"),
+            await self.bot.db.hget(f"{ctx.guild.id}:tt", "master"),
+            await self.bot.db.hget(f"{ctx.guild.id}:tt", "timer"),
+        )
+        print(roles)
+        if not await checks.user_has_role(
+            (str(r.id) for r in ctx.author.roles), *roles
+        ):
+            raise cmd.BadArgument
+        if not level or len(level) == 0 or level == None:
+            tier = await self.bot.db.hget(f"{ctx.guild.id}:tt", "tier") or 1
+            zone = await self.bot.db.hget(f"{ctx.guild.id}:tt", "zone") or 1
+        elif not all(1 <= x <= 10 for x in level):
+            await ctx.send("Tier/zone must be between **1** and **10**.")
+            raise cmd.BadArgument()
+        elif len(level) == 2:
+            tier, zone = level
+        elif len(level) == 1:
+            tier, zone = level, 1
+        if not time or time == None:
+            time = await Duration().convert(ctx, "24h")
+        time = time.humanize()
+        if time == "just now":
+            time = "now"
+        await ctx.send(f"Tier **{tier}**, zone **{zone}** raid starts **{time}**.")
 
     @tt_raid.command(name="start", aliases=["prep"])
-    async def raid_start(self, ctx: cmd.Context, level: str, time: Optional[Delta]):
+    async def raid_start(self, ctx: cmd.Context, level: str, time: Optional[Duration]):
+        if not time or time == None:
+            time = arrow.utcnow()
+
         # get levels from user or clan in db
         # set spawn to 24h from now or the <time> argument
         # add the timer to the internal list and to the db
@@ -62,10 +155,6 @@ class TapTitans(cmd.Cog):
     async def tt_artifact(self):
         return
 
-    @tt.group(name="set", case_insensitive=True)
-    async def tt_set(self):
-        return
-
     @tt.group(name="enhancement", case_insensitive=True)
     async def tt_enhance(self):
         return
@@ -85,3 +174,7 @@ class TapTitans(cmd.Cog):
     @tt.group(name="skill", case_insensitive=True)
     async def tt_skill(self):
         return
+
+
+def setup(bot):
+    bot.add_cog(TapTitansModule(bot))

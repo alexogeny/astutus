@@ -2,6 +2,16 @@ from discord.ext import commands as cmd
 import discord
 
 
+class Truthy(cmd.Converter):
+    async def convert(self, ctx, argument):
+        arg = argument.lower()
+        if arg not in ["0", "1", "on", "off", "true", "false", "yes", "no"]:
+            raise cmd.BadArgument()
+        elif arg in ["on", "true", "1", "yes"]:
+            return 1
+        return 0
+
+
 class ChannelID(cmd.Converter):
     async def convert(self, ctx: cmd.Context, argument):
         try:

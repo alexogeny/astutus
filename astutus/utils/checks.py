@@ -15,8 +15,14 @@ async def can_execute(ctx, member: discord.Member):
         )
 
 
-async def user_has_role(user_roles: List[discord.Role], *roles):
+async def user_has_role(user_roles: List[int], *roles):
     return bool(next((role for role in roles if role in user_roles), None))
+
+
+# def has_clan_roles(*roles):
+#     async def _has_clan_roles(ctx):
+
+#     return cmd.check(_has_clan_roles)
 
 
 async def user_has_admin_perms(user: discord.Member, guild: discord.Guild):

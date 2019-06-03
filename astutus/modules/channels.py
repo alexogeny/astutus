@@ -1,6 +1,6 @@
 from typing import Optional
 from discord.ext import commands as cmd
-from astutus.utils import checks, ChannelID, Delta
+from astutus.utils import checks, ChannelID, Duration
 
 
 class ChannelObject(cmd.TextChannelConverter):
@@ -19,7 +19,7 @@ class ChannelsModule(object):
         self,
         ctx: cmd.Context,
         channel: ChannelID,
-        expires: Optional[Delta],
+        expires: Optional[Duration],
         *,
         mode=None,
     ):
