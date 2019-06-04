@@ -58,6 +58,12 @@ class UtilityModule(cmd.Cog):
 
     @cmd.command()
     @is_bot_owner()
+    async def redisclear(self, ctx, key):
+        result = await self.bot.db.delete(key.format(ctx))
+        await ctx.send(str(result))
+
+    @cmd.command()
+    @is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:
             module = f"astutus.modules.{module}"

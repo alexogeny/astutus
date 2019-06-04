@@ -1,3 +1,4 @@
+from datetime import timedelta
 from discord.ext import commands as cmd
 import re
 import arrow
@@ -40,3 +41,10 @@ class Duration(cmd.Converter):
         else:
             res = await convert(argument)
             return res
+
+
+async def get_hms(timedelta: timedelta):
+    total_seconds = int(timedelta.total_seconds())
+    hours, remainder = divmod(total_seconds, 60 * 60)
+    minutes, seconds = divmod(remainder, 60)
+    return hours, minutes, seconds

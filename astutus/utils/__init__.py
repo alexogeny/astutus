@@ -2,7 +2,7 @@ from .setup import setup_bot
 from .etc import download_image, choose_from
 from .converters import MemberID, ActionReason, BannedMember, ChannelID, Truthy
 from .time import convert as delta_convert
-from .time import Duration
+from .time import Duration, get_hms
 
 __all__ = (
     "checks",
@@ -16,4 +16,5 @@ __all__ = (
     "delta_convert",
     "Duration",
     "choose_from",
+    "get_hms",
 )

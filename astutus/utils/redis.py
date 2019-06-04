@@ -29,6 +29,9 @@ class Redis:
                 return default
         return await self.execute("GET", key)
 
+    async def delete(self, key):
+        return await self.execute("DEL", key)
+
     async def increment(self, key):
         return await self.execute("INCR", key)
 
@@ -62,8 +65,11 @@ class Redis:
     async def llen(self, key):
         return await self.execute("LLEN", key)
 
-    async def lrange(self, key, start, end):
+    async def lrange(self, key, start=0, end=-1):
         return await self.execute("LRANGE", key, start, end)
+
+    async def lrem(self, key, value, count=0):
+        return await self.execute("LREM", key, count, value)
 
     async def set(self, key, value, *args):
         return await self.execute("SET", key, value, *args)
@@ -82,6 +88,9 @@ class Redis:
 
     async def hget(self, key, member):
         return await self.execute("HGET", key, member)
+
+    async def hdel(self, key, member):
+        return await self.execute("HDEL", key, member)
 
     async def hgetall(self, key):
         return await self.execute("HGETALL", key)
