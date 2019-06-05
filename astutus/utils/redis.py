@@ -93,7 +93,8 @@ class Redis:
         return await self.execute("HDEL", key, member)
 
     async def hgetall(self, key):
-        return await self.execute("HGETALL", key)
+        inter = await self.execute("HGETALL", key)
+        return dict(zip(inter[::2], inter[1::2]))
 
     async def exists(self, *values):
         return await self.execute("EXISTS", *values) == len(values)

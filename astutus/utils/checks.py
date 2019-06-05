@@ -29,6 +29,10 @@ async def user_has_admin_perms(user: discord.Member, guild: discord.Guild):
     return guild.get_member(user.id).guild_permissions.administrator
 
 
+async def user_has_mod_perms(user: discord.Member, guild: discord.Guild):
+    return guild.get_member(user.id).guild_permissions.manage_guild
+
+
 async def user_has_any_role(user: discord.Member):
     return len(user.roles) > 1
 
