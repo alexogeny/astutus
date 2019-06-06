@@ -5,6 +5,7 @@ from .time import convert as delta_convert
 from .time import Duration, get_hms
 
 __all__ = (
+    "chat_formatting",
     "checks",
     "setup_bot",
     "download_image",

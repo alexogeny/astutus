@@ -19,12 +19,28 @@ class TrackingModule(cmd.Cog):
         if user is None:
             user = ctx.author.id
         obj = await self.bot.db.hget("tr:ls", user)
-        user = await self.bot.fetch_user(user)
+        user = ctx.guild.get_member(user)
         if not obj:
             await ctx.send(f"I have not seen **{user}** before.")
             return
+        platform = await self.bot.db.hget("tr:lp", user.id) or ""
+        if platform:
+            platform = f"on **{platform}** "
+        if user and user.status == discord.Status.online:
+            platform = ""
+            if user.web_status == discord.Status.online:
+                platform = "web"
+            elif user.mobile_status == discord.Status.online:
+                platform = "mobile"
+            elif user.desktop_status == discord.Status.online:
+                platform = "desktop"
+            print(platform)
+            await ctx.send(f"**{user}** is on **Discord {platform}** right now!")
+            return
         now = arrow.get(obj)
-        await ctx.send(f"The last time I saw **{user}** was **{now.humanize()}**")
+        await ctx.send(
+            f"The last time I saw **{user}** {platform}was **{now.humanize()}**."
+        )
 
     @cmd.command()
     async def nicknames(self, ctx: cmd.Context, user: MemberID = None):
@@ -57,7 +73,16 @@ class TrackingModule(cmd.Cog):
             )
 
     async def track_last_seen(self, member):
-        await self.bot.db.hset("tr:ls", member, arrow.utcnow().timestamp)
+        await self.bot.db.hset("tr:ls", member.id, arrow.utcnow().timestamp)
+        platform = None
+        if member.web_status == discord.Status.online:
+            platform = "web"
+        elif member.mobile_status == discord.Status.online:
+            platform = "mobile"
+        elif member.desktop_status == discord.Status.online:
+            platform = "desktop"
+        if platform:
+            await self.bot.db.hset("tr:lp", member.id, platform)
 
     async def track_username(self, member, username):
         obj = f"tr:un:{member.id}"
@@ -77,32 +102,30 @@ class TrackingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_guild_join(self, guild):
-        updates = (
-            m.id for m in guild.members if m.status is not discord.Status.offline
-        )
+        updates = (m for m in guild.members if m.status is not discord.Status.offline)
         to_update = starmap(self.track_last_seen, updates)
         await asyncio.gather(*to_update)
 
     @cmd.Cog.listener()
     async def on_member_update(self, before, member):
         if before.status != member.status:
-            await self.track_last_seen(member.id)
+            await self.track_last_seen(member)
         if before.name != member.name:
-            await self.track_last_seen(member.id)
+            await self.track_last_seen(member)
             await self.track_username(member, before.name)
         nick_before = before.display_name
         nick_after = member.display_name
         if nick_before != nick_after and hasattr(member, "guild"):
-            await self.track_last_seen(member.id)
+            await self.track_last_seen(member)
             await self.track_nickname(member, nick_before)
 
     @cmd.Cog.listener()
     async def on_typing(self, channel, member, when):
-        await self.track_last_seen(member.id)
+        await self.track_last_seen(member)
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
-        await self.track_last_seen(member.id)
+        await self.track_last_seen(member)
 
 
 def setup(bot):

@@ -75,6 +75,11 @@ class TapTitansModule(cmd.Cog):
 
     async def has_timer_permissions(self, ctx, groupdict):
         roles = await self.get_roles(groupdict, *["gm", "master", "timer"])
+        if not any(roles):
+            await ctx.send(
+                "Looks like no clan roles are set up. Anyone with manage guild *and* manage roles permission can do this."
+            )
+            raise cmd.BadArgument
         if not await checks.user_has_role((r.id for r in ctx.author.roles), *roles):
             raise cmd.BadArgument
 
@@ -118,25 +123,38 @@ class TapTitansModule(cmd.Cog):
             raise asyncio.CancelledError
         g = await self.bot.db.hgetall(f"{guild.id}:tt:{group}")
         spawn = g.get("spawn", 0)
-        if not now < arrow.get(spawn or future.timestamp):
+        cd = g.get("cd", 0)
+        if not any([spawn, cd]):
             raise asyncio.CancelledError
-        chan = guild.get_channel(int(g.get("announce")))
+        if spawn and not now < arrow.get(spawn or future.timestamp) or cd and not now < arrow.get(cd or future.timestamp):
+            print('timer below zero')
+            raise asyncio.CancelledError
+        c = int(g.get("announce", 0))
+        if not c:
+            raise asyncio.CancelledError
+        chan = guild.get_channel(c)
         if not chan:
             raise asyncio.CancelledError
         reset = g.get("reset", 0)
-        if not reset:
-            reset = "starts"
+        if not reset and not cd:
+            reset = "start"
+        elif cd:
+            reset = "cooldown end"
         else:
-            reset = f"reset #**{reset}** is"
-        dt = arrow.get(spawn) - now
+            reset = f"reset #**{reset}** start"
+        if spawn:
+            dt = arrow.get(spawn) - now
+        elif cd:
+            dt = arrow.get(cd) - now
         _h, _m, _s = await get_hms(dt)
+        content = "Raid {}s in **{}**h **{}**m **{}**s.".format(
+            reset, _h, _m, _s
+        )
         message = int(g.get("edit", 0))
         if message:
-            await self.update_timer_message(
-                chan, message, f"Raid {reset} in **{_h}**h **{_m}**m **{_s}**s."
-            )
+            await self.update_timer_message(chan, message, content)
         else:
-            await chan.send(f"Raid {reset} in **{_h}**h **{_m}**m **{_s}**s.")
+            await chan.send(content)
 
     async def update_timer_message(self, channel, message, content):
         m = await channel.fetch_message(message)
@@ -150,8 +168,78 @@ class TapTitansModule(cmd.Cog):
     async def tt(self, ctx):
         pass
 
+    @tt.command(name="groupadd")
+    @cmd.guild_only()
+    @checks.is_mod()
+    async def tt_groupadd(self, ctx):
+        res = dict(
+            zip(
+                ["1", "2", "3"],
+                await asyncio.gather(
+                    *(self.bot.db.hgetall(f"{ctx.guild.id}:tt:{x}") for x in [1, 2, 3])
+                ),
+            )
+        )
+        count = len([k for k in res if res[k]])
+        if count < 3:
+            slot = next((x for x in res if not res[x]), "3")
+            group = f"{ctx.guild.id}:tt:{slot}"
+            r1 = await self.bot.db.hset(group, "tier", 1)
+            r2 = await self.bot.db.hset(group, "zone", 1)
+            if not r1 and not r2:
+                await ctx.send("Could not add group right now. Try again later.")
+                return
+            res[slot] = {"tier": 1}
+            await ctx.send(
+                "Successfully added group **{}** to ~**{}**. Currently used slots: [{}] [{}] [{}]".format(
+                    slot,
+                    ctx.guild,
+                    res["1"] and "x" or "",
+                    res["2"] and "x" or "",
+                    res["3"] and "x" or "",
+                )
+            )
+        elif count == 3:
+            await ctx.send(
+                f"~**{ctx.guild}** has reached maximum group count of **3**. Use **groupdel <x>** to delete a group."
+            )
+
+    @tt.command(name="groupdel")
+    @cmd.guild_only()
+    @checks.is_mod()
+    async def tt_groupdel(self, ctx, slot: Optional[int]):
+        if slot not in [1, 2, 3]:
+            await ctx.send("You must specify a slot between **1** and **3** to delete.")
+            return
+        result = await self.bot.db.delete(f"{ctx.guild.id}:tt:{slot}")
+        res = dict(
+            zip(
+                ["1", "2", "3"],
+                await asyncio.gather(
+                    *(self.bot.db.hgetall(f"{ctx.guild.id}:tt:{x}") for x in [1, 2, 3])
+                ),
+            )
+        )
+        if result:
+            await ctx.send(
+                "Deleted group in slot **{}** from **{}**. Currently used slots: [{}] [{}] [{}]".format(
+                    slot,
+                    ctx.guild,
+                    res["1"] and "x" or "",
+                    res["2"] and "x" or "",
+                    res["3"] and "x" or "",
+                )
+            )
+            return
+        await ctx.send(
+            "There's no group in that slot. Currently used slots: [{}] [{}] [{}]".format(
+                res["1"] and "x" or "", res["2"] and "x" or "", res["3"] and "x" or ""
+            )
+        )
+
     @tt.group(name="set")
     @cmd.guild_only()
+    @checks.is_mod()
     async def tt_set(self, ctx, group: Optional[TTRaidGroup], key: TTKey, val):
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
@@ -231,9 +319,9 @@ class TapTitansModule(cmd.Cog):
         edit = await ctx.send(
             f"Tier **{tier}**, zone **{zone}** raid starts **{time}**."
         )
-        announce = groupdict.get("announce", ctx.channel.id)
-        if announce and int(announce) != ctx.channel.id:
-            chan = self.bot.get_channel(int(announce))
+        announce = int(groupdict.get("announce", 0))
+        if announce and announce != ctx.channel.id:
+            chan = self.bot.get_channel(announce)
             if chan:
                 edit = await chan.send(
                     f"Tier **{tier}**, zone **{zone}** raid starts **{time}**."
@@ -246,8 +334,41 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, "edit", edit.id)
 
     @tt_raid.command(name="clear", aliases=["end", "ended", "cleared"])
-    async def tt_raid_clear(self):
-        return
+    async def tt_raid_clear(self, ctx, group: Optional[TTRaidGroup]):
+        if group == None:
+            group = f"{ctx.guild.id}:tt:1"
+        group = await self.get_raid_group_or_break(group, ctx)
+        groupdict = await self.bot.db.hgetall(group)
+        spawn, reset = groupdict.get("spawn", None), groupdict.get("reset", 0)
+        if not spawn or spawn is None:
+            await ctx.send("No raid to clear.")
+            return
+        print(groupdict.get("spawn"))
+        await self.has_timer_permissions(ctx, groupdict)
+        now = arrow.utcnow()
+        spwn_arrow = arrow.get(spawn)
+        if now < spwn_arrow:
+            await ctx.send(
+                "You can't clear a raid before it spawns. Use **cancel** instead."
+            )
+            return
+        total_time = now - spwn_arrow
+        g = groupdict
+        _h, _m, _s = await get_hms(total_time)
+        cleared = f"**{_h}**h **{_m}**m **{_s}**s"
+        await ctx.send(
+            "Tier **{}**, Zone **{}** raid **cleared** in {}.".format(
+                g.get("tier", 1), g.get("zone", 1), cleared
+            )
+        )
+        shft_arrow = now.shift(hours=1)
+        await self.bot.db.hset(group, "cd", shft_arrow.timestamp)
+        await self.bot.db.hdel(group, "spawn")
+        await self.bot.db.hdel(group, "edit")
+        _h, _m, _s = await get_hms(shft_arrow - now)
+        cleared = f"**{_h}**h **{_m}**m **{_s}**s."
+        msg = await ctx.send("Raid cooldown ends in {}.")
+        await self.bot.db.hset(group, "edit", msg.id)
 
     @tt_raid.command(name="cancel", aliases=["abort", "stop"])
     async def tt_raid_cancel(self, ctx, group: Optional[TTRaidGroup]):
@@ -256,12 +377,15 @@ class TapTitansModule(cmd.Cog):
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
         await self.has_timer_permissions(ctx, groupdict)
-        result = await self.bot.db.hdel(group, "spawn")
-        if not result:
+        spawn = groupdict.get("spawn", None)
+        cd = groupdict.get("cd", None)
+        if not any([spawn, cd]):
             await ctx.send("No raid to cancel.")
             return
         else:
             await self.bot.db.hdel(group, "edit")
+            await self.bot.db.hdel(group, "spawn")
+            await self.bot.db.hdel(group, "cd")
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 

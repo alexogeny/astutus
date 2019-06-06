@@ -140,7 +140,11 @@ class ModerationModule(cmd.Cog):
     @cmd.guild_only()
     @checks.can_kick()
     async def kick(
-        self, ctx: cmd.Context, members: cmd.Greedy[MemberID], *, reason: ActionReason
+        self,
+        ctx: cmd.Context,
+        members: cmd.Greedy[MemberID],
+        *,
+        reason: ActionReason = None,
     ):
         kicked = await bulk_mod(ctx, "kick", members, reason)
         kicked = ", ".join([f"**{k}**" for k in kicked])
@@ -268,7 +272,9 @@ class ModerationModule(cmd.Cog):
     @cmd.Cog.listener()
     async def on_member_join(self, member):
         result = await self.bot.db.zscore(f"{member.guild.id}:mutes", member.id)
-        if result <= 0 or result == None:
+        if result is None:
+            return
+        if int(result) == 0:
             return
         role = await self.get_or_create_muted_role(member.guild)
         await self.mute_muted_role(role, member.guild)
