@@ -2,6 +2,7 @@ from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 from astutus.utils import Duration, checks, Truthy, get_hms
 from typing import Optional
+import asyncio
 import arrow
 from datetime import datetime
 
@@ -97,38 +98,49 @@ class TapTitansModule(cmd.Cog):
         if not is_mod and not is_admin:
             raise cmd.BadArgument
 
-    @tsk.loop(seconds=20)
+    @tsk.loop(seconds=5)
     async def raid_timer(self):
         now = arrow.utcnow()
         future = now.shift(hours=50)
-        for guild in self.bot.guilds:
-            for group in [1, 2, 3]:
-                exists = await self.bot.db.exists(f"{guild.id}:tt:{group}")
-                print(exists)
-                if exists:
-                    print('yes')
-                    g = await self.bot.db.hgetall(f"{guild.id}:tt:{group}")
-                    if not g.get("spawn", 0):
-                        print(f"Cancelled {guild.id}:tt:{group}")
-                        return
-                    print('has a spawn')
-                    q = await self.bot.db.hgetall(f"{guild.id}:tt:{group}:q")
-                    g["queue"] = q
-                    if now < arrow.get(g.get("spawn", future.timestamp)):
-                        print('spawn is in future')
-                        chan = guild.get_channel(int(g.get("announce")))
-                        print(chan)
-                        if not g.get("reset", 0):
-                            reset = "starts"
-                        else:
-                            reset = f"reset #**{g.get('reset')}** is"
-                        dt = arrow.get(g.get("spawn")) - arrow.utcnow()
-                        _h, _m, _s = await get_hms(dt)
-                        if g.get("edit", None):
-                            print('edited message has an id')
-                            m = await chan.fetch_message(int(g.get("edit")))
-                            print(m)
-                            await m.edit(f"Raid {reset} in **{_h}**h **{_m}**m **{_s}**s.")
+        await asyncio.gather(
+            *(self.update_raid_timer(guild, now, future) for guild in self.bot.guilds)
+        )
+
+    async def update_raid_timer(self, guild, now, future):
+        await asyncio.gather(
+            *(self.update_timer_group(guild, now, future, g) for g in [1, 2, 3]),
+            return_exceptions=True,
+        )
+
+    async def update_timer_group(self, guild, now, future, group):
+        exists = await self.bot.db.exists(f"{guild.id}:tt:{group}")
+        if not exists:
+            raise asyncio.CancelledError
+        g = await self.bot.db.hgetall(f"{guild.id}:tt:{group}")
+        spawn = g.get("spawn", 0)
+        if not now < arrow.get(spawn or future.timestamp):
+            raise asyncio.CancelledError
+        chan = guild.get_channel(int(g.get("announce")))
+        if not chan:
+            raise asyncio.CancelledError
+        reset = g.get("reset", 0)
+        if not reset:
+            reset = "starts"
+        else:
+            reset = f"reset #**{reset}** is"
+        dt = arrow.get(spawn) - now
+        _h, _m, _s = await get_hms(dt)
+        message = int(g.get("edit", 0))
+        if message:
+            await self.update_timer_message(
+                chan, message, f"Raid {reset} in **{_h}**h **{_m}**m **{_s}**s."
+            )
+        else:
+            await chan.send(f"Raid {reset} in **{_h}**h **{_m}**m **{_s}**s.")
+
+    async def update_timer_message(self, channel, message, content):
+        m = await channel.fetch_message(message)
+        await m.edit(content=content)
 
     @raid_timer.before_loop
     async def before_raid_timer(self):
@@ -228,6 +240,9 @@ class TapTitansModule(cmd.Cog):
                 )
                 await self.bot.db.hset(group, "edit", edit.id)
         elif announce:
+            await self.bot.db.hset(group, "edit", edit.id)
+        elif not announce:
+            announce = await self.bot.db.hset(group, "announce", ctx.channel.id)
             await self.bot.db.hset(group, "edit", edit.id)
 
     @tt_raid.command(name="clear", aliases=["end", "ended", "cleared"])
