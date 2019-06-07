@@ -102,9 +102,15 @@ class TrackingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_guild_join(self, guild):
-        updates = (m for m in guild.members if m.status is not discord.Status.offline)
-        to_update = starmap(self.track_last_seen, updates)
-        await asyncio.gather(*to_update)
+        # updates = []
+        # to_update = starmap(self.track_last_seen, updates)
+        await asyncio.gather(
+            *(
+                self.track_last_seen(m)
+                for m in guild.members
+                if m.status != discord.Status.offline
+            )
+        )
 
     @cmd.Cog.listener()
     async def on_member_update(self, before, member):
