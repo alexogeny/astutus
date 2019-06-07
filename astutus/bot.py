@@ -47,6 +47,13 @@ class AstutusBot(cmds.AutoShardedBot):
         print(f"Ready: {self.user} (ID: {self.user.id})")
         print(f"Invite link: {self.link_admin}")
 
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, cmds.CommandOnCooldown):
+            cd = round(error.retry_after)
+            await ctx.send(
+                f"Woah **{ctx.author}**, please cool down a second. Try **{ctx.command.name}** again in **{cd}**s."
+            )
+
     async def process_commands(self, message: discord.Message):
         context = await self.get_context(message)
         if context.command is None or context.author.bot:

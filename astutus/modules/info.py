@@ -11,6 +11,7 @@ class InfoModule(cmd.Cog):
         self.process = psutil.Process()
 
     @cmd.command()
+    @cmd.cooldown(1, 30, cmd.BucketType.user)
     async def avatar(self, ctx, user: MemberID = None):
         if user == None:
             user = ctx.author.id
