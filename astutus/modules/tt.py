@@ -28,7 +28,7 @@ class TTKey(cmd.Converter):
             "farm",
             "mode",
             "depl",
-            "lastq"
+            "current",
         ]:
             await ctx.send(f"**{arg}** is not a valid settings key for TT2 module.")
             raise cmd.BadArgument("Bad key for TT2 settings")
@@ -43,7 +43,7 @@ class TTKey(cmd.Converter):
             raise cmd.BadArgument()
         elif arg == "announce" and not checks.can_manage_channels():
             raise cmd.BadArgument()
-        
+
         return arg.lower()
 
 
@@ -136,7 +136,6 @@ class TapTitansModule(cmd.Cog):
             or cd
             and not now < arrow.get(cd or future.timestamp)
         ):
-            # print('timer below zero')
             await self.update_timer_queue(guild, now, future, group, g)
             raise asyncio.CancelledError
         c = int(g.get("announce", 0))
@@ -172,14 +171,19 @@ class TapTitansModule(cmd.Cog):
         cd = g.get("cd", 0)
         c = int(g.get("announce", 0))
         chan = guild.get_channel(c)
-        current = g.get("lastq", "").split()
+        current = g.get("current", "").split()
         qmode = int(g.get("mode", 1))
         upnext = q[0:qmode]
         depl = int(g.get("depl", 0))
+        reset = int(g.get("reset", 0))
         if not q and spawn or depl:
-            reset = g.get("reset", 0)
-            arr = arrow.get(spawn).shift(hours=12) - now
+            arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
             _h, _m, _s = await get_hms(arr)
+            if _h < 0 or _m < 0 or _s < 0:
+                reset = reset + 1
+                await self.bot.db.hset(f"{guild.id}:tt:{group}", "reset", reset)
+                _h, _m, _s = await get_hms(arr)
+                arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
             content = "Raid reset #**{}** starts in **{:02}**h **{:02}**m **{:02}**s.".format(
                 reset + 1, _h, _m, _s
             )
@@ -200,23 +204,26 @@ class TapTitansModule(cmd.Cog):
         if len([m for m in upnext if m in current]) > 0:
             return
 
-        if upnext == current:
-            return
-        elif len(upnext) == 0:
+        if len(upnext) == 0 and ' '.join(current).strip() == "":
             await chan.send(
-                "Queue has ended! You may now queue up for reset {}.".format(
-                    int(g.get("reset", 0) + 1)
+                "Queue has ended! You may now queue up for reset #**{}**.".format(
+                    reset + 1
                 )
             )
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 1)
+            await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
+            return
+        elif len(upnext) == 0 and ' '.join(current).strip() != "":
             return
 
         members = [guild.get_member(int(m)) for m in upnext]
         cnt = 0
         while cnt < len(upnext):
-            await self.bot.db.lpop(f"{guild.id}:tt:{group}:q")
+            await self.bot.db.lrem(f"{guild.id}:tt:{group}:q", upnext[cnt])
             cnt += 1
-        await self.bot.db.hset(group, "lastq", " ".join([str(m.id) for m in members]))
+        await self.bot.db.hset(
+            f"{guild.id}:tt:{group}", "current", " ".join([str(m.id) for m in members])
+        )
         await chan.send(
             "It's {}'s turn to attack the raid!".format(
                 ", ".join([f"**{m}**" for m in members])
@@ -410,18 +417,20 @@ class TapTitansModule(cmd.Cog):
             announce = await self.bot.db.hset(group, "announce", ctx.channel.id)
             await self.bot.db.hset(group, "edit", edit.id)
 
-    @tt_raid.command(name="clear", aliases=["end", "ended", "cleared"])
-    async def tt_raid_clear(self, ctx, group: Optional[TTRaidGroup]):
+    @tt_raid.command(name="clear", aliases=["end", "ended", "cleared", "cd"])
+    async def tt_raid_clear(
+        self, ctx, group: Optional[TTRaidGroup], cd: Optional[Duration]
+    ):
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
-        spawn, reset = groupdict.get("spawn", None), groupdict.get("reset", 0)
+        spawn, reset = groupdict.get("spawn", None), int(groupdict.get("reset", 0))
         if not spawn or spawn is None:
             await ctx.send("No raid to clear.")
             return
-        print(groupdict.get("spawn"))
         await self.has_timer_permissions(ctx, groupdict)
+
         now = arrow.utcnow()
         spwn_arrow = arrow.get(spawn)
         if now < spwn_arrow:
@@ -429,6 +438,10 @@ class TapTitansModule(cmd.Cog):
                 "You can't clear a raid before it spawns. Use **cancel** instead."
             )
             return
+        if cd != None or cd:
+            delta = cd - now
+            _h, _m, _s = await get_hms(delta)
+
         total_time = now - spwn_arrow
         g = groupdict
         _h, _m, _s = await get_hms(total_time)
@@ -463,7 +476,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hdel(group, "edit")
             await self.bot.db.hdel(group, "spawn")
             await self.bot.db.hdel(group, "cd")
-            await self.bot.db.hdel(group, "lastq")
+            await self.bot.db.hdel(group, "current")
             await self.bot.db.hdel(group, "depl")
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
@@ -479,13 +492,12 @@ class TapTitansModule(cmd.Cog):
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
         await self.has_clan_permissions(ctx, groupdict)
-        # result = await self.bot.db.hget(group, "spawn")
-        result = groupdict.get('spawn', 0)
+        result = groupdict.get("spawn", 0)
         if not result:
             await ctx.send("No raid/reset to queue for.")
             return
-        resets = int(groupdict.get('resets', 0))
-        depl = int(groupdict.get('depl', 0))
+        resets = int(groupdict.get("reset", 0))
+        depl = int(groupdict.get("depl", 0))
         if not resets and not depl:
             resets = "first spawn"
         elif resets and not depl:
@@ -494,7 +506,9 @@ class TapTitansModule(cmd.Cog):
             resets = f"reset #{resets+1}"
         q = f"{group}:q"
         users = await self.bot.db.lrange(q)
-
+        current = groupdict.get("current", "").split()
+        print(current)
+        print(str(ctx.author.id))
         if not list:
             if not str(ctx.author.id) in users:
                 await self.bot.db.rpush(q, ctx.author.id)
@@ -504,10 +518,20 @@ class TapTitansModule(cmd.Cog):
                     f"You're already #**{users.index(str(ctx.author.id))+1}** in the queue, **{ctx.author}**."
                 )
                 return
+        elif list in ["clear", "wipe", "erase"]:
+            await self.has_timer_permissions(ctx, groupdict)
+            await self.bot.db.delete(q)
+            await ctx.send("Queue has been cleared!")
+            return
+        if str(ctx.author.id) in current:
+            await ctx.send(
+                f"You are attacking, **{ctx.author}**. Use **;tt d** to finish your turn."
+            )
+            return
         u = []
 
-        mode = groupdict.get("mode", 1)
-        clusters = zip_longest(*[iter(users)] * 3, fillvalue=None)
+        mode = int(groupdict.get("mode", 1))
+        clusters = zip_longest(*[iter(users)] * mode, fillvalue=None)
         result = []
         for c in clusters:
             temp = str(len(result) + 1)
@@ -544,8 +568,7 @@ class TapTitansModule(cmd.Cog):
         elif depl:
             resets = f"reset #{resets}+1"
         q = await self.bot.db.lrange(f"{group}:q")
-        current = g.get("lastq", "").split()
-
+        current = g.get("current", "").split()
         if str(ctx.author.id) in current:
             await ctx.send(
                 "You can't cancel your place when it's your turn. Try **;tt d** / **;tt done** to finish your turn."
@@ -554,9 +577,10 @@ class TapTitansModule(cmd.Cog):
         elif not str(ctx.author.id) in q:
             await ctx.send(f"You're not in the queue, **{ctx.author}**.")
             return
-        res = await self.bot.db.lrem(f"{group}:q", ctx.author.id)
-        if res:
-            await ctx.send(f"Ok **{ctx.author}**, I removed you from the queue.")
+        else:
+            res = await self.bot.db.lrem(f"{group}:q", ctx.author.id)
+            if res:
+                await ctx.send(f"Ok **{ctx.author}**, I removed you from the queue.")
 
     @tt.command(name="done", aliases=["d"])
     async def tt_done(self, ctx, group: Optional[TTRaidGroup]):
@@ -565,11 +589,25 @@ class TapTitansModule(cmd.Cog):
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
         await self.has_clan_permissions(ctx, g)
-        result = await self.bot.db.hget(group, "spawn")
-        if not result:
+        if not g.get("spawn", 0):
             await ctx.send("No raid/reset rn.")
             return
-        print(g.get("lastq"))
+        current = g.get("current", "").split()
+        if not str(ctx.author.id) in current:
+            q = await self.bot.db.hget(f"{group}:q", [])
+            if not str(ctx.author.id) in q:
+                await ctx.send(
+                    "Looks like it is not your turn and you are not in the queue."
+                )
+            else:
+                await ctx.send(
+                    "It is not your turn but you are in the queue. To cancel your place, do **;tt uq**"
+                )
+        else:
+            current = " ".join(current)
+            current = current.replace(str(ctx.author.id), "")
+            await self.bot.db.hset(group, "current", current.strip())
+            await ctx.send(f"**{ctx.author}** has finished their turn.")
 
     @tt.group(name="card", case_insensitive=True)
     async def tt_card(self):
