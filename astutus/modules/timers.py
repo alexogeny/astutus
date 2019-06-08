@@ -34,7 +34,7 @@ class TimerModule(cmd.Cog):
                 f"{guild.id}:timer",
                 now.shift(seconds=-6).timestamp,
                 now.timestamp,
-                withscores="WITHSCORES",
+                withscores=True,
             )
             if to_action:
                 clusters = dict(zip_longest(*[iter(to_action)] * 2, fillvalue=None))
@@ -87,7 +87,7 @@ class TimerModule(cmd.Cog):
         )
         duration = duration.humanize()
         if duration == "just now":
-            duration = "now"
+            duration = "shortly"
         await ctx.send(f"Ok **{ctx.author}**, timer will go off **{duration}**.")
 
 

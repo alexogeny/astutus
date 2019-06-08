@@ -35,8 +35,10 @@ class Redis:
     async def increment(self, key):
         return await self.execute("INCR", key)
 
-    async def zincrement(self, key, member):
-        return await self.execute("ZINCRBY", key, 1, member)
+    async def zincrement(self, key, member, score: int = None):
+        if score == None:
+            score = 1
+        return await self.execute("ZINCRBY", key, score, member)
 
     async def zscore(self, key, member):
         return await self.execute("ZSCORE", key, member)
@@ -50,11 +52,21 @@ class Redis:
     async def zrank(self, key, member):
         return await self.execute("ZREVRANK", key, member)
 
-    async def zbyscore(self, key, min, max, withscores=""):
-        return await self.execute("ZRANGEBYSCORE", key, min, max, withscores)
+    async def zbyscore(self, key, min, max, withscores=False):
+        if not withscores:
+            return await self.execute("ZRANGEBYSCORE", key, min, max)
+        return await self.execute("ZRANGEBYSCORE", key, min, max, "WITHSCORES")
 
     async def zrembyscore(self, key, min, max):
         return await self.execute("ZREMRANGEBYSCORE", key, min, max)
+
+    async def zscan(self, key, match=None, count=None, cursor=0):
+        args = []
+        if match is not None:
+            args += ["MATCH", f"{match}*"]
+        if count is not None:
+            args += ["COUNT", count]
+        return await self.execute("ZSCAN", key, cursor, *args)
 
     async def rpush(self, key, *values):
         return await self.execute("RPUSH", key, *values)
@@ -110,7 +122,12 @@ class Redis:
                 return
         with await self.connection_pool as connection:
             value = await connection.execute(command, *args)
-        return await self.decode_value(value)
+        if command != "ZSCAN":
+            return await self.decode_value(value)
+        one, two = value
+        one = await self.decode_value(one)
+        two = await self.decode_value(two)
+        return one, two
 
     async def decode_value(self, value):
         if type(value) == list:

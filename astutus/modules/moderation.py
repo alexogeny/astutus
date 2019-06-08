@@ -153,6 +153,109 @@ class ModerationModule(cmd.Cog):
     @cmd.command()
     @cmd.guild_only()
     @checks.can_kick()
+    async def warn(
+        self,
+        ctx: cmd.Context,
+        members: cmd.Greedy[MemberID],
+        duration: Optional[Duration],
+        *,
+        reason: ActionReason = None,
+    ):
+        wid = arrow.utcnow().timestamp
+        if duration == None or not duration:
+            duration = arrow.get(9999999999)
+        print(len(members))
+        if len(members) > 1:
+            result = []
+            for m in members:
+                mem = ctx.guild.get_member(m)
+                if mem:
+                    zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", m)
+                    await self.bot.db.zadd(
+                        f"{ctx.guild.id}:wrn", f"{m}.{wid}", duration.timestamp
+                    )
+                    result.append(mem)
+            result = ", ".join([f"**{k}**" for k in result])
+            duration = duration.humanize()
+            if duration == "just now":
+                duration = "shortly"
+            await ctx.send(f"**{ctx.author}** warned {result}.")
+            return
+        elif len(members) == 0:
+            return
+        mem = ctx.guild.get_member(members[0])
+        zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", members[0])
+        await self.bot.db.zadd(
+            f"{ctx.guild.id}:wrn", f"{members[0]}.{wid}", duration.timestamp
+        )
+        await ctx.send(
+            "**{}** warned **{}**. They now have **{}** warning{}.".format(
+                ctx.author, mem, zs, int(zs) > 1 and "s" or ""
+            )
+        )
+
+    @cmd.command(name="warnings")
+    async def warnings(self, ctx, member: Optional[cmd.MemberConverter]):
+        if not member:
+            member = ctx.author
+        zs = await self.bot.db.zscore(f"{ctx.guild.id}:wrncnt", member.id)
+        await ctx.send(
+            "**{}** has **{}** warning{}".format(member, zs, int(zs) != 1 and "s" or "")
+        )
+
+    @cmd.command(name="mutewarn")
+    async def mutewarn(self, ctx):
+        await self.mute.invoke(await self.bot.get_context(ctx.message))
+        await self.warn.invoke(await self.bot.get_context(ctx.message))
+
+    @cmd.command()
+    @cmd.guild_only()
+    @checks.can_kick()
+    async def pardon(
+        self,
+        ctx: cmd.Context,
+        members: cmd.Greedy[MemberID],
+        *,
+        reason: ActionReason = None,
+    ):
+        if len(members) > 1:
+            pardoned = []
+            for m in members:
+                warnings = await self.bot.db.zscore(f"{ctx.guild.id}:wrncnt", m)
+                warnings = int(warnings)
+                if warnings > 0:
+                    await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", m, score=-1)
+                    to_delete = await self.bot.db.zscan(
+                        f"{ctx.guild.id}:wrn", m, count=1
+                    )
+                    if to_delete:
+                        await self.bot.db.zrem(f"{ctx.guild.id}:wrn", to_delete[0])
+                    pardoned.append(ctx.guild.get_member(m))
+            result = ", ".join([f"**{k}**" for k in pardoned])
+            await ctx.send(f"**{ctx.author}** pardoned {result}.")
+        elif len(members) == 0:
+            return
+        m = members[0]
+        mem = ctx.guild.get_member(m)
+        warnings = await self.bot.db.zscore(f"{ctx.guild.id}:wrncnt", m)
+        warnings = int(warnings)
+        if warnings > 0:
+            zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", m, score=-1)
+            to_delete = await self.bot.db.zscan(
+                f"{ctx.guild.id}:wrn", match=f"{m}.", count=1
+            )
+            if len(to_delete) / 2 > 1:
+                to_delete = to_delete[1][0]
+                await self.bot.db.zrem(f"{ctx.guild.id}:wrn", to_delete)
+            await ctx.send(
+                "**{}** pardoned **{}**. They now have **{}** warning{}.".format(
+                    ctx.author, mem, zs, int(zs) != 1 and "s" or ""
+                )
+            )
+
+    @cmd.command()
+    @cmd.guild_only()
+    @checks.can_kick()
     async def mute(
         self,
         ctx: cmd.Context,

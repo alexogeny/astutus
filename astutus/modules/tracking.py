@@ -102,8 +102,6 @@ class TrackingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_guild_join(self, guild):
-        # updates = []
-        # to_update = starmap(self.track_last_seen, updates)
         await asyncio.gather(
             *(
                 self.track_last_seen(m)

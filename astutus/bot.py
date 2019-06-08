@@ -33,8 +33,9 @@ class AstutusBot(cmds.AutoShardedBot):
             module = str(module).replace(".py", "").replace("\\", ".")
             try:
                 self.load_extension(module)
-            except:
+            except Exception as e:
                 print(f"Failed to load ext: {module}")
+                print(e)
             else:
                 print(f"Loaded ext: {module}")
 
