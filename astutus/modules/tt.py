@@ -1,6 +1,6 @@
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
-from astutus.utils import Duration, checks, Truthy, get_hms
+from astutus.utils import Duration, checks, Truthy, get_hms, MemberID
 from typing import Optional
 import asyncio
 import arrow
@@ -37,7 +37,7 @@ class TTKey(cmd.Converter):
         elif arg == "grandmaster":
             arg == "gm"
         if (
-            arg in "gmmastercaptainknightrecruitapplicantguest"
+            arg in "gmmastercaptainknightrecruitapplicantguesttimer"
             and not checks.can_manage_roles()
         ):
             raise cmd.BadArgument()
@@ -91,6 +91,11 @@ class TapTitansModule(cmd.Cog):
         roles = await self.get_roles(
             groupdict, *["gm", "master", "captain", "knight", "recruit"]
         )
+        if not any(roles):
+            await ctx.send(
+                "Looks like no clan roles are set up. Anyone with manage guild *and* manage roles permission can do this."
+            )
+            raise cmd.BadArgument
         if not await checks.user_has_role([r.id for r in ctx.author.roles], *roles):
             raise cmd.BadArgument
 
@@ -226,7 +231,7 @@ class TapTitansModule(cmd.Cog):
         )
         await chan.send(
             "It's {}'s turn to attack the raid!".format(
-                ", ".join([f"**{m}**" for m in members])
+                ", ".join([f"{m.mention}" for m in members])
             )
         )
 
@@ -320,7 +325,7 @@ class TapTitansModule(cmd.Cog):
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
         await self.has_admin_or_mod_or_master(ctx, groupdict)
-        if key in "gmmastercaptainknightrecruitapplicantguest":
+        if key in "gmmastercaptainknightrecruitapplicantguesttimer":
             val = await cmd.RoleConverter().convert(ctx, val)
             await self.bot.db.hset(group, key, val.id)
         elif key == "announce":
@@ -478,6 +483,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hdel(group, "cd")
             await self.bot.db.hdel(group, "current")
             await self.bot.db.hdel(group, "depl")
+            await self.bot.db.hdel(group, "reset")
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 
@@ -507,8 +513,6 @@ class TapTitansModule(cmd.Cog):
         q = f"{group}:q"
         users = await self.bot.db.lrange(q)
         current = groupdict.get("current", "").split()
-        print(current)
-        print(str(ctx.author.id))
         if not list:
             if not str(ctx.author.id) in users:
                 await self.bot.db.rpush(q, ctx.author.id)
@@ -523,6 +527,9 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.delete(q)
             await ctx.send("Queue has been cleared!")
             return
+        elif list in ["skip"]:
+            await self.has_timer_permissions(ctx, groupdict)
+            await self.bot.hset(group, "current", "")
         if str(ctx.author.id) in current:
             await ctx.send(
                 f"You are attacking, **{ctx.author}**. Use **;tt d** to finish your turn."
@@ -549,7 +556,7 @@ class TapTitansModule(cmd.Cog):
         )
 
     @tt.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
-    async def tt_unqueue(self, ctx, group: Optional[TTRaidGroup]):
+    async def tt_unqueue(self, ctx, group: Optional[TTRaidGroup], members: cmd.Greedy[MemberID]):
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -568,6 +575,7 @@ class TapTitansModule(cmd.Cog):
         elif depl:
             resets = f"reset #{resets}+1"
         q = await self.bot.db.lrange(f"{group}:q")
+        # if members
         current = g.get("current", "").split()
         if str(ctx.author.id) in current:
             await ctx.send(
