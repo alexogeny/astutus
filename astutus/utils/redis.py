@@ -50,8 +50,8 @@ class Redis:
     async def zrank(self, key, member):
         return await self.execute("ZREVRANK", key, member)
 
-    async def zbyscore(self, key, min, max):
-        return await self.execute("ZRANGEBYSCORE", key, min, max)
+    async def zbyscore(self, key, min, max, withscores=""):
+        return await self.execute("ZRANGEBYSCORE", key, min, max, withscores)
 
     async def zrembyscore(self, key, min, max):
         return await self.execute("ZREMRANGEBYSCORE", key, min, max)
