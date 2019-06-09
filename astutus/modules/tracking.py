@@ -128,6 +128,10 @@ class TrackingModule(cmd.Cog):
         await self.track_last_seen(member)
 
     @cmd.Cog.listener()
+    async def on_message(self, message):
+        await self.track_last_seen(message.author)
+
+    @cmd.Cog.listener()
     async def on_member_join(self, member):
         await self.track_last_seen(member)
 

@@ -1,5 +1,6 @@
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
+import discord
 from astutus.utils import Duration, checks, Truthy, get_hms, MemberID
 from typing import Optional
 import asyncio
@@ -32,7 +33,27 @@ RAID_DECKS = {
             "Fragmentize",
         ),
         "Only target the Torso. You only need Moonbeam and Soul Fire for this deck, the third card can be almost anything of your choice.",
-    ]
+    ],
+    "all": [
+        ("Whip of Lightning", "Blazing Inferno"),
+        ("Inspiring Force", "Prismatic Rift"),
+        "Target as many parts of the Titan Lord as possible. If the Titan has all its armor, use Prismatic Rift. If only Body remains, use Inspiring Force. Only use this deck if all parts are either armored or exposed.",
+    ],
+    "decay": [
+        ("Decaying Strike", "Fusion Bomb", "Rancid Gas"),
+        (),
+        "Target as many parts of the Titan Lord as possible. Use this deck only when a new Titan with full HP spawns. Rotate between all parts, switching to the next each time Fusion activates. You cannot attack a part that already has Fusion applied, otherwise Fusion will never detonate.",
+    ],
+    "focus": [
+        ("Clan Ship Barrage", "Ancestral Favor"),
+        ("Razor Wind", "Fragmentize"),
+        "Target any part of the Titan. Pick Razor Wind for the Body, and Fragmentize for the Armor.",
+    ],
+    "duo": [
+        ("Purifying Blast", "Acid Drench"),
+        ("Prismatic Rift", "Inspiring Force"),
+        "Focus on two close-proximity parts for maximal damage e.g. Head and Torso, or Shoulder and Hand. Pick Inspiring Force for Body and Prismatic Rift for Armor.",
+    ],
 }
 
 RAID_CARDS = {
@@ -52,7 +73,7 @@ RAID_CARDS = {
         "t": 1,
         "d": "activate Whip of Lightning. Whip of Lightning's chance to activate increases for each afflicted Titan Lord part. Used in decks targeting as many parts of the Titan Lord as possible.",
     },
-    "Clanship Barrage": {
+    "Clan Ship Barrage": {
         "t": 1,
         "d": "activate Clanship Barrage. Clanship Barrage's damage increases for the remainder of the attack whenever any burst card is activated. Use with another Burst card and Ancestral Favor for best results.",
     },
@@ -144,7 +165,7 @@ class TTDeck(cmd.Converter):
     async def convert(self, ctx, arg):
         arg = arg.lower()
         closest_match = difflib.get_close_matches(
-            arg, list(RAID_DECKS.keys()), n=1, cutoff=.85
+            arg, list(RAID_DECKS.keys()), n=1, cutoff=0.85
         )
         if closest_match:
             return closest_match[0], RAID_DECKS.get(closest_match[0])
@@ -155,6 +176,7 @@ class TTDeck(cmd.Converter):
             if closest_match:
                 return closest_match, RAID_DECKS.get(closest_match)
         return None, None
+
 
 class TTKey(cmd.Converter):
     async def convert(self, ctx: cmd.Context, arg):
@@ -725,7 +747,6 @@ class TapTitansModule(cmd.Cog):
         elif depl:
             resets = f"reset #{resets}+1"
         q = await self.bot.db.lrange(f"{group}:q")
-        # if members
         current = g.get("current", "").split()
         if str(ctx.author.id) in current:
             await ctx.send(
@@ -767,7 +788,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, "current", current.strip())
             await ctx.send(f"**{ctx.author}** has finished their turn.")
 
-    @tt.command(name="card", case_insensitive=True)
+    @tt.command(name="card", aliases=["cards"], case_insensitive=True)
     async def tt_card(self, ctx, *card):
         card, data = await TTRaidCard().convert(ctx, " ".join(card))
         if not card:
@@ -778,15 +799,15 @@ class TapTitansModule(cmd.Cog):
             )
             return
         await ctx.send(
-            "**{}** - **{}** Tier\nTaps have a chance to {}".format(
-                card, TIER_LIST[data["t"]], data["d"]
+            "{} **{}** - **{}** Tier\nTaps have a chance to {}".format(
+                discord.utils.get(self.bot.emojis, name=card.lower().replace(' ', '_')), card, TIER_LIST[data["t"]], data["d"]
             )
         )
 
-    @tt.command(name="deck", case_insensitive=True)
-    async def tt_deck(self, ctx, deck):
-        deck, data = await TTDeck().convert(ctx, deck)
-        if not deck:
+    @tt.command(name="deck", aliases=["decks"], case_insensitive=True)
+    async def tt_deck(self, ctx, *deck):
+        deck, data = await TTDeck().convert(ctx, " ".join(deck))
+        if not deck or deck is None:
             await ctx.send(
                 "Available decks: {}".format(
                     ", ".join([f"**{x}**" for x in RAID_DECKS.keys()])
@@ -795,7 +816,22 @@ class TapTitansModule(cmd.Cog):
             return
         await ctx.send(
             "**{} Deck**\n\n**Core cards**\n{}\n\n**Optional cards**\n{}\n\n{}".format(
-                deck.title(), ', '.join(data[0]), ', '.join(data[1]), data[2]
+                deck.title(),
+                ", ".join(
+                    [
+                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'))} {d}"
+                        for d in data[0]
+                    ]
+                ),
+                data[1]
+                and ", ".join(
+                    [
+                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'))} {d}"
+                        for d in data[1]
+                    ]
+                )
+                or "n/a",
+                data[2],
             )
         )
 
