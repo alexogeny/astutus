@@ -158,6 +158,17 @@ class TTRaidCard(cmd.Converter):
             )
             if closest_match:
                 return closest_match, RAID_CARDS.get(closest_match)
+        if not closest_match and arg.strip():
+            closest_match = next(
+                (
+                    k
+                    for k in list(RAID_CARDS.keys())
+                    if "".join([x[0] for x in k.lower().split()]) == arg.lower()
+                ),
+                None,
+            )
+            if closest_match:
+                return closest_match, RAID_CARDS.get(closest_match)
         return None, None
 
 
@@ -800,7 +811,10 @@ class TapTitansModule(cmd.Cog):
             return
         await ctx.send(
             "{} **{}** - **{}** Tier\nTaps have a chance to {}".format(
-                discord.utils.get(self.bot.emojis, name=card.lower().replace(' ', '_')), card, TIER_LIST[data["t"]], data["d"]
+                discord.utils.get(self.bot.emojis, name=card.lower().replace(" ", "_")),
+                card,
+                TIER_LIST[data["t"]],
+                data["d"],
             )
         )
 
