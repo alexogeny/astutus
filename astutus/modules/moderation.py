@@ -164,7 +164,6 @@ class ModerationModule(cmd.Cog):
         wid = arrow.utcnow().timestamp
         if duration == None or not duration:
             duration = arrow.get(9999999999)
-        print(len(members))
         if len(members) > 1:
             result = []
             for m in members:

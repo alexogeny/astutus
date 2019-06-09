@@ -6,7 +6,155 @@ import asyncio
 import arrow
 from datetime import datetime
 from itertools import zip_longest
+import difflib
 
+TIER_LIST = "SABCD"
+
+RAID_DECKS = {
+    "head": [
+        ("Skull Bash", "Crushing Instinct"),
+        (
+            "Grim Shadow",
+            "Razor Wind",
+            "Inspiring Force",
+            "Prismatic Rift",
+            "Fragmentize",
+        ),
+        "Only target the Head. You need Skull Bash and Crushing Instinct for this deck, the third card can be almost anything of your choice.",
+    ],
+    "torso": [
+        ("Soul Fire", "Moonbeam"),
+        (
+            "Grim Shadow",
+            "Razor Wind",
+            "Inspiring Force",
+            "Prismatic Rift",
+            "Fragmentize",
+        ),
+        "Only target the Torso. You only need Moonbeam and Soul Fire for this deck, the third card can be almost anything of your choice.",
+    ]
+}
+
+RAID_CARDS = {
+    "Crushing Instinct": {
+        "t": 1,
+        "d": "activate Crushing Instinct, increasing damage dealt to the Titan Lord's head. Best used in conjunction with Skull Bash and another card of your choice.",
+    },
+    "Soul Fire": {
+        "t": 1,
+        "d": "activate a stack of Soul Fire, increasing damage dealt to the Titan Lord’s Torso. Use in conjunction with Moon Beam and another card of your choice for best damage on the torso.",
+    },
+    "Purifying Blast": {
+        "t": 0,
+        "d": "activate Purifying Blast, consuming all Affliction stacks on the damaged part, increasing this card's damage. Best used in conjunction with Acid Drench and Inspiring Force or Prismatic Rift.",
+    },
+    "Whip of Lightning": {
+        "t": 1,
+        "d": "activate Whip of Lightning. Whip of Lightning's chance to activate increases for each afflicted Titan Lord part. Used in decks targeting as many parts of the Titan Lord as possible.",
+    },
+    "Clanship Barrage": {
+        "t": 1,
+        "d": "activate Clanship Barrage. Clanship Barrage's damage increases for the remainder of the attack whenever any burst card is activated. Use with another Burst card and Ancestral Favor for best results.",
+    },
+    "Razor Wind": {
+        "t": 1,
+        "d": "activate Razor Wind, dealing extra damage against the Titan Lord's Body (any part that doesn't have armor that isn't a skeleton).",
+    },
+    "Moonbeam": {
+        "t": 1,
+        "d": "activate Moon Beam, dealing extra damage against the Titan Lord's Torso, armored or not.",
+    },
+    "Fragmentize": {
+        "t": 1,
+        "d": "activate Fragmentize, dealing extra damage against the Titan Lord's Armor.",
+    },
+    "Skull Bash": {
+        "t": 1,
+        "d": "activate Skull Bash, dealing extra damage against the Titan Lord's Head, armored or not.",
+    },
+    "Grim Shadow": {
+        "t": 1,
+        "d": "apply a stack of Shadow to the targeted part. When a part is afflicted with the maximum number of Shadow stacks (7), all Shadow stacks on that part deal bonus damage. Use this card on any part, armored or not, but focus on one part only. It synergizes best with single target decks.",
+    },
+    "Fusion Bomb": {
+        "t": 2,
+        "d": "apply a stack of Fusion to the targeted part. When the Fusion affliction expires, it detonates and deals damage to the afflicted Titan Lord part. Attacking a part with a stack of Fusion causes the stack to reset its detonation timer, so go for multiple or all parts of the Titan when using Fusion Bomb to minimize damage waste.",
+    },
+    "Decaying Strike": {
+        "t": 2,
+        "d": "apply a stack of Decay to the targeted part. Decaying Strike's damage multiplies by the remaining health percentage of the damaged part. Use this when there is a new Titan Lord with full HP for best results.",
+    },
+    "Blazing Inferno": {
+        "t": 2,
+        "d": "apply a stack of Inferno to the targeted part. For each part afflicted by Inferno, this card's activation chance increases. Pair this card with Whip of Lightning in your all parts deck, they synergize well. This card is otherwise useless.",
+    },
+    "Thriving Plague": {
+        "t": 3,
+        "d": "apply a stack of Plague to the targeted part. All Plague stacks deal additional damage per second for each part afflicted by Plague. This card is good on Whip of Lightning decks, though Inferno is preferred. No use for this card in the current meta.",
+    },
+    "Radioactivity": {
+        "t": 4,
+        "d": "apply a stack of Radioactivity to the targeted part. For each second a part is afflicted by Radioactivity, all Radioactivity stacks on that part deal additional damage per second. A much worse version of Grim Shadow. Don't use it.",
+    },
+    "Acid Drench": {
+        "t": 4,
+        "d": "apply a stack of Acid to the targeted part. When a stack of Acid is applied to a Titan Lord part, the duration of all other Acid stacks on that part are reset. Use in Purifying Blast decks for best results. Do not buy this card, as it only increases its minuscule damage and not the chance, stacks or duration.",
+    },
+    "Ancestral Favor": {
+        "t": 0,
+        "d": "activate a stack of Favor, increasing all Burst Damage and Burst Chance. Pair this card with burst cards of your choice and deal massive damage to the Titan Lord.",
+    },
+    "Inspiring Force": {
+        "t": 0,
+        "d": "activate a stack of Inspiration, increasing Raid Damage dealt to the Titan Lord's Body. One of the most versatile cards in the game, useful in any Body deck.",
+    },
+    "Prismatic Rift": {
+        "t": 0,
+        "d": "activate a stack of Prismatic, increasing Damage dealt to the Titan Lord's Armor. One of the most versatile cards in the game, useful in any Armor deck.",
+    },
+    "Rancid Gas": {
+        "t": 2,
+        "d": "activate a stack of Rancid, increasing all Affliction Damage and Affliction Chance. All Affliction decks currently lack viability, so this card ranks lower.",
+    },
+    "Victory March": {
+        "t": 3,
+        "d": "activate a stack of Victory March, increasing Raid Damage dealt for each exposed Titan Lord Skeleton part. Overpowers other support cards once 6/8 Titan Lord parts have been destroyed. Do not use this card otherwise.",
+    },
+}
+
+
+class TTRaidCard(cmd.Converter):
+    async def convert(self, ctx: cmd.Context, arg):
+        arg = arg.title()
+        closest_match = difflib.get_close_matches(
+            arg, list(RAID_CARDS.keys()), n=1, cutoff=0.85
+        )
+        if closest_match:
+            return closest_match[0], RAID_CARDS.get(closest_match[0])
+        if not closest_match and arg.strip():
+            closest_match = next(
+                (k for k in list(RAID_CARDS.keys()) if k.startswith(arg)), None
+            )
+            if closest_match:
+                return closest_match, RAID_CARDS.get(closest_match)
+        return None, None
+
+
+class TTDeck(cmd.Converter):
+    async def convert(self, ctx, arg):
+        arg = arg.lower()
+        closest_match = difflib.get_close_matches(
+            arg, list(RAID_DECKS.keys()), n=1, cutoff=.85
+        )
+        if closest_match:
+            return closest_match[0], RAID_DECKS.get(closest_match[0])
+        if not closest_match and arg.strip():
+            closest_match = next(
+                (k for k in list(RAID_DECKS.keys()) if k.startswith(arg)), None
+            )
+            if closest_match:
+                return closest_match, RAID_DECKS.get(closest_match)
+        return None, None
 
 class TTKey(cmd.Converter):
     async def convert(self, ctx: cmd.Context, arg):
@@ -206,10 +354,10 @@ class TapTitansModule(cmd.Cog):
         if depl:
             return
 
-        if len([m for m in upnext if m in current]) > 0:
+        if len(current) > 0:
             return
 
-        if len(upnext) == 0 and ' '.join(current).strip() == "":
+        if len(upnext) == 0 and " ".join(current).strip() == "":
             await chan.send(
                 "Queue has ended! You may now queue up for reset #**{}**.".format(
                     reset + 1
@@ -218,7 +366,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 1)
             await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
             return
-        elif len(upnext) == 0 and ' '.join(current).strip() != "":
+        elif len(upnext) == 0 and " ".join(current).strip() != "":
             return
 
         members = [guild.get_member(int(m)) for m in upnext]
@@ -556,7 +704,9 @@ class TapTitansModule(cmd.Cog):
         )
 
     @tt.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
-    async def tt_unqueue(self, ctx, group: Optional[TTRaidGroup], members: cmd.Greedy[MemberID]):
+    async def tt_unqueue(
+        self, ctx, group: Optional[TTRaidGroup], members: cmd.Greedy[MemberID]
+    ):
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -602,7 +752,7 @@ class TapTitansModule(cmd.Cog):
             return
         current = g.get("current", "").split()
         if not str(ctx.author.id) in current:
-            q = await self.bot.db.hget(f"{group}:q", [])
+            q = await self.bot.db.lrange(f"{group}:q")
             if not str(ctx.author.id) in q:
                 await ctx.send(
                     "Looks like it is not your turn and you are not in the queue."
@@ -617,13 +767,37 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, "current", current.strip())
             await ctx.send(f"**{ctx.author}** has finished their turn.")
 
-    @tt.group(name="card", case_insensitive=True)
-    async def tt_card(self):
-        return
+    @tt.command(name="card", case_insensitive=True)
+    async def tt_card(self, ctx, *card):
+        card, data = await TTRaidCard().convert(ctx, " ".join(card))
+        if not card:
+            await ctx.send(
+                "Available cards: {}".format(
+                    ", ".join([f"**{k}**" for k in RAID_CARDS.keys()])
+                )
+            )
+            return
+        await ctx.send(
+            "**{}** - **{}** Tier\nTaps have a chance to {}".format(
+                card, TIER_LIST[data["t"]], data["d"]
+            )
+        )
 
-    @tt.group(name="deck", case_insensitive=True)
-    async def tt_deck(self):
-        return
+    @tt.command(name="deck", case_insensitive=True)
+    async def tt_deck(self, ctx, deck):
+        deck, data = await TTDeck().convert(ctx, deck)
+        if not deck:
+            await ctx.send(
+                "Available decks: {}".format(
+                    ", ".join([f"**{x}**" for x in RAID_DECKS.keys()])
+                )
+            )
+            return
+        await ctx.send(
+            "**{} Deck**\n\n**Core cards**\n{}\n\n**Optional cards**\n{}\n\n{}".format(
+                deck.title(), ', '.join(data[0]), ', '.join(data[1]), data[2]
+            )
+        )
 
     @tt.group(name="hero", case_insensitive=True)
     async def tt_hero(self):
