@@ -730,11 +730,17 @@ class TapTitansModule(cmd.Cog):
                     r.append(f"{ux}")
             result.append(temp + ". " + ", ".join(r))
 
-        await ctx.send(
-            "**Queue** for **{}**:\n```{}```\nUse **;tt unqueue** to cancel.".format(
-                resets, "\n".join(result)
+        if result:
+            await ctx.send(
+                "**Queue** for **{}**:\n```{}```\nUse **;tt unqueue** to cancel.".format(
+                    resets, result and "\n".join(result) or " "
+                )
             )
+            return
+        await ctx.send(
+            f"**Queue** for **{resets}** is currently **empty**."
         )
+
 
     @tt.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
     async def tt_unqueue(

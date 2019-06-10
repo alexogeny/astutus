@@ -81,7 +81,7 @@ def is_bot_owner():
 
 def is_mod():
     async def predicate(ctx: cmd.Context):
-        return await check_guild_permissions(ctx, {"manage_guild": True})
+        return await check_guild_permissions(ctx, {"ban_members": True})
 
     return cmd.check(predicate)
 

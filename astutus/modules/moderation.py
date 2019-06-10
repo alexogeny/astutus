@@ -150,6 +150,11 @@ class ModerationModule(cmd.Cog):
         kicked = ", ".join([f"**{k}**" for k in kicked])
         await ctx.send(f"**{ctx.author}** kicked {kicked}.")
 
+    async def warn_func(self, guild_id, member_id, warning_id, expiry):
+        zs = await self.bot.db.zincrement(f"{guild_id}:wrncnt", member_id)
+        await self.bot.db.zadd(f"{guild_id}:wrn", f"{member_id}.{warning_id}", expiry)
+        return zs
+
     @cmd.command()
     @cmd.guild_only()
     @checks.can_kick()
@@ -169,10 +174,11 @@ class ModerationModule(cmd.Cog):
             for m in members:
                 mem = ctx.guild.get_member(m)
                 if mem:
-                    zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", m)
-                    await self.bot.db.zadd(
-                        f"{ctx.guild.id}:wrn", f"{m}.{wid}", duration.timestamp
-                    )
+                    # zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", m)
+                    # await self.bot.db.zadd(
+                    #     f"{ctx.guild.id}:wrn", f"{m}.{wid}", duration.timestamp
+                    # )
+                    await self.warn_func(ctx.guild.id, m, wid, duration.timestamp)
                     result.append(mem)
             result = ", ".join([f"**{k}**" for k in result])
             duration = duration.humanize()

@@ -105,6 +105,7 @@ class UtilityModule(cmd.Cog):
             await ctx.send("There is no definition #{}".format(pos + 1))
 
     @cmd.command()
+    @is_bot_owner()
     async def shutdown(self, ctx, when: str = None):
         await self.bot.logout()
 

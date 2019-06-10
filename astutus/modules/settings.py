@@ -36,6 +36,7 @@ class SettingsModule(cmd.Cog):
         return
 
     @cmd.command(name="toggle")
+    @checks.is_mod()
     async def toggle(self, ctx, setting: SettingsKey, value: Optional[Truthy]):
         if value == None:
             value = await self.bot.db.hget(f"{ctx.guild.id}:toggle", setting)
