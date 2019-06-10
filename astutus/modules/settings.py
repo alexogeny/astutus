@@ -4,6 +4,7 @@ from typing import List, Optional
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 from astutus.utils import checks, Truthy
+from string import ascii_letters, digits
 
 AVAILABLE_SETTINGS = [
     "censor",
@@ -12,8 +13,8 @@ AVAILABLE_SETTINGS = [
     "autokick",
     "autoban",
     "autorole",
-    "welcome",
-    "goodbye",
+    "greet",
+    "prefix",
 ]
 
 
@@ -31,9 +32,25 @@ class SettingsModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
 
-    @cmd.command(name="settings", aliases=["set"])
+    @cmd.group(name="settings", aliases=["set", "setting"], invoke_without_command=True)
     async def settings(self, ctx, setting: SettingsKey, value: Optional):
         return
+
+    @settings.command(name="prefix")
+    @checks.is_mod()
+    async def prefix(self, ctx, *, prefix=None):
+        pfx_set = await self.bot.db.hget(f"{ctx.guild.id}:set", "pfx")
+        if not prefix or prefix is None:
+            await ctx.send("Current server prefix: **{}**".format(pfx_set or ";"))
+            return
+        if len(prefix) > 2:
+            await ctx.send("Custom prefix can be **1** to **2** characters in length.")
+            return
+        if any([p for p in prefix if p in ascii_letters + digits]):
+            await ctx.send("Custom prefix can be non-letter, non-number character.")
+            return
+        await self.bot.db.hset(f"{ctx.guild.id}:set", "pfx", prefix)
+        await ctx.send(f"Set the custom server prefix to **{prefix}**")
 
     @cmd.command(name="toggle")
     @checks.is_mod()

@@ -5,10 +5,24 @@ import discord
 class Truthy(cmd.Converter):
     async def convert(self, ctx, argument):
         arg = argument.lower()
-        if arg not in ["0", "1", "on", "off", "true", "false", "yes", "no"]:
+        if arg not in [
+            "0",
+            "1",
+            "2",
+            "strong",
+            "weak",
+            "on",
+            "off",
+            "true",
+            "false",
+            "yes",
+            "no",
+        ]:
             raise cmd.BadArgument()
-        elif arg in ["on", "true", "1", "yes"]:
+        elif arg in ["on", "true", "1", "yes", "weak"]:
             return 1
+        elif arg in ["2", "strong"]:
+            return 2
         return 0
 
 

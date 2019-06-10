@@ -75,11 +75,11 @@ class TrackingModule(cmd.Cog):
     async def track_last_seen(self, member):
         await self.bot.db.hset("tr:ls", member.id, arrow.utcnow().timestamp)
         platform = None
-        if member.web_status == discord.Status.online:
+        if getattr(member, "web_status", None) == discord.Status.online:
             platform = "web"
-        elif member.mobile_status == discord.Status.online:
+        elif getattr(member, "mobile_status", None) == discord.Status.online:
             platform = "mobile"
-        elif member.desktop_status == discord.Status.online:
+        elif getattr(member, "desktop_status", None) == discord.Status.online:
             platform = "desktop"
         if platform:
             await self.bot.db.hset("tr:lp", member.id, platform)

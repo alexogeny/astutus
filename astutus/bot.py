@@ -7,11 +7,12 @@ import discord
 
 async def prefix_callable(bot, message) -> list:
     user_id = bot.user.id
-    prefix_base = [f"<@!{user_id}", f"<@{user_id}"]
+    prefix_base = [f"<@!{user_id}> ", f"<@{user_id}> "]
     if message.guild is not None:
-        prefix_base.extend(
-            bot.prefixes.get(message.guild.id, [bot.config["DEFAULT"]["prefix"]])
-        )
+        prefix_base.append(bot.config["DEFAULT"]["prefix"])
+        custom = await bot.db.hget(f"{message.guild.id}:set", "pfx")
+        if custom or custom != None:
+            prefix_base.append(custom)
     return prefix_base
 
 

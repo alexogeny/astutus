@@ -27,6 +27,15 @@ class InfoModule(cmd.Cog):
             )
         await ctx.send(content=f"**{user_profile}**'s avatar:", file=discord_file)
 
+    @cmd.command()
+    async def prefix(self, ctx):
+        cstm = await self.bot.db.hget(f"{ctx.guild.id}:set", "pfx")
+        if not cstm or cstm == None:
+            cstm = ""
+        await ctx.send(
+            "You can summon me with: **;**{}".format(cstm and f" or **{cstm}**" or "")
+        )
+
     @cmd.group()
     async def info(self, ctx):
         pass
