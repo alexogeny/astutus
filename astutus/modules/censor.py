@@ -6,10 +6,12 @@ from astutus.utils import checks
 
 
 class CensorModule(cmd.Cog):
+    """A module for your Christian MineCraft server. Allows you to autodelete bad words with the bot, and optionally issue warnings for it. You can also set channels to be ignored."""
+
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
 
-    @cmd.group(name="censor")
+    @cmd.group(name="censor", hidden=True)
     @checks.is_mod()
     async def censor(self, ctx):
         return

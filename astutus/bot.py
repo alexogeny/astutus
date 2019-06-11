@@ -30,6 +30,7 @@ class AstutusBot(cmds.AutoShardedBot):
         self.prefixes = {}
         self.db = None
         self.blacklists = dict(users=[], channels=[], servers=[])
+        self.remove_command("help")
         for module in Path("./astutus/modules").rglob("*.py"):
             module = str(module).replace(".py", "").replace("\\", ".")
             try:

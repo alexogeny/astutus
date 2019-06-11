@@ -239,6 +239,7 @@ class TTRaidGroup(cmd.Converter):
 
 
 class TapTitansModule(cmd.Cog):
+    """Tap Titans 2 is an idle RPG game on iOS and Android that lets you take the battle to the titans! Level up heroes, participate in Clan Raids, and stomp on other players in Tournaments!\nI am working hard to make improvements to this module. It's nearly a thousand lines long and that's just with decks and raids!"""
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.raid_timer.start()
@@ -362,7 +363,7 @@ class TapTitansModule(cmd.Cog):
         upnext = q[0:qmode]
         depl = int(g.get("depl", 0))
         reset = int(g.get("reset", 0))
-        if not q and spawn or depl:
+        if not current and not q and (spawn or depl):
             arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
             _h, _m, _s = await get_hms(arr)
             if _h < 0 or _m < 0 or _s < 0:
@@ -375,7 +376,7 @@ class TapTitansModule(cmd.Cog):
             )
             message = int(g.get("edit", 0))
             await self.update_timer_message(chan, message, content)
-        elif not q and cd or depl:
+        elif not current and not q and (cd or depl):
             arr = now - arrow.get(cd)
             _h, _m, _s = await get_hms(arr)
             content = "Raid cooldown ended **{:02}**h **{:02}**m **{:02}**s ago.".format(
@@ -424,7 +425,7 @@ class TapTitansModule(cmd.Cog):
     async def before_raid_timer(self):
         await self.bot.wait_until_ready()
 
-    @cmd.group(case_insensitive=True)
+    @cmd.group(case_insensitive=True, hidden=True)
     async def tt(self, ctx):
         pass
 
@@ -432,6 +433,7 @@ class TapTitansModule(cmd.Cog):
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupadd(self, ctx):
+        """Adds a new raid group to the server. You will only ever need more than one of these if you have more than one Tap Titans 2 clan in your discord server *looking at you AC & GT*."""
         res = dict(
             zip(
                 ["1", "2", "3"],
@@ -468,6 +470,7 @@ class TapTitansModule(cmd.Cog):
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupdel(self, ctx, slot: Optional[int]):
+        """Deletes an existing raid group in the slot. Warning - irreversible. Do this only if you mean it."""
         if slot not in [1, 2, 3]:
             await ctx.send("You must specify a slot between **1** and **3** to delete.")
             return

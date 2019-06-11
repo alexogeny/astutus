@@ -29,6 +29,8 @@ class SettingsKey(cmd.Converter):
 
 
 class SettingsModule(cmd.Cog):
+    """Set all the things that you need to set with this module. This includes toggling functions on and off, as well as setting a custom bot prefix."""
+
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
 

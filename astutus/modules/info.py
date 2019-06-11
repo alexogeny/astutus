@@ -6,6 +6,8 @@ from astutus.utils import MemberID, download_image
 
 
 class InfoModule(cmd.Cog):
+    """Find information on the bot, users, and other things, like if the bot has a custom prefix set."""
+
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.process = psutil.Process()
@@ -36,7 +38,7 @@ class InfoModule(cmd.Cog):
             "You can summon me with: **;**{}".format(cstm and f" or **{cstm}**" or "")
         )
 
-    @cmd.group()
+    @cmd.group(hidden=True)
     async def info(self, ctx):
         pass
 

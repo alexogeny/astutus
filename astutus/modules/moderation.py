@@ -29,6 +29,8 @@ async def bulk_mod(ctx, kind: str, members: List[int], reason: str):
 
 
 class ModerationModule(cmd.Cog):
+    """This module is a beast. Empower your mods with every possible moderation command under the sun and more! A moderator is classified as someone who has the permission to ban other users.\nYou do not have to manually set a mod role - the bot will automatically determine who has moderator privileges."""
+
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.unmute_timer.start()

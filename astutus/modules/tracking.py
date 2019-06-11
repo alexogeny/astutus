@@ -8,7 +8,7 @@ from itertools import starmap
 
 
 class TrackingModule(cmd.Cog):
-    """docstring for TrackingModule"""
+    """Ever wondered what it was like to be a stalker? Well today is your lucky today. But this stuff can be really useful if you're trying to track someone down."""
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
