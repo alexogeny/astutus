@@ -499,6 +499,28 @@ class TapTitansModule(cmd.Cog):
                 res["1"] and "x" or "", res["2"] and "x" or "", res["3"] and "x" or ""
             )
         )
+    
+    @tt.command(name="groupget", aliases=["gshow", "groupshow", "gget"])
+    @cmd.guild_only()
+    @checks.is_mod()
+    async def tt_groupget(self, ctx, slot: Optional[int] = 1):
+        if slot not in [1, 2, 3]:
+            await ctx.send("You must specify a slot between **1** and **3** to show.")
+            return
+        r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
+        ns = '<not-set>'
+        await ctx.send(
+            f"Clan: {r.get('cn', '<clanname>')} - {r.get('sc', '00000')} - "
+            f"T{r.get('tier', 1)} Z{r.get('zone', 1)}\n"
+            f"`G` - {r.get('gm', ns)}\n"
+            f"`M` - {r.get('master', ns)}\n"
+            f"`C` - {r.get('captain', ns)}\n"
+            f"`K` - {r.get('knight', ns)}\n"
+            f"`R` - {r.get('recruit', ns)}\n"
+            f"`T` - {r.get('timer', ns)}\n"
+            f"Messages are broadcast in {r.get('announce', ns)} and queue size is {r.get('mode', 1)}."
+
+        )
 
     @tt.group(name="set")
     @cmd.guild_only()

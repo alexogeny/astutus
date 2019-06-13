@@ -38,9 +38,7 @@ class ModerationModule(cmd.Cog):
 
     def cog_unload(self):
         self.unmute_timer.cancel()
-        # self.unwarn_timer.cancel()
         self.unban_timer.cancel()
-        # self.unjail_timer.cancel()
 
     @tsk.loop(seconds=10)
     async def unmute_timer(self):
