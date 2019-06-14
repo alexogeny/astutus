@@ -68,6 +68,15 @@ class Redis:
             args += ["COUNT", count]
         return await self.execute("ZSCAN", key, cursor, *args)
 
+    async def hscan(self, key, match=None, count=None, cursor=0):
+        args = []
+        if match is not None:
+            args += ["MATCH", f"{match}*"]
+        if count is None:
+            count = 1
+        args += ["COUNT", count]
+        return await self.execute("HSCAN", key, cursor, *args)
+
     async def rpush(self, key, *values):
         return await self.execute("RPUSH", key, *values)
 

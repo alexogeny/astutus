@@ -1,6 +1,7 @@
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 import discord
+from enum import Enum, unique
 from astutus.utils import Duration, checks, Truthy, get_hms, MemberID
 from typing import Optional
 import asyncio
@@ -8,6 +9,13 @@ import arrow
 from datetime import datetime
 from itertools import zip_longest
 import difflib
+from string import ascii_lowercase, digits
+
+def lget(l, idx, default):
+    try:
+        return l[idx]
+    except IndexError:
+        return default
 
 TIER_LIST = "SABCD"
 
@@ -208,8 +216,8 @@ class TTKey(cmd.Converter):
             "announce",
             "farm",
             "mode",
-            "depl",
-            "current",
+            "code",
+            "name",
         ]:
             await ctx.send(f"**{arg}** is not a valid settings key for TT2 module.")
             raise cmd.BadArgument("Bad key for TT2 settings")
@@ -237,9 +245,18 @@ class TTRaidGroup(cmd.Converter):
         else:
             return f"{ctx.guild.id}:tt:{arg[1]}"
 
+@unique
+class TTRoles(Enum):
+    G = 'gm'
+    M = 'master'
+    C = 'captain'
+    K = 'knight'
+    R = 'recruit'
+    T = 'timer'
 
 class TapTitansModule(cmd.Cog):
     """Tap Titans 2 is an idle RPG game on iOS and Android that lets you take the battle to the titans! Level up heroes, participate in Clan Raids, and stomp on other players in Tournaments!\nI am working hard to make improvements to this module. It's nearly a thousand lines long and that's just with decks and raids!"""
+
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.raid_timer.start()
@@ -499,7 +516,7 @@ class TapTitansModule(cmd.Cog):
                 res["1"] and "x" or "", res["2"] and "x" or "", res["3"] and "x" or ""
             )
         )
-    
+
     @tt.command(name="groupget", aliases=["gshow", "groupshow", "gget"])
     @cmd.guild_only()
     @checks.is_mod()
@@ -508,18 +525,14 @@ class TapTitansModule(cmd.Cog):
             await ctx.send("You must specify a slot between **1** and **3** to show.")
             return
         r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
-        ns = '<not-set>'
+        ns = "**not-set**"
+        roles = '\n'.join([f"`{n}` @{r.get(m, ns)}" for n, m in TTRoles.__members__.items()])
+        print(roles)
         await ctx.send(
-            f"Clan: {r.get('cn', '<clanname>')} - {r.get('sc', '00000')} - "
-            f"T{r.get('tier', 1)} Z{r.get('zone', 1)}\n"
-            f"`G` - {r.get('gm', ns)}\n"
-            f"`M` - {r.get('master', ns)}\n"
-            f"`C` - {r.get('captain', ns)}\n"
-            f"`K` - {r.get('knight', ns)}\n"
-            f"`R` - {r.get('recruit', ns)}\n"
-            f"`T` - {r.get('timer', ns)}\n"
-            f"Messages are broadcast in {r.get('announce', ns)} and queue size is {r.get('mode', 1)}."
-
+            f"**{r.get('name', '<clanname>')}** [{r.get('code', '00000')}] "
+            f"T{r.get('tier', 1)}Z{r.get('zone', 1)}\n"
+            f"{roles}\n"
+            f"Messages are broadcast in #{r.get('announce', ns)} and queue size is **{r.get('mode', 1)}**."
         )
 
     @tt.group(name="set")
@@ -551,6 +564,29 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, key, val)
         elif key == "depl":
             val = await Truthy().convert(ctx, val)
+            await self.bot.db.hset(group, key, val)
+        elif key == "name":
+            await self.bot.db.hset(group, key, val)
+        elif key == "code":
+            val = val.lower()
+            if len(val) > 7 or len(val) < 5:
+                return
+            _, db = await self.bot.db.hscan("cc", match=val)
+            cc = groupdict.get(key, None)
+            if val == cc:
+                await ctx.send('You are already using this clan code.')
+                return
+            in_use = lget(db, 1, 0)
+            print(in_use)
+            if in_use and in_use != str(ctx.guild.id):
+                await ctx.send(
+                    "A guild is already using that code. Appeal to bot owner if someone stole your clan code."
+                )
+                return
+            print(db)
+            if not cc:
+                await self.bot.db.hdel("cc", cc)
+            await self.bot.db.hset("cc", val, ctx.guild.id)
             await self.bot.db.hset(group, key, val)
         elif key == "mode":
             try:
@@ -762,10 +798,7 @@ class TapTitansModule(cmd.Cog):
                 )
             )
             return
-        await ctx.send(
-            f"**Queue** for **{resets}** is currently **empty**."
-        )
-
+        await ctx.send(f"**Queue** for **{resets}** is currently **empty**.")
 
     @tt.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
     async def tt_unqueue(
