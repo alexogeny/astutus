@@ -11,11 +11,13 @@ from itertools import zip_longest
 import difflib
 from string import ascii_lowercase, digits
 
+
 def lget(l, idx, default):
     try:
         return l[idx]
     except IndexError:
         return default
+
 
 TIER_LIST = "SABCD"
 
@@ -245,20 +247,23 @@ class TTRaidGroup(cmd.Converter):
         else:
             return f"{ctx.guild.id}:tt:{arg[1]}"
 
+
 @unique
 class TTRoles(Enum):
-    G = 'gm'
-    M = 'master'
-    C = 'captain'
-    K = 'knight'
-    R = 'recruit'
-    T = 'timer'
+    G = "gm"
+    M = "master"
+    C = "captain"
+    K = "knight"
+    R = "recruit"
+    T = "timer"
+
 
 class TapTitansModule(cmd.Cog):
     """Tap Titans 2 is an idle RPG game on iOS and Android that lets you take the battle to the titans! Level up heroes, participate in Clan Raids, and stomp on other players in Tournaments!\nI am working hard to make improvements to this module. It's nearly a thousand lines long and that's just with decks and raids!"""
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
+        self.aliases = ["tt"]
         self.raid_timer.start()
 
     def cog_unload(self):
@@ -442,11 +447,11 @@ class TapTitansModule(cmd.Cog):
     async def before_raid_timer(self):
         await self.bot.wait_until_ready()
 
-    @cmd.group(case_insensitive=True, hidden=True)
-    async def tt(self, ctx):
+    @cmd.group(name="taptitans", aliases=["tt"], case_insensitive=True, hidden=True)
+    async def taptitans(self, ctx):
         pass
 
-    @tt.command(name="groupadd")
+    @taptitans.command(name="groupadd")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupadd(self, ctx):
@@ -483,7 +488,7 @@ class TapTitansModule(cmd.Cog):
                 f"~**{ctx.guild}** has reached maximum group count of **3**. Use **groupdel <x>** to delete a group."
             )
 
-    @tt.command(name="groupdel")
+    @taptitans.command(name="groupdel")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupdel(self, ctx, slot: Optional[int]):
@@ -517,16 +522,19 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @tt.command(name="groupget", aliases=["gshow", "groupshow", "gget"])
+    @taptitans.command(name="groupget", aliases=["gshow", "groupshow", "gget"], usage="slot")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupget(self, ctx, slot: Optional[int] = 1):
+        """Displays a tap titans raid group and the most important values that go into setting up a raid, including roles and broadcast channel."""
         if slot not in [1, 2, 3]:
             await ctx.send("You must specify a slot between **1** and **3** to show.")
             return
         r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
         ns = "**not-set**"
-        roles = '\n'.join([f"`{n}` @{r.get(m, ns)}" for n, m in TTRoles.__members__.items()])
+        roles = "\n".join(
+            [f"`{n}` @{r.get(m, ns)}" for n, m in TTRoles.__members__.items()]
+        )
         print(roles)
         await ctx.send(
             f"**{r.get('name', '<clanname>')}** [{r.get('code', '00000')}] "
@@ -535,7 +543,7 @@ class TapTitansModule(cmd.Cog):
             f"Messages are broadcast in #{r.get('announce', ns)} and queue size is **{r.get('mode', 1)}**."
         )
 
-    @tt.group(name="set")
+    @taptitans.group(name="set")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_set(self, ctx, group: Optional[TTRaidGroup], key: TTKey, val):
@@ -574,7 +582,7 @@ class TapTitansModule(cmd.Cog):
             _, db = await self.bot.db.hscan("cc", match=val)
             cc = groupdict.get(key, None)
             if val == cc:
-                await ctx.send('You are already using this clan code.')
+                await ctx.send("You are already using this clan code.")
                 return
             in_use = lget(db, 1, 0)
             print(in_use)
@@ -601,7 +609,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, key, val)
         await ctx.send(f"Set the TT2 **{key}** key to **{val}**")
 
-    @tt.group(
+    @taptitans.group(
         name="raid",
         aliases=["boss", "rd"],
         case_insensitive=True,
@@ -733,7 +741,7 @@ class TapTitansModule(cmd.Cog):
     async def tt_raid_info(self):
         return
 
-    @tt.command(name="queue", aliases=["q"], case_insensitive=True)
+    @taptitans.command(name="queue", aliases=["q"], case_insensitive=True)
     async def tt_queue(self, ctx, group: Optional[TTRaidGroup], list=None):
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
@@ -800,7 +808,7 @@ class TapTitansModule(cmd.Cog):
             return
         await ctx.send(f"**Queue** for **{resets}** is currently **empty**.")
 
-    @tt.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
+    @taptitans.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
     async def tt_unqueue(
         self, ctx, group: Optional[TTRaidGroup], members: cmd.Greedy[MemberID]
     ):
@@ -836,7 +844,7 @@ class TapTitansModule(cmd.Cog):
             if res:
                 await ctx.send(f"Ok **{ctx.author}**, I removed you from the queue.")
 
-    @tt.command(name="done", aliases=["d"])
+    @taptitans.command(name="done", aliases=["d"])
     async def tt_done(self, ctx, group: Optional[TTRaidGroup]):
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
@@ -863,7 +871,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, "current", current.strip())
             await ctx.send(f"**{ctx.author}** has finished their turn.")
 
-    @tt.command(name="card", aliases=["cards"], case_insensitive=True)
+    @taptitans.command(name="card", aliases=["cards"], case_insensitive=True)
     async def tt_card(self, ctx, *card):
         card, data = await TTRaidCard().convert(ctx, " ".join(card))
         if not card:
@@ -882,7 +890,7 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @tt.command(name="deck", aliases=["decks"], case_insensitive=True)
+    @taptitans.command(name="deck", aliases=["decks"], case_insensitive=True)
     async def tt_deck(self, ctx, *deck):
         deck, data = await TTDeck().convert(ctx, " ".join(deck))
         if not deck or deck is None:
@@ -913,35 +921,47 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @tt.group(name="hero", case_insensitive=True)
+    @taptitans.group(name="hero", case_insensitive=True)
     async def tt_hero(self):
         return
 
-    @tt.group(name="equip", case_insensitive=True)
+    @taptitans.group(name="equip", case_insensitive=True)
     async def tt_equip(self):
         return
 
-    @tt.group(name="artifact", case_insensitive=True)
+    @taptitans.group(name="artifact", case_insensitive=True)
     async def tt_artifact(self):
         return
 
-    @tt.group(name="enhancement", case_insensitive=True)
+    @taptitans.group(name="enhancement", case_insensitive=True)
     async def tt_enhance(self):
         return
 
-    @tt.group(name="enchant", case_insensitive=True)
+    @taptitans.group(name="enchant", case_insensitive=True)
     async def tt_enchant(self):
         return
 
-    @tt.group(name="titan", case_insensitive=True)
-    async def tt_titan(self):
-        return
+    @taptitans.command(name="titancount", aliases=['titans', 'count'], case_insensitive=True)
+    async def tt_titancount(
+        self, ctx, stage: int = 10000, ip: int = 30, ab: int = 5, snap: int = 0
+    ):
+        print(stage)
+        if any([x for x in [stage, ip, ab] if x < 0]):
+            raise cmd.BadArgument
+        print(stage, ip, ab)
+        count = round(max((stage // 500 * 2 + 8 - ip - ab) / max(2 * snap, 1), 1))
+        print(count)
+        await ctx.send(
+            "Titan count at stage {} (IP {}, AB {}, {} Snap{} active) would be: {}".format(
+                stage, ip, ab, snap, snap != 1 and "s", count
+            )
+        )
 
-    @tt.group(name="titanlord", case_insensitive=True)
+    @taptitans.group(name="titanlord", case_insensitive=True)
     async def tt_titanlord(self):
         return
 
-    @tt.group(name="skill", case_insensitive=True)
+    @taptitans.group(name="skill", case_insensitive=True)
     async def tt_skill(self):
         return
 

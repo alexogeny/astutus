@@ -49,6 +49,9 @@ class AstutusBot(cmds.AutoShardedBot):
         self.link_normal = oauth.format("2146954487")
         print(f"Ready: {self.user} (ID: {self.user.id})")
         print(f"Invite link: {self.link_admin}")
+        # discord.opus.load_opus("opus")
+        # if discord.opus.is_loaded():
+        #     print("Loaded opus")
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, cmds.CommandOnCooldown):

@@ -1,12 +1,13 @@
 import discord
 from discord.ext import commands as cmd
+import difflib
 
 
 class HelpModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
 
-    @cmd.command(name="help", aliases=["h"])
+    @cmd.command(name="help", aliases=["h"], usage="<module> <command>")
     async def help(self, ctx, *command):
         if not command:
             st = "Currently available modules for **{}**. Type **{}{} <module>** (without brackets) to access the help page for a module:\n{{}}".format(
@@ -15,27 +16,45 @@ class HelpModule(cmd.Cog):
             hlp = ", ".join([f"**{c.replace('Module', '')}**" for c in self.bot.cogs])
             await ctx.send(st.format(hlp))
             return
+        command = list(command)
         cog = [
-            c for c in self.bot.cogs if str(c).lower().startswith(command[0].lower())
+            c
+            for c, v in self.bot.cogs.items()
+            if str(c).lower().startswith(command[0].lower())
+            or command[0].lower() in getattr(v, "aliases", [])
         ]
         if not cog:
-            if len(command) <= 1:
-                await ctx.send(
-                    "Sorry, I could not find a module by the name: **{}**".format(
-                        command[0].lower()
-                    )
-                )
-                return
-        if len(command) > 1 and " ".join(command) in [
-            str(s) for s in self.bot.walk_commands()
-        ]:
-            result = "Help for command **{}{}**\n\nDescription:\n{}\n\nUsage:\n{}"
-            cx = self.bot.get_command(" ".join(command))
             await ctx.send(
-                result.format(
-                    ctx.prefix, cx, cx.help or "No help file found.", "random"
+                "Sorry, I could not find a module by the name: **{}**".format(
+                    command[0].lower()
                 )
             )
+            return
+        command = [cog[0].replace("Module", "").lower()] + command[1:]
+        cx = next(
+            (
+                s
+                for s in self.bot.walk_commands()
+                if " ".join(command) == str(s) or command[-1] in s.aliases
+            ),
+            None,
+        )
+        if len(command) > 1 and cx is not None:
+            result = "Help for command **{}{}**\n\n**Description**\n{}\n\n**Usage**\n{}"
+            usg = (
+                cx.usage
+                and f"{ctx.prefix}{' '.join(command)} {' '.join(f'<{x}>' for x in cx.usage.split())}"
+                or ""
+            )
+            await ctx.send(
+                result.format(
+                    ctx.prefix,
+                    cx,
+                    cx.help or "No help file found.",
+                    usg or "No usage found.",
+                )
+            )
+            return
         elif len(cog) > 1:
             await ctx.send(
                 "I found multiple modules. Please try to narrow your search: {}".format(
@@ -46,31 +65,32 @@ class HelpModule(cmd.Cog):
         cg = self.bot.get_cog(cog[0])
         subcommands = list(cg.walk_commands())
         module = cg.qualified_name.replace("Module", "").lower()
-        cmd_grp = [
-            s
-            for s in subcommands
-            if hasattr(s, "walk_commands") and not str(s) == module
-        ]
-        cmd_lst = [
-            s
-            for s in subcommands
-            if not s.hidden and not s.parent or str(s.parent) == module
-        ]
+        cmd_grp = ", ".join(
+            set(
+                [
+                    str(s).replace(module, "").strip()
+                    for s in subcommands
+                    if hasattr(s, "walk_commands") and not str(s) == module
+                ]
+            )
+        )
+        cmd_lst = ", ".join(
+            set(
+                [
+                    str(s).replace(module, "").strip()
+                    for s in subcommands
+                    if len(str(s).split()) == 2 and not hasattr(s, "walk_commands")
+                ]
+            )
+        )
+        aliases = ", ".join(getattr(cg, "aliases", []))
         await ctx.send(
-            "Help for **{}** module:\n\n**Description**\n{}\n\n**Command Groups**\n{}\n\n**Commands**\n{}{}".format(
+            "Help for **{}** module:\n\n**Description**\n{}\n\n{}**Command Groups**\n{}\n\n**Commands**\n{}".format(
                 module,
                 cg.__doc__ or "none found.",
-                cmd_grp
-                and ", ".join([str(s) for s in cmd_grp])
-                or "No command groups for this module.",
-                cmd_lst
-                and ", ".join([str(s) for s in cmd_lst])
-                or "No individual commands for this module.",
-                cmd_grp
-                and "\n\nPS: To get help for a command group, follow this example: **{}help {}**".format(
-                    ctx.prefix, next(cmd_grp[0].walk_commands(), None)
-                )
-                or "",
+                aliases and f"**Aliases**\n{aliases}\n\n" or "",
+                cmd_grp or "No command groups for this module.",
+                cmd_lst or "No individual commands for this module.",
             )
         )
 
