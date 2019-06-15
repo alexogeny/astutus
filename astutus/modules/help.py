@@ -84,13 +84,15 @@ class HelpModule(cmd.Cog):
             )
         )
         aliases = ", ".join(getattr(cg, "aliases", []))
+        cmd_grp = cmd_grp and f"**Command Groups**\n{cmd_grp}\n\n" or ""
+        cmd_lst = cmd_lst and f"**Commands**\n{cmd_lst}\n\n" or ""
         await ctx.send(
-            "Help for **{}** module:\n\n**Description**\n{}\n\n{}**Command Groups**\n{}\n\n**Commands**\n{}".format(
+            "Help for **{}** module:\n\n**Description**\n{}\n\n{}{}{}".format(
                 module,
                 cg.__doc__ or "none found.",
                 aliases and f"**Aliases**\n{aliases}\n\n" or "",
-                cmd_grp or "No command groups for this module.",
-                cmd_lst or "No individual commands for this module.",
+                cmd_grp,
+                cmd_lst,
             )
         )
 
