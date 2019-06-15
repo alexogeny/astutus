@@ -936,6 +936,19 @@ class TapTitansModule(cmd.Cog):
                 data[2],
             )
         )
+    
+    @taptitans.command(name="optimizers", aliases=["opti", "optimisers", "optis"])
+    async def tt_opti(self, ctx):
+        t_url = '<https://tinyurl.com/{}>'
+        await ctx.send(
+            "**List of TapTitans2 Optimizers**\nThese links should be useful in helping you best level your skill tree and artifacts.\n**Mmlh Skill Point Optimizer:** {}\n**Mmlh Artifact Optimizer:** {}\n**Parrot SP/Arti Optimizer:** {}".format(
+                t_url.format('spoptimiser'), t_url.format('artoptimiser'), t_url.format('TT2Optimizer')
+            )
+        )
+    
+    @taptitans.command(name="compendium", aliases=['comp'])
+    async def tt_compendium(self, ctx):
+        await ctx.send("**TapTitans2 Compendium**\nThis site made by the Compendium Team provides great sample builds, guides, & tools, whether you're new or a veteran player.\n<https://tt2-compendium.herokuapp.com>")
 
     @taptitans.group(name="hero", case_insensitive=True)
     async def tt_hero(self):

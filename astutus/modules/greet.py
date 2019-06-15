@@ -25,7 +25,7 @@ class GreetModule(cmd.Cog):
         )
 
     @cmd.Cog.listener()
-    async def on_member_leave(self, member):
+    async def on_member_remove(self, member):
         greet_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "greet")
         if greet_is_on in (None, "0"):
             return
