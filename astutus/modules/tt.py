@@ -1010,7 +1010,12 @@ class TapTitansModule(cmd.Cog):
         name="tournament", aliases=["tournaments", "tourneys", "tourney"]
     )
     async def tt_tournament(self, ctx, last: Optional[int] = 5):
-        if last not in range(10):
+        if last not in range(1, 11):
+            await ctx.send(
+                "Do you really need to see {} weeks into the future?".format(
+                    round(last / 2)
+                )
+            )
             return
         prizes = [
             ("hero_weapon",),
@@ -1018,16 +1023,16 @@ class TapTitansModule(cmd.Cog):
             ("crafting_shard", "pet_egg"),
         ]
         bonuses = [
-            ("x3", "Warlord Boost"),
-            ("+5", " Mana Regen"),
-            ("1.2x", " All Probabilities"),
-            ("x3", " Sorcerer Boost"),
-            ("x10", "Chesterson Gold"),
-            ("+100%", "Multiple Fairy Chance"),
-            ("x3", "Knight Boost"),
-            ("20%", "Mana Refund"),
-            ("1.5x", "Prestige Relics"),
-            ("10x", "Boss Gold"),
+            ("x3", "crown_of_the_constellation"),
+            ("+5", "mystic_staff"),
+            ("x1.2", "lucky_foot_of_almiraj"),
+            ("x3", "titanias_sceptre"),
+            ("x10", "chest_of_contentment"),
+            ("+100%", "invaders_shield"),
+            ("x3", "oaths_burden"),
+            ("20%", "mystical_beans_of_senzu"),
+            ("x1.5", "book_of_shadows"),
+            ("x10", "heroic_shield"),
         ]
         result, i, now = [], 0, arrow.utcnow()
         origin = arrow.get(1532242116)
@@ -1035,31 +1040,33 @@ class TapTitansModule(cmd.Cog):
         tourneys = floor(weeks) + 1
         prizes = rotate(prizes, tourneys % 3)
         bonuses = rotate(bonuses, tourneys % 10)
-        # days = rotate(['Sun', 'Wed'], tourneys % 2)
         for i in range(last):
             if i == 0:
                 date = now
             else:
                 date = now.shift(days=i * 3.5)
-            result.append((bonuses[i], prizes[i % 3], date.format("ddd Do MMM")))
+            result.append((bonuses[i], prizes[i % 3], date.format("ddd, MMM DD")))
         result = "\n\n".join(
             [
-                ":calendar_spiral: `{}` Bonus: {}, Prizes: {}".format(
+                ":calendar_spiral: `{}` {} {} Rewards: {}".format(
                     r[2],
-                    r[0],
+                    discord.utils.get(
+                        self.bot.emojis, name=r[0][1], guild_id=440785686438871040
+                    ),
+                    r[0][0],
                     ", ".join(
-                        
-                            str(discord.utils.get(
+                        str(
+                            discord.utils.get(
                                 self.bot.emojis, name=x, guild_id=440785686438871040
-                            ))
-                            for x in r[1]
-                        
+                            )
+                        )
+                        for x in r[1]
                     ),
                 )
                 for r in result
             ]
         )
-        await ctx.send(result)
+        await ctx.send(f"{result}")
 
 
 def setup(bot):
