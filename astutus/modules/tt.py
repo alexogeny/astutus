@@ -983,6 +983,9 @@ class TapTitansModule(cmd.Cog):
     async def tt_enchant(self):
         return
 
+    async def titancount(self, stage, ip, ab, snap):
+        return round(max((stage // 500 * 2 + 8 - (ip + ab)) / max(2 * snap, 1), 1))
+
     @taptitans.command(
         name="titancount", aliases=["titans", "count"], case_insensitive=True
     )
@@ -991,12 +994,32 @@ class TapTitansModule(cmd.Cog):
     ):
         if any([x for x in [stage, ip, ab] if x < 0]):
             raise cmd.BadArgument
-        count = round(max((stage // 500 * 2 + 8 - ip - ab) / max(2 * snap, 1), 1))
+        count = await self.titancount(stage, ip, ab, snap)
         await ctx.send(
             "Titan count at stage {} (IP {}, AB {}, {} Snap{} active) would be: {}".format(
                 stage, ip, ab, snap, snap != 1 and "s", count
             )
         )
+
+    @taptitans.command(name="edskip", aliases=["ed"])
+    async def tt_ed(
+        self,
+        ctx,
+        stage: int = 1,
+        ip: Optional[int] = 0,
+        mystic_impact: Optional[int] = 0,
+        arcane_bargain: Optional[int] = 0,
+        anniversary_platinum: Optional[float] = 1.0,
+    ):
+        count = await self.titancount(stage, ip, arcane_bargain, 0)
+        count2 = floor(count / 2)
+        current_skip = mystic_impact+arcane_bargain
+        ed_boosts = [0, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, 20, 23, 26, 29, 33, 38, 44, 51, 59, 68, 78, 89, 101]
+        result = 0
+        while current_skip*anniversary_platinum < count2 and result < 25:
+            current_skip = mystic_impact+arcane_bargain + ed_boosts[result]
+            result += 1
+        await ctx.send(f'Optimal ED level at stage **{stage}** ({count} titans) is: **{result}**.')
 
     @taptitans.group(name="titanlord", case_insensitive=True)
     async def tt_titanlord(self):
