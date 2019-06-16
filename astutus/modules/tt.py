@@ -10,6 +10,11 @@ from datetime import datetime
 from itertools import zip_longest
 import difflib
 from string import ascii_lowercase, digits
+from math import floor
+
+
+def rotate(table, mod):
+    return table[mod:] + table[:mod]
 
 
 def lget(l, idx, default):
@@ -519,7 +524,9 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @taptitans.command(name="groupget", aliases=["gshow", "groupshow", "gget"], usage="slot")
+    @taptitans.command(
+        name="groupget", aliases=["gshow", "groupshow", "gget"], usage="slot"
+    )
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupget(self, ctx, slot: Optional[int] = 1):
@@ -635,7 +642,7 @@ class TapTitansModule(cmd.Cog):
             arr_x = arrow.get(is_live or cd)
             arr_n = arrow.utcnow()
             if arr_n > arr_x and is_live and not cd:
-                arr_x = arr_x.shift(hours=12 * (reset+1))
+                arr_x = arr_x.shift(hours=12 * (reset + 1))
                 dt = arr_x - arr_n
                 rs_txt = f"reset #**{reset+1}** is"
             elif arr_x >= arr_n:
@@ -685,21 +692,21 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
-        spawn= groupdict.get("spawn", 0)
-        if not spawn and not groupdict.get("cd",0):
+        spawn = groupdict.get("spawn", 0)
+        if not spawn and not groupdict.get("cd", 0):
             await ctx.send("No raid to clear.")
             return
         elif groupdict.get("cd", 0):
-            await ctx.send("Raid is on cooldown. Use **cancel** if you wish to cancel it.")
+            await ctx.send(
+                "Raid is on cooldown. Use **cancel** if you wish to cancel it."
+            )
             return
         await self.has_timer_permissions(ctx, groupdict)
 
         now = arrow.utcnow()
         spwn_arrow = arrow.get(spawn)
         if now < spwn_arrow:
-            await ctx.send(
-                "You can't clear an unspawned raid. Use **cancel** instead."
-            )
+            await ctx.send("You can't clear an unspawned raid. Use **cancel** instead.")
             return
         if cd == None:
             cd = now.shift(minutes=59, seconds=59)
@@ -707,11 +714,13 @@ class TapTitansModule(cmd.Cog):
         _h, _m, _s = await get_hms(delta)
         shifter = {}
         if _m not in [0, 59]:
-            shifter['minutes'] = 60 - _m
+            shifter["minutes"] = 60 - _m
         if _s not in [0, 59]:
-            shifter['seconds'] = 60 - _s
+            shifter["seconds"] = 60 - _s
         if cd < spwn_arrow.shift(minutes=60):
-            await ctx.send('You cannot timetravel. The cooldown end must be at least 60 minutes after the start of the raid.')
+            await ctx.send(
+                "You cannot timetravel. The cooldown end must be at least 60 minutes after the start of the raid."
+            )
             raise cmd.BadArgument
 
         total_time = now.shift(**shifter) - spwn_arrow
@@ -921,14 +930,14 @@ class TapTitansModule(cmd.Cog):
                 deck.title(),
                 ", ".join(
                     [
-                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'))} {d}"
+                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'), guild_id=440785686438871040)} {d}"
                         for d in data[0]
                     ]
                 ),
                 data[1]
                 and ", ".join(
                     [
-                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'))} {d}"
+                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'), guild_id = 440785686438871040)} {d}"
                         for d in data[1]
                     ]
                 )
@@ -936,19 +945,23 @@ class TapTitansModule(cmd.Cog):
                 data[2],
             )
         )
-    
+
     @taptitans.command(name="optimizers", aliases=["opti", "optimisers", "optis"])
     async def tt_opti(self, ctx):
-        t_url = '<https://tinyurl.com/{}>'
+        t_url = "<https://tinyurl.com/{}>"
         await ctx.send(
             "**List of TapTitans2 Optimizers**\nThese links should be useful in helping you best level your skill tree and artifacts.\n**Mmlh Skill Point Optimizer:** {}\n**Mmlh Artifact Optimizer:** {}\n**Parrot SP/Arti Optimizer:** {}".format(
-                t_url.format('spoptimiser'), t_url.format('artoptimiser'), t_url.format('TT2Optimizer')
+                t_url.format("spoptimiser"),
+                t_url.format("artoptimiser"),
+                t_url.format("TT2Optimizer"),
             )
         )
-    
-    @taptitans.command(name="compendium", aliases=['comp'])
+
+    @taptitans.command(name="compendium", aliases=["comp"])
     async def tt_compendium(self, ctx):
-        await ctx.send("**TapTitans2 Compendium**\nThis site made by the Compendium Team provides great sample builds, guides, & tools, whether you're new or a veteran player.\n<https://tt2-compendium.herokuapp.com>")
+        await ctx.send(
+            "**TapTitans2 Compendium**\nThis site made by the Compendium Team provides great sample builds, guides, & tools, whether you're new or a veteran player.\n<https://tt2-compendium.herokuapp.com>"
+        )
 
     @taptitans.group(name="hero", case_insensitive=True)
     async def tt_hero(self):
@@ -970,16 +983,15 @@ class TapTitansModule(cmd.Cog):
     async def tt_enchant(self):
         return
 
-    @taptitans.command(name="titancount", aliases=['titans', 'count'], case_insensitive=True)
+    @taptitans.command(
+        name="titancount", aliases=["titans", "count"], case_insensitive=True
+    )
     async def tt_titancount(
         self, ctx, stage: int = 10000, ip: int = 30, ab: int = 5, snap: int = 0
     ):
-        print(stage)
         if any([x for x in [stage, ip, ab] if x < 0]):
             raise cmd.BadArgument
-        print(stage, ip, ab)
         count = round(max((stage // 500 * 2 + 8 - ip - ab) / max(2 * snap, 1), 1))
-        print(count)
         await ctx.send(
             "Titan count at stage {} (IP {}, AB {}, {} Snap{} active) would be: {}".format(
                 stage, ip, ab, snap, snap != 1 and "s", count
@@ -993,6 +1005,61 @@ class TapTitansModule(cmd.Cog):
     @taptitans.group(name="skill", case_insensitive=True)
     async def tt_skill(self):
         return
+
+    @taptitans.command(
+        name="tournament", aliases=["tournaments", "tourneys", "tourney"]
+    )
+    async def tt_tournament(self, ctx, last: Optional[int] = 5):
+        if last not in range(10):
+            return
+        prizes = [
+            ("hero_weapon",),
+            ("skill_point", "power_of_swiping"),
+            ("crafting_shard", "pet_egg"),
+        ]
+        bonuses = [
+            ("x3", "Warlord Boost"),
+            ("+5", " Mana Regen"),
+            ("1.2x", " All Probabilities"),
+            ("x3", " Sorcerer Boost"),
+            ("x10", "Chesterson Gold"),
+            ("+100%", "Multiple Fairy Chance"),
+            ("x3", "Knight Boost"),
+            ("20%", "Mana Refund"),
+            ("1.5x", "Prestige Relics"),
+            ("10x", "Boss Gold"),
+        ]
+        result, i, now = [], 0, arrow.utcnow()
+        origin = arrow.get(1532242116)
+        weeks, _ = divmod((now - origin).days, 3.5)
+        tourneys = floor(weeks) + 1
+        prizes = rotate(prizes, tourneys % 3)
+        bonuses = rotate(bonuses, tourneys % 10)
+        # days = rotate(['Sun', 'Wed'], tourneys % 2)
+        for i in range(last):
+            if i == 0:
+                date = now
+            else:
+                date = now.shift(days=i * 3.5)
+            result.append((bonuses[i], prizes[i % 3], date.format("ddd Do MMM")))
+        result = "\n\n".join(
+            [
+                ":calendar_spiral: `{}` Bonus: {}, Prizes: {}".format(
+                    r[2],
+                    r[0],
+                    ", ".join(
+                        
+                            str(discord.utils.get(
+                                self.bot.emojis, name=x, guild_id=440785686438871040
+                            ))
+                            for x in r[1]
+                        
+                    ),
+                )
+                for r in result
+            ]
+        )
+        await ctx.send(result)
 
 
 def setup(bot):
