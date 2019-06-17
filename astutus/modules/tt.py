@@ -2,7 +2,16 @@ from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 import discord
 from enum import Enum, unique
-from astutus.utils import Duration, checks, Truthy, get_hms, MemberID
+from astutus.utils import (
+    Duration,
+    checks,
+    Truthy,
+    get_hms,
+    MemberID,
+    ttconvert_discover,
+    ttconvert_from_scientific,
+    ttconvert_to_scientific,
+)
 from typing import Optional
 import asyncio
 import arrow
@@ -1061,7 +1070,7 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(
         name="tournament", aliases=["tournaments", "tourneys", "tourney"]
     )
-    async def tt_tournaments(self, ctx, last: Optional[int] = 5):
+    async def tt_tournaments(self, ctx, last: Optional[int] = 3):
         if last not in range(1, 11):
             await ctx.send(
                 "Do you really need to see {} weeks into the future?".format(
@@ -1087,14 +1096,14 @@ class TapTitansModule(cmd.Cog):
         weeks, _ = divmod((now - origin).days, 7)
         current = int(now.format("d"))
         tourneys = weeks * 2
-        icon = 'tourney_red'
+        icon = "tourney_red"
         if current in [1, 5]:
             shifter = 2
         if current in [2, 6]:
             shifter = 1
         if current in [3, 7]:
             shifter = 0
-            icon = 'tourney'
+            icon = "tourney"
         if current in [4]:
             shifter = 3
         prizes = rotate(prizes.split(), tourneys % 3)
@@ -1115,12 +1124,29 @@ class TapTitansModule(cmd.Cog):
                     discord.utils.get(self.bot.emojis, name=r[1][1], guild_id=self.em),
                     r[1][0],
                     discord.utils.get(self.bot.emojis, name=r[2], guild_id=self.em),
-                    r[2].replace('_', ' ').title()+'s'
+                    r[2].replace("_", " ").title() + "s",
                 )
                 for r in result
             ]
         )
-        await ctx.send(f"{discord.utils.get(self.bot.emojis, name=icon, guild_id=self.em)} TT2 Tournament Forecast\n===================\n{result}\n===================")
+        await ctx.send(
+            f"{discord.utils.get(self.bot.emojis, name=icon, guild_id=self.em)} TT2 Tournament Forecast\n===================\n{result}\n===================\n{last==3 and 'Tip: show more tourneys with ;tt tourney 8' or ''}"
+        )
+
+    @taptitans.command(name="convert", aliases=["cvt"])
+    async def tt_convert(self, ctx, val: Optional[str] = "1e+5000"):
+        result, f, t = None, "scientific", "letter"
+        mode = await ttconvert_discover(val)
+        if mode == 0:
+            result = await ttconvert_from_scientific(val)
+        elif mode == 1:
+            result = await ttconvert_to_scientific(val)
+            f, t = "letter", "scientific"
+        await ctx.send(
+            "Conversion of **{}** from **{}** to **{}** is: **{}**".format(
+                val, f, t, result
+            )
+        )
 
 
 def setup(bot):
