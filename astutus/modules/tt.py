@@ -270,6 +270,7 @@ class TapTitansModule(cmd.Cog):
         self.bot = bot
         self.aliases = ["tt"]
         self.raid_timer.start()
+        self.em = 440785686438871040
 
     def cog_unload(self):
         self.raid_timer.cancel()
@@ -1013,13 +1014,41 @@ class TapTitansModule(cmd.Cog):
     ):
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
-        current_skip = mystic_impact+arcane_bargain
-        ed_boosts = [0, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, 20, 23, 26, 29, 33, 38, 44, 51, 59, 68, 78, 89, 101]
+        current_skip = mystic_impact + arcane_bargain
+        ed_boosts = [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            23,
+            26,
+            29,
+            33,
+            38,
+            44,
+            51,
+            59,
+            68,
+            78,
+            89,
+            101,
+        ]
         result = 0
-        while current_skip*anniversary_platinum < count2 and result < 25:
-            current_skip = mystic_impact+arcane_bargain + ed_boosts[result]
+        while current_skip * anniversary_platinum < count2 and result < 25:
+            current_skip = mystic_impact + arcane_bargain + ed_boosts[result]
             result += 1
-        await ctx.send(f'Optimal ED level at stage **{stage}** ({count} titans) is: **{result}**.')
+        await ctx.send(
+            f"{discord.utils.get(self.bot.emojis, name='edskip', guild_id=self.em)} Optimal ED level at stage **{stage}** ({count} titans) is: **{result}**."
+        )
 
     @taptitans.group(name="titanlord", case_insensitive=True)
     async def tt_titanlord(self):
@@ -1032,7 +1061,7 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(
         name="tournament", aliases=["tournaments", "tourneys", "tourney"]
     )
-    async def tt_tournament(self, ctx, last: Optional[int] = 5):
+    async def tt_tournaments(self, ctx, last: Optional[int] = 5):
         if last not in range(1, 11):
             await ctx.send(
                 "Do you really need to see {} weeks into the future?".format(
@@ -1040,56 +1069,58 @@ class TapTitansModule(cmd.Cog):
                 )
             )
             return
-        prizes = [
-            ("hero_weapon",),
-            ("skill_point", "power_of_swiping"),
-            ("crafting_shard", "pet_egg"),
-        ]
+        prizes = "hero_weapon skill_point crafting_shard"
         bonuses = [
-            ("x3", "crown_of_the_constellation"),
-            ("+5", "mystic_staff"),
-            ("x1.2", "lucky_foot_of_almiraj"),
-            ("x3", "titanias_sceptre"),
-            ("x10", "chest_of_contentment"),
-            ("+100%", "invaders_shield"),
-            ("x3", "oaths_burden"),
-            ("20%", "mystical_beans_of_senzu"),
-            ("x1.5", "book_of_shadows"),
-            ("x10", "heroic_shield"),
+            ("x3 warlord boost", "warlord_boost"),
+            ("+5 mana regen", "mystic_staff"),
+            ("x1.2 all probability bonus", "all_probability"),
+            ("x3 sorcerer boost", "titanias_sceptre"),
+            ("x10 chesterson gold", "chesterson_gold"),
+            ("+100% multiple fairies", "fairy_chance"),
+            ("x3 knight boost", "knight_boost"),
+            ("+20% mana refund", "mystical_beans_of_senzu"),
+            ("x1.5 prestige relics", "relic"),
+            ("x10 boss gold", "boss_gold"),
         ]
         result, i, now = [], 0, arrow.utcnow()
         origin = arrow.get(1532242116)
-        weeks, _ = divmod((now - origin).days, 3.5)
-        tourneys = floor(weeks) + 1
-        prizes = rotate(prizes, tourneys % 3)
+        weeks, _ = divmod((now - origin).days, 7)
+        current = int(now.format("d"))
+        tourneys = weeks * 2
+        icon = 'tourney_red'
+        if current in [1, 5]:
+            shifter = 2
+        if current in [2, 6]:
+            shifter = 1
+        if current in [3, 7]:
+            shifter = 0
+            icon = 'tourney'
+        if current in [4]:
+            shifter = 3
+        prizes = rotate(prizes.split(), tourneys % 3)
         bonuses = rotate(bonuses, tourneys % 10)
-        for i in range(last):
-            if i == 0:
-                date = now
-            else:
-                date = now.shift(days=i * 3.5)
-            result.append((bonuses[i], prizes[i % 3], date.format("ddd, MMM DD")))
-        result = "\n\n".join(
+        flipper = lambda i: current <= 3 and i % 2 or 0
+        result = [
+            (
+                now.shift(days=i * 3.5 + shifter + flipper(i)).format("ddd DD MMM"),
+                bonuses[i],
+                prizes[i % 3],
+            )
+            for i in range(last)
+        ]
+        result = "\n===================\n".join(
             [
-                ":calendar_spiral: `{}` {} {} Rewards: {}".format(
-                    r[2],
-                    discord.utils.get(
-                        self.bot.emojis, name=r[0][1], guild_id=440785686438871040
-                    ),
-                    r[0][0],
-                    ", ".join(
-                        str(
-                            discord.utils.get(
-                                self.bot.emojis, name=x, guild_id=440785686438871040
-                            )
-                        )
-                        for x in r[1]
-                    ),
+                ":calendar_spiral: `{}`\n{} {}\n{} {}".format(
+                    r[0],
+                    discord.utils.get(self.bot.emojis, name=r[1][1], guild_id=self.em),
+                    r[1][0],
+                    discord.utils.get(self.bot.emojis, name=r[2], guild_id=self.em),
+                    r[2].replace('_', ' ').title()+'s'
                 )
                 for r in result
             ]
         )
-        await ctx.send(f"{result}")
+        await ctx.send(f"{discord.utils.get(self.bot.emojis, name=icon, guild_id=self.em)} TT2 Tournament Forecast\n===================\n{result}\n===================")
 
 
 def setup(bot):
