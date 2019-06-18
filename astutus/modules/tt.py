@@ -557,10 +557,11 @@ class TapTitansModule(cmd.Cog):
             f"Messages are broadcast in #{r.get('announce', ns)} and queue size is **{r.get('mode', 1)}**."
         )
 
-    @taptitans.group(name="set")
+    @taptitans.group(name="set", usage="key val")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_set(self, ctx, group: Optional[TTRaidGroup], key: TTKey, val):
+        "Set a settings key for tap titans clan."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -626,6 +627,7 @@ class TapTitansModule(cmd.Cog):
         aliases=["boss", "rd"],
         case_insensitive=True,
         invoke_without_command=True,
+        usage="0h0m0s"
     )
     async def tt_raid(
         self,
@@ -634,6 +636,7 @@ class TapTitansModule(cmd.Cog):
         level: cmd.Greedy[int],
         time: Optional[Duration],
     ):
+        "Sets a raid to spawn after the given time."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -752,6 +755,7 @@ class TapTitansModule(cmd.Cog):
 
     @tt_raid.command(name="cancel", aliases=["abort", "stop"])
     async def tt_raid_cancel(self, ctx, group: Optional[TTRaidGroup]):
+        "Cancels a currently scheduled raid."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -772,12 +776,18 @@ class TapTitansModule(cmd.Cog):
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 
-    @tt_raid.command(name="info", aliases=["information"])
-    async def tt_raid_info(self):
-        return
+    # @tt_raid.command(name="info", aliases=["information"])
+    # async def tt_raid_info(self):
+    #     return
 
-    @taptitans.command(name="queue", aliases=["q"], case_insensitive=True)
+    @taptitans.command(name="queue", aliases=["q"], case_insensitive=True, usage='show|clear|skip')
     async def tt_queue(self, ctx, group: Optional[TTRaidGroup], list=None):
+        (
+            "Enter into the tap titans raid queue.\n"
+            "**show** displays the queue.\n"
+            "**clear** clears the entire queue and any currently attacking groups.\n"
+            "**skip** skips the currently attack group e.g. if someone goes afk"
+        )
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -810,11 +820,12 @@ class TapTitansModule(cmd.Cog):
         elif list in ["clear", "wipe", "erase"]:
             await self.has_timer_permissions(ctx, groupdict)
             await self.bot.db.delete(q)
+            await self.bot.hdel(group, "current")
             await ctx.send("Queue has been cleared!")
             return
         elif list in ["skip"]:
             await self.has_timer_permissions(ctx, groupdict)
-            await self.bot.hset(group, "current", "")
+            await self.bot.hdel(group, "current")
         if str(ctx.author.id) in current:
             await ctx.send(
                 f"You are attacking, **{ctx.author}**. Use **;tt d** to finish your turn."
@@ -847,6 +858,7 @@ class TapTitansModule(cmd.Cog):
     async def tt_unqueue(
         self, ctx, group: Optional[TTRaidGroup], members: cmd.Greedy[MemberID]
     ):
+        "Remove yourself from the tap titans raid queue."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -881,6 +893,7 @@ class TapTitansModule(cmd.Cog):
 
     @taptitans.command(name="done", aliases=["d"])
     async def tt_done(self, ctx, group: Optional[TTRaidGroup]):
+        "Mark yourself as done in the raid queue. Will only work if you're currently attacking."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -908,6 +921,7 @@ class TapTitansModule(cmd.Cog):
 
     @taptitans.command(name="card", aliases=["cards"], case_insensitive=True)
     async def tt_card(self, ctx, *card):
+        "Shows you information about tap titans cards."
         card, data = await TTRaidCard().convert(ctx, " ".join(card))
         if not card:
             await ctx.send(
@@ -925,8 +939,10 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @taptitans.command(name="deck", aliases=["decks"], case_insensitive=True)
+    @taptitans.command(name="deck", aliases=["decks"], case_insensitive=True, usage="deckname")
     async def tt_deck(self, ctx, *deck):
+        "Shows you some of the best tap titans deck combinations available."
+        crimtain = await self.bot.fetch_user(190222871254007808)
         deck, data = await TTDeck().convert(ctx, " ".join(deck))
         if not deck or deck is None:
             await ctx.send(
@@ -936,7 +952,7 @@ class TapTitansModule(cmd.Cog):
             )
             return
         await ctx.send(
-            "**{} Deck**\n\n**Core cards**\n{}\n\n**Optional cards**\n{}\n\n{}".format(
+            "**{} Deck**\n\n**Core cards**\n{}\n\n**Optional cards**\n{}\n\n{}\n\ncommand inspired by **{}**".format(
                 deck.title(),
                 ", ".join(
                     [
@@ -953,11 +969,13 @@ class TapTitansModule(cmd.Cog):
                 )
                 or "n/a",
                 data[2],
+                crimtain
             )
         )
 
     @taptitans.command(name="optimizers", aliases=["opti", "optimisers", "optis"])
     async def tt_opti(self, ctx):
+        "Displays a link to TT2 optimisers."
         t_url = "<https://tinyurl.com/{}>"
         await ctx.send(
             "**List of TapTitans2 Optimizers**\nThese links should be useful in helping you best level your skill tree and artifacts.\n**Mmlh Skill Point Optimizer:** {}\n**Mmlh Artifact Optimizer:** {}\n**Parrot SP/Arti Optimizer:** {}".format(
@@ -969,6 +987,7 @@ class TapTitansModule(cmd.Cog):
 
     @taptitans.command(name="compendium", aliases=["comp"])
     async def tt_compendium(self, ctx):
+        "Displays a link to the TT2 Compendium site."
         await ctx.send(
             "**TapTitans2 Compendium**\nThis site made by the Compendium Team provides great sample builds, guides, & tools, whether you're new or a veteran player.\n<https://tt2-compendium.herokuapp.com>"
         )
@@ -997,11 +1016,12 @@ class TapTitansModule(cmd.Cog):
         return round(max((stage // 500 * 2 + 8 - (ip + ab)) / max(2 * snap, 1), 1))
 
     @taptitans.command(
-        name="titancount", aliases=["titans", "count"], case_insensitive=True
+        name="titancount", aliases=["titans", "count"], case_insensitive=True, usage="stage ip ab snaps"
     )
     async def tt_titancount(
         self, ctx, stage: int = 10000, ip: int = 30, ab: int = 5, snap: int = 0
     ):
+        "Shows you how many titans there would be at any given stage."
         if any([x for x in [stage, ip, ab] if x < 0]):
             raise cmd.BadArgument
         count = await self.titancount(stage, ip, ab, snap)
@@ -1011,7 +1031,7 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @taptitans.command(name="edskip", aliases=["ed"])
+    @taptitans.command(name="edskip", aliases=["ed"], usage='stage ip mystic_impact arcain_bargain anni_plat')
     async def tt_ed(
         self,
         ctx,
@@ -1021,6 +1041,10 @@ class TapTitansModule(cmd.Cog):
         arcane_bargain: Optional[int] = 0,
         anniversary_platinum: Optional[float] = 1.0,
     ):
+        (
+            "Helps you calculate the optimal ED skip level you need to put into your build.\n"
+            "Optimal here means the total skip required to clear maximum splash with 1 Snap active.\n"
+        )
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
         current_skip = mystic_impact + arcane_bargain
@@ -1068,9 +1092,14 @@ class TapTitansModule(cmd.Cog):
         return
 
     @taptitans.command(
-        name="tournament", aliases=["tournaments", "tourneys", "tourney"]
+        name="tournament", aliases=["tournaments", "tourneys", "tourney"], usage="next"
     )
     async def tt_tournaments(self, ctx, last: Optional[int] = 3):
+        (
+            "Displays a forecast of upcoming Tap Titans 2 tournaments.\n"
+            "Icon colour will indicate tournament status. Live = blue. Not live = red.\n"
+            "You can extend the forecast up to 10 future tournaments with the <next> parameter."
+        )
         if last not in range(1, 11):
             await ctx.send(
                 "Do you really need to see {} weeks into the future?".format(
@@ -1133,8 +1162,12 @@ class TapTitansModule(cmd.Cog):
             f"{discord.utils.get(self.bot.emojis, name=icon, guild_id=self.em)} TT2 Tournament Forecast\n===================\n{result}\n===================\n{last==3 and 'Tip: show more tourneys with ;tt tourney 8' or ''}"
         )
 
-    @taptitans.command(name="convert", aliases=["cvt"])
+    @taptitans.command(name="convert", aliases=["cvt"], usage='value')
     async def tt_convert(self, ctx, val: Optional[str] = "1e+5000"):
+        (
+            "Allows you to convert a scientific/letter notation into the opposite version.\n"
+            "The bot will automagically figure out which way you want to convert.\n"
+        )
         result, f, t = None, "scientific", "letter"
         mode = await ttconvert_discover(val)
         if mode == 0:
@@ -1143,11 +1176,30 @@ class TapTitansModule(cmd.Cog):
             result = await ttconvert_to_scientific(val)
             f, t = "letter", "scientific"
         await ctx.send(
-            "Conversion of **{}** from **{}** to **{}** is: **{}**".format(
-                val, f, t, result
+            "{} Conversion of **{}** from **{}** to **{}** is: **{}**".format(
+                discord.utils.get(self.bot.emojis, name="_orange", guild_id=self.em), val, f, t, result
             )
         )
 
+    @taptitans.command(name="gold", aliases=["goldsource", "goldsources"], usage="<kind>")
+    async def tt_gold(self, ctx, kind: Optional[str]):
+        "Displays optimal artifacts required for a specific gold source."
+        taco = await self.bot.fetch_user(381376462189625344)
+        sources = dict(
+            phom=("Pet Heart of Midas is a great, reliable, balanced gold source. It's frequent, gives you good gold, and can be used in both pushing and farming.", "neko_sculpture bronzed_compass heroic_shield"),
+            fairy=("Fair is supposedly the best gold source out there, but it can be frustrating waiting for a gold ad fairy and getting an all skills fairy instead.", 'chest_of_contentment great_fay_medallion bronzed_compass'),
+            chesterson=("A tougher nut to crack, this one of the best gold sources for farming, but might leave you up sh*t creek when trying to push. Relies heavily on multispawn chesterson gold.", 'chest_of_contentment essence_of_the_kitsune coins_of_ebizu'),
+            boss=("Do not even bother.", '')
+        )
+        if not kind or kind.lower() not in sources.keys():
+            await ctx.send('Available gold sources:\n{}'.format(', '.join(sources.keys())))
+            return
+        await ctx.send("**{} Gold**\n{}\n{}\n\ncommand inspired by **{}**".format(
+            kind, sources[kind.lower()][0], ' '.join(
+                str(discord.utils.get(self.bot.emojis, name=x, guild_id=self.em))
+                for x in sources[kind.lower()][1].split()
+            ), taco
+        ))
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))

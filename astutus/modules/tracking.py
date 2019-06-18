@@ -21,8 +21,7 @@ class TrackingModule(cmd.Cog):
         obj = await self.bot.db.hget("tr:ls", user)
         user = ctx.guild.get_member(user)
         if not obj:
-            await ctx.send(f"I have not seen **{user}** before.")
-            return
+            raise cmd.BadArgument(f"I have not seen **{user}** before.")
         platform = await self.bot.db.hget("tr:lp", user.id) or ""
         if platform:
             platform = f"on **{platform}** "
@@ -44,28 +43,29 @@ class TrackingModule(cmd.Cog):
 
     @cmd.command()
     async def nicknames(self, ctx: cmd.Context, user: MemberID = None):
+        "Show the previous nicknames for the given user, up to a maximum of 5."
         if user is None:
             user = ctx.author.id
         obj = f"tr:nn:{ctx.guild.id}:{user}"
         user = await self.bot.fetch_user(user)
         previous_nicks = await self.bot.db.lrange(obj, 0, -1)
         if not previous_nicks:
-            await ctx.send(f"Looks like **{user}** has no previous nicknames.")
-        else:
-            previous_nicks = [f"**{n}**" for n in previous_nicks]
-            await ctx.send(
-                f"Previous nicknames for **{user}** include: {', '.join(previous_nicks)}."
-            )
+            raise cmd.BadArgument(f"Looks like **{user}** has no previous nicknames.")
+        previous_nicks = [f"**{n}**" for n in previous_nicks]
+        await ctx.send(
+            f"Previous nicknames for **{user}** include: {', '.join(previous_nicks)}."
+        )
 
     @cmd.command()
     async def usernames(self, ctx: cmd.Context, user: MemberID = None):
+        "Show the previous usernames for the given user, up to a maximum of 5."
         if user is None:
             user = ctx.author.id
         obj = f"tr:un:{ctx.guild.id}:{user}"
         user = await self.bot.fetch_user(user)
         previous_nicks = await self.bot.db.lrange(obj, 0, -1)
         if not previous_nicks:
-            await ctx.send(f"Looks like **{user}** has no previous usernames.")
+            raise cmd.BadArgument(f"Looks like **{user}** has no previous usernames.")
         else:
             previous_nicks = [f"**{n}**" for n in previous_nicks]
             await ctx.send(

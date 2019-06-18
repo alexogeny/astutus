@@ -59,6 +59,8 @@ class AstutusBot(cmds.AutoShardedBot):
             await ctx.send(
                 f"Woah **{ctx.author}**, please cool down a second. Try **{ctx.command.name}** again in **{cd}**s."
             )
+        if isinstance(error, cmds.BadArgument):
+            await ctx.send(f":negative_squared_cross_mark: {error}")
 
     async def process_commands(self, message: discord.Message):
         context = await self.get_context(message)

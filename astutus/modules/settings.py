@@ -46,11 +46,13 @@ class SettingsModule(cmd.Cog):
             await ctx.send("Current server prefix: **{}**".format(pfx_set or ";"))
             return
         if len(prefix) > 2:
-            await ctx.send("Custom prefix can be **1** to **2** characters in length.")
-            return
+            raise cmd.BadArgument(
+                "Custom prefix must be **1** to **2** characters in length."
+            )
         if any([p for p in prefix if p in ascii_letters + digits]):
-            await ctx.send("Custom prefix can be non-letter, non-number character.")
-            return
+            raise cmd.BadArgument(
+                "Custom prefix must be a non-letter, non-number character."
+            )
         await self.bot.db.hset(f"{ctx.guild.id}:set", "pfx", prefix)
         await ctx.send(f"Set the custom server prefix to **{prefix}**")
 
@@ -58,8 +60,7 @@ class SettingsModule(cmd.Cog):
     @checks.is_mod()
     async def autorole(self, ctx, role: Optional[cmd.RoleConverter] = None):
         if not role:
-            await ctx.send("blah blah")
-            return
+            raise cmd.BadArgument("You need to supply a role.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", "autorole", role.id)
         await ctx.send(f"Set the autorole to @**{role}**!")
 
@@ -68,10 +69,9 @@ class SettingsModule(cmd.Cog):
     async def greet(self, ctx, *message):
         msg = " ".join(message)
         if len(msg) > 140:
-            await ctx.send(
+            raise cmd.BadArgument(
                 "Greets are limited to 140 characters. Please choose a smaller message."
             )
-            return
         await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", msg)
         await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", ctx.channel.id)
         await ctx.send(
@@ -85,10 +85,9 @@ class SettingsModule(cmd.Cog):
     async def goodbye(self, ctx, *message):
         msg = " ".join(message)
         if len(msg) > 140:
-            await ctx.send(
+            raise cmd.BadArgument(
                 "Goodbyes are limited to 140 characters. Please choose a smaller message."
             )
-            return
         await self.bot.db.hset(f"{ctx.guild.id}:set", "dpt", msg)
         await self.bot.db.hset(f"{ctx.guild.id}:set", "dptc", ctx.channel.id)
         await ctx.send(
@@ -100,6 +99,7 @@ class SettingsModule(cmd.Cog):
     @cmd.command(name="toggle")
     @checks.is_mod()
     async def toggle(self, ctx, setting: SettingsKey, value: Optional[Truthy]):
+        "Toggle a function of the bot on or off. Everything defaults to off."
         if value == None:
             value = await self.bot.db.hget(f"{ctx.guild.id}:toggle", setting)
             value = value is None and "off" or value == "0" and "off" or "on"

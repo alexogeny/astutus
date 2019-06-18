@@ -15,9 +15,10 @@ class AutoroleModule(cmd.Cog):
         auto_role = await self.bot.db.hget(f"{member.guild.id}:set", "autorole")
         if not auto_role:
             return
-        role = self.bot.get_role(int(auto_role))
+        role = member.guild.get_role(int(auto_role))
         if not role:
             await self.bot.db.hset(f"{member.guild.id}:toggle", "autorole", "0")
+            await self.bot.db.hdel(f"{member.guild.id}:set", "autorole")
             return
         await member.add_roles(role)
 

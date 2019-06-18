@@ -18,7 +18,9 @@ class Truthy(cmd.Converter):
             "yes",
             "no",
         ]:
-            raise cmd.BadArgument()
+            raise cmd.BadArgument(
+                "You must supply a value that's either 'true' or 'false'."
+            )
         elif arg in ["on", "true", "1", "yes", "weak"]:
             return 1
         elif arg in ["2", "strong"]:
@@ -93,6 +95,5 @@ class BannedMember(cmd.Converter):
             entity = discord.utils.find(lambda u: str(u.user) == argument, ban_list)
 
         if entity is None:
-            await ctx.send(f"Not a previously banned member.")
             raise cmd.BadArgument("Not a valid previously-banned member.")
         return entity

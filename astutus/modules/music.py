@@ -379,7 +379,7 @@ class Music(cmd.Cog):
         vc.stop()
         await ctx.send(f"**`{ctx.author}`**: Skipped the song!")
 
-    @cmd.command(name="queue", aliases=["q", "playlist"])
+    @cmd.command(name="queue", aliases=["mq", "playlist"])
     async def queue_info(self, ctx):
         """Retrieve a basic queue of upcoming songs."""
         vc = ctx.voice_client
