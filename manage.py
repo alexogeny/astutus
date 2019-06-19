@@ -10,7 +10,7 @@ import sys
 import asyncio
 
 from astutus import AstutusBot
-from astutus.utils import setup_bot
+from astutus.modules.utils import setup_bot
 
 
 def get_config(configuration_file: str = "default_config.ini"):
