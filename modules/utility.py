@@ -120,7 +120,7 @@ class UtilityModule(cmd.Cog):
     @checks.is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:
-            module = f"astutus.modules.{module}"
+            module = f"modules.{module}"
         try:
             self._load_cog(module)
         except CogNotFoundError:
@@ -133,8 +133,8 @@ class UtilityModule(cmd.Cog):
     @cmd.command()
     @checks.is_bot_owner()
     async def reload(self, ctx: cmd.Context, *, module: str):
-        if "astutus.modules" not in module:
-            module = f"astutus.modules.{module}"
+        if "modules" not in module:
+            module = f"modules.{module}"
         try:
             self._unload_cog(module, reloading=True)
         except:
@@ -164,7 +164,7 @@ class UtilityModule(cmd.Cog):
             raise
 
     def _unload_cog(self, cogname, reloading=False):
-        if not reloading and cogname == "astutus.modules.utils":
+        if not reloading and cogname == "modules.utility":
             raise OwnerUnloadWithoutReloadError(
                 "Can't permanently unload the utils plugin :P"
             )
@@ -174,12 +174,12 @@ class UtilityModule(cmd.Cog):
             raise CogUnloadError
 
     def _list_cogs(self):
-        cogs = [os.path.basename(f) for f in glob.glob("astutus/modules/*.py")]
-        return ["astutus.modules." + os.path.splitext(f)[0] for f in cogs]
+        cogs = [os.path.basename(f) for f in glob.glob("modules/*.py")]
+        return ["modules." + os.path.splitext(f)[0] for f in cogs]
 
     def _does_cogfile_exist(self, module):
-        if "astutus.modules." not in module:
-            module = "astutus.modules." + module
+        if "modules." not in module:
+            module = "modules." + module
         if module not in self._list_cogs():
             return False
         return True

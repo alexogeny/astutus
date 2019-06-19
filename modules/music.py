@@ -154,11 +154,10 @@ class MusicPlayer:
                         source, loop=self.bot.loop
                     )
                 except Exception as e:
-                    print(e)
-                    # await self._channel.send(
-                    #     f"There was an error processing your song.\n"
-                    #     f"```css\n[{e}]\n```"
-                    # )
+                    await self._channel.send(
+                        f"There was an error processing your song.\n"
+                        f"```css\n[{e}]\n```"
+                    )
                     continue
 
             source.volume = self.volume
@@ -170,7 +169,7 @@ class MusicPlayer:
             )
             self.np = await self._channel.send(
                 f"**Now Playing:** `{source.title}` requested by "
-                f"`{source.requester}`"
+                f"**{source.requester}**"
             )
             await self.next.wait()
 
@@ -180,10 +179,10 @@ class MusicPlayer:
 
             try:
                 # We are no longer playing this song...
+                await self.np.delete()
                 if isinstance(source, YTDLSource):
                     if os.path.exists(source.source):
                         os.remove(source.source)
-                await self.np.delete()
             except discord.HTTPException:
                 pass
 
@@ -276,7 +275,6 @@ class Music(cmd.Cog):
                 raise VoiceConnectionError(f"Moving to channel: <{channel}> timed out.")
         else:
             try:
-                print("attempting to connect")
                 await channel.connect()
             except asyncio.TimeoutError:
                 raise VoiceConnectionError(
@@ -313,7 +311,7 @@ class Music(cmd.Cog):
             ctx, search, loop=self.bot.loop, download=True
         )
 
-        await player.queue.put(source)
+        await player.queue.put_nowait(source)
 
     @cmd.command(name="youtube", aliases=["yt"])
     async def youtube_(self, ctx, *, search: str):

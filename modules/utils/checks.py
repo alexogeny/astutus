@@ -92,14 +92,11 @@ def is_premium_user():
         booster = lxmcord.get_role(585600912559439874)
         patreon = lxmcord.get_role(476524707563307008)
         member = lxmcord.get_member(ctx.author.id)
+        msg = "Sorry, you are not a premium user. You can become one at <https://patreon.com/lxmcneill> or boost the server with Nitro: https://discord.gg/WvcryZW"
         if not member:
-            raise cmd.BadArgument(
-                "Sorry, you are not a premium user. You can become one ... fill later"
-            )
+            raise cmd.BadArgument(msg)
         if not any([x for x in [patreon, booster] if x in member.roles]):
-            raise cmd.BadArgument(
-                "Sorry, you are not a premium user. You can become one ... fill later"
-            )
+            raise cmd.BadArgument(msg)
         return True
 
     return cmd.check(predicate)

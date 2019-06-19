@@ -5,7 +5,11 @@ from enum import Enum, unique
 from .utils import checks
 from .utils.time import Duration, get_hms
 from .utils.converters import Truthy, MemberID
-from .utils.etc import ttconvert_discover, ttconvert_from_scientific, ttconvert_to_scientific
+from .utils.etc import (
+    ttconvert_discover,
+    ttconvert_from_scientific,
+    ttconvert_to_scientific,
+)
 from typing import Optional
 import asyncio
 import arrow
@@ -457,7 +461,7 @@ class TapTitansModule(cmd.Cog):
     async def taptitans(self, ctx):
         pass
 
-    @taptitans.command(name="groupadd")
+    @taptitans.command(name="groupadd", aliases=["gadd"], usage="slot")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupadd(self, ctx):
@@ -494,7 +498,7 @@ class TapTitansModule(cmd.Cog):
                 f"~**{ctx.guild}** has reached maximum group count of **3**. Use **groupdel <x>** to delete a group."
             )
 
-    @taptitans.command(name="groupdel")
+    @taptitans.command(name="groupdel", aliases=["gdel"], usage="slot")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupdel(self, ctx, slot: Optional[int]):
@@ -621,7 +625,7 @@ class TapTitansModule(cmd.Cog):
         aliases=["boss", "rd"],
         case_insensitive=True,
         invoke_without_command=True,
-        usage="0h0m0s"
+        usage="0h0m0s",
     )
     async def tt_raid(
         self,
@@ -695,6 +699,7 @@ class TapTitansModule(cmd.Cog):
     async def tt_raid_clear(
         self, ctx, group: Optional[TTRaidGroup], cd: Optional[Duration]
     ):
+        "Clears a raid. Use this only when you complete a raid. Use cancel if you want to wipe the timer."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -770,11 +775,9 @@ class TapTitansModule(cmd.Cog):
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 
-    # @tt_raid.command(name="info", aliases=["information"])
-    # async def tt_raid_info(self):
-    #     return
-
-    @taptitans.command(name="queue", aliases=["q"], case_insensitive=True, usage='show|clear|skip')
+    @taptitans.command(
+        name="queue", aliases=["q"], case_insensitive=True, usage="show|clear|skip"
+    )
     async def tt_queue(self, ctx, group: Optional[TTRaidGroup], list=None):
         (
             "Enter into the tap titans raid queue.\n"
@@ -933,7 +936,9 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @taptitans.command(name="deck", aliases=["decks"], case_insensitive=True, usage="deckname")
+    @taptitans.command(
+        name="deck", aliases=["decks"], case_insensitive=True, usage="deckname"
+    )
     async def tt_deck(self, ctx, *deck):
         "Shows you some of the best tap titans deck combinations available."
         crimtain = await self.bot.fetch_user(190222871254007808)
@@ -963,7 +968,7 @@ class TapTitansModule(cmd.Cog):
                 )
                 or "n/a",
                 data[2],
-                crimtain
+                crimtain,
             )
         )
 
@@ -994,9 +999,24 @@ class TapTitansModule(cmd.Cog):
     async def tt_equip(self):
         return
 
-    @taptitans.group(name="artifact", case_insensitive=True)
-    async def tt_artifact(self):
-        return
+    @taptitans.group(
+        name="artifact",
+        aliases=["arti", "arts", "artifacts"],
+        invoke_without_command=True,
+    )
+    async def tt_artifacts(self, ctx, artifact: Optional[str], lvl_from: Optional[int], lvl_to: Optional[int]):
+        if not artifact:
+            await ctx.send('Here is a list of the artifacts sorted by tier')
+        elif artifact and not any([lvl_from, lvl_to]):
+            await ctx.send("here would be artifact basic info")
+        else:
+            await ctx.send("heree would be artifact leveling info")
+    
+    @tt_artifacts.command(name='build')
+    async def tt_artifacts_build(self, ctx, build: Optional[str]):
+        if not build:
+            await ctx.send('List of builds for searching: ')
+        
 
     @taptitans.group(name="enhancement", case_insensitive=True)
     async def tt_enhance(self):
@@ -1010,7 +1030,10 @@ class TapTitansModule(cmd.Cog):
         return round(max((stage // 500 * 2 + 8 - (ip + ab)) / max(2 * snap, 1), 1))
 
     @taptitans.command(
-        name="titancount", aliases=["titans", "count"], case_insensitive=True, usage="stage ip ab snaps"
+        name="titancount",
+        aliases=["titans", "count"],
+        case_insensitive=True,
+        usage="stage ip ab snaps",
     )
     async def tt_titancount(
         self, ctx, stage: int = 10000, ip: int = 30, ab: int = 5, snap: int = 0
@@ -1025,7 +1048,11 @@ class TapTitansModule(cmd.Cog):
             )
         )
 
-    @taptitans.command(name="edskip", aliases=["ed"], usage='stage ip mystic_impact arcain_bargain anni_plat')
+    @taptitans.command(
+        name="edskip",
+        aliases=["ed"],
+        usage="stage ip mystic_impact arcain_bargain anni_plat",
+    )
     async def tt_ed(
         self,
         ctx,
@@ -1156,7 +1183,7 @@ class TapTitansModule(cmd.Cog):
             f"{discord.utils.get(self.bot.emojis, name=icon, guild_id=self.em)} TT2 Tournament Forecast\n===================\n{result}\n===================\n{last==3 and 'Tip: show more tourneys with ;tt tourney 8' or ''}"
         )
 
-    @taptitans.command(name="convert", aliases=["cvt"], usage='value')
+    @taptitans.command(name="convert", aliases=["cvt"], usage="value")
     async def tt_convert(self, ctx, val: Optional[str] = "1e+5000"):
         (
             "Allows you to convert a scientific/letter notation into the opposite version.\n"
@@ -1171,29 +1198,59 @@ class TapTitansModule(cmd.Cog):
             f, t = "letter", "scientific"
         await ctx.send(
             "{} Conversion of **{}** from **{}** to **{}** is: **{}**".format(
-                discord.utils.get(self.bot.emojis, name="_orange", guild_id=self.em), val, f, t, result
+                discord.utils.get(self.bot.emojis, name="_orange", guild_id=self.em),
+                val,
+                f,
+                t,
+                result,
             )
         )
 
-    @taptitans.command(name="gold", aliases=["goldsource", "goldsources"], usage="<kind>")
+    @taptitans.command(
+        name="gold", aliases=["goldsource", "goldsources"], usage="<kind>"
+    )
     async def tt_gold(self, ctx, kind: Optional[str]):
         "Displays optimal artifacts required for a specific gold source."
         taco = await self.bot.fetch_user(381376462189625344)
         sources = dict(
-            phom=("Pet Heart of Midas is a great, reliable, balanced gold source. It's frequent, gives you good gold, and can be used in both pushing and farming.", "neko_sculpture bronzed_compass heroic_shield"),
-            fairy=("Fair is supposedly the best gold source out there, but it can be frustrating waiting for a gold ad fairy and getting an all skills fairy instead.", 'chest_of_contentment great_fay_medallion bronzed_compass'),
-            chesterson=("A tougher nut to crack, this one of the best gold sources for farming, but might leave you up sh*t creek when trying to push. Relies heavily on multispawn chesterson gold.", 'chest_of_contentment essence_of_the_kitsune coins_of_ebizu'),
-            boss=("Do not even bother.", '')
+            phom=(
+                "Pet Heart of Midas is a great, reliable, balanced gold source. It's frequent, gives you good gold, and can be used in both pushing and farming.",
+                "neko_sculpture bronzed_compass heroic_shield",
+            ),
+            fairy=(
+                "Fair is supposedly the best gold source out there, but it can be frustrating waiting for a gold ad fairy and getting an all skills fairy instead.",
+                "chest_of_contentment great_fay_medallion bronzed_compass",
+            ),
+            chesterson=(
+                "A tougher nut to crack, this one of the best gold sources for farming, but might leave you up sh*t creek when trying to push. Relies heavily on multispawn chesterson gold.",
+                "chest_of_contentment essence_of_the_kitsune coins_of_ebizu",
+            ),
+            boss=(
+                "Boss gold uses Hands of Midas in order to get large amounts of gold upon killing bosses. It benefits directly from the Heart of Midas skill too, but it is faster than waiting for a pHoM proc. Typically is weaker than pHoM.",
+                "heroic_shield laborers_pendant titanias_sceptre",
+            ),
+            inactive=(
+                "Inactive gold will be the weakest compared to any other source, but it can be reliable/relevant if you don't have Stones of the Valrunes artifact yet. Playing an active gold source will always be better nonetheless.",
+                "zakynthos_coin khrysos_bowl",
+            ),
         )
         if not kind or kind.lower() not in sources.keys():
-            await ctx.send('Available gold sources:\n{}'.format(', '.join(sources.keys())))
+            await ctx.send(
+                "Available gold sources:\n{}".format(", ".join(sources.keys()))
+            )
             return
-        await ctx.send("**{} Gold**\n{}\n{}\n\ncommand inspired by **{}**".format(
-            kind, sources[kind.lower()][0], ' '.join(
-                str(discord.utils.get(self.bot.emojis, name=x, guild_id=self.em))
-                for x in sources[kind.lower()][1].split()
-            ), taco
-        ))
+        await ctx.send(
+            "**{} Gold**\n{}\n{}\n\ncommand inspired by **{}**".format(
+                kind,
+                sources[kind.lower()][0],
+                " ".join(
+                    str(discord.utils.get(self.bot.emojis, name=x, guild_id=self.em))
+                    for x in sources[kind.lower()][1].split()
+                ),
+                taco,
+            )
+        )
+
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))

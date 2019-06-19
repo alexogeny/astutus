@@ -1,11 +1,8 @@
-import discord
-import typing
 import asyncio
-from discord.ext import commands as cmd
-from .utils.converters import MemberID, ActionReason, BannedMember
-from .utils import checks
 import arrow
-from itertools import starmap
+import discord
+from discord.ext import commands as cmd
+from .utils.converters import MemberID
 
 
 class TrackingModule(cmd.Cog):
