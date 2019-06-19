@@ -9,8 +9,8 @@ import configparser
 import sys
 import asyncio
 
-from astutus import AstutusBot
-from astutus.modules.utils import setup_bot
+from bot import AstutusBot
+from modules.utils.setup import setup_bot
 
 
 def get_config(configuration_file: str = "default_config.ini"):

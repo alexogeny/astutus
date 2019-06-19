@@ -1,5 +1,6 @@
 from discord.ext import commands as cmd
-from utils import checks, MemberID, ActionReason, BannedMember
+from .utils import checks
+from .utils.converters import MemberID, ActionReason, BannedMember
 import arrow
 from math import floor
 from datetime import timedelta

@@ -1,6 +1,6 @@
-import discord
+# import discord
 from discord.ext import commands as cmd
-import difflib
+# import difflib
 
 
 class HelpModule(cmd.Cog):
@@ -9,12 +9,13 @@ class HelpModule(cmd.Cog):
 
     @cmd.command(name="help", aliases=["h"], usage="<module> <command>")
     async def help(self, ctx, *command):
+        "Displays help about stuff."
         if not command:
-            st = "Currently available modules for **{}**. Type **{}{} <module>** (without brackets) to access the help page for a module:\n{{}}".format(
+            support_text = "Currently available modules for **{}**. Type **{}{} <module>** (without brackets) to access the help page for a module:\n{{}}".format(
                 self.bot.user.mention, ctx.prefix, ctx.command
             )
             hlp = ", ".join([f"**{c.replace('Module', '')}**" for c in self.bot.cogs])
-            await ctx.send(st.format(hlp))
+            await ctx.send(support_text.format(hlp))
             return
         command = list(command)
         cog = [

@@ -2,16 +2,10 @@ from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 import discord
 from enum import Enum, unique
-from utils import (
-    Duration,
-    checks,
-    Truthy,
-    get_hms,
-    MemberID,
-    ttconvert_discover,
-    ttconvert_from_scientific,
-    ttconvert_to_scientific,
-)
+from .utils import checks
+from .utils.time import Duration, get_hms
+from .utils.converters import Truthy, MemberID
+from .utils.etc import ttconvert_discover, ttconvert_from_scientific, ttconvert_to_scientific
 from typing import Optional
 import asyncio
 import arrow

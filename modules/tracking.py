@@ -2,7 +2,8 @@ import discord
 import typing
 import asyncio
 from discord.ext import commands as cmd
-from utils import MemberID, checks, ActionReason, BannedMember
+from .utils.converters import MemberID, ActionReason, BannedMember
+from .utils import checks
 import arrow
 from itertools import starmap
 

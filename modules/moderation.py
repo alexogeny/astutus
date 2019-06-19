@@ -3,7 +3,9 @@ import arrow
 from typing import List, Optional
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
-from utils import checks, MemberID, ActionReason, BannedMember, delta_convert, Duration
+from .utils import checks
+from .utils.converters import MemberID, ActionReason, BannedMember
+from .utils.time import Duration
 from uuid import uuid4
 from copy import deepcopy
 from itertools import chain

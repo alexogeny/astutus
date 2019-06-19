@@ -3,15 +3,9 @@ import arrow
 from typing import List, Optional
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
-from utils import (
-    checks,
-    MemberID,
-    ActionReason,
-    BannedMember,
-    delta_convert,
-    Duration,
-    get_hms,
-)
+from .utils import checks
+from .utils.converters import MemberID, ActionReason, BannedMember
+from .utils.time import Duration, get_hms
 
 from itertools import chain, zip_longest
 

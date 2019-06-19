@@ -4,6 +4,10 @@ import datetime
 import asyncio
 import discord
 import os
+import sys
+from os import listdir
+from os.path import isfile, join
+import traceback
 
 
 async def prefix_callable(bot, message) -> list:
@@ -32,15 +36,32 @@ class AstutusBot(cmds.AutoShardedBot):
         self.db = None
         self.blacklists = dict(users=[], channels=[], servers=[])
         self.remove_command("help")
-        for module in Path("./astutus/modules").rglob("*.py"):
-            module = str(module).replace(".py", "").replace("\\", ".")
+        self.load_extensions()
+
+    def load_extensions(self):
+        # for module in Path(self.config["DEFAULT"]["cogs"]).glob("*.py"):
+        #     module = module.stem
+        #     try:
+        #         self.load_extension(f"modules.{module}")
+        #     except Exception as e:
+        #         print(f"Failed to load ext: {module}")
+        #         print(e)
+        #     else:
+        #         print(f"Loaded ext: {module}")
+        extensions = [
+            f.replace(".py", "")
+            for f in listdir(self.config["DEFAULT"]["cogs"])
+            if isfile(join(self.config["DEFAULT"]["cogs"], f))
+        ]
+        print(extensions)
+        for extension in extensions:
             try:
-                self.load_extension(module)
-            except Exception as e:
-                print(f"Failed to load ext: {module}")
-                print(e)
-            else:
-                print(f"Loaded ext: {module}")
+                self.load_extension(
+                    "{}.{}".format(self.config["DEFAULT"]["cogs"], extension)
+                )
+            except (discord.ClientException, ModuleNotFoundError) as e:
+                print(f"Failed to load extension {extension}.", file=sys.stderr)
+                # traceback.print_exc()
 
     async def on_ready(self):
         if not hasattr(self, "booted_at"):

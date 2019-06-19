@@ -1,6 +1,8 @@
 from typing import Optional
 from discord.ext import commands as cmd
-from utils import checks, ChannelID, Duration
+from .utils import checks
+from .utils.converters import ChannelID
+from .utils.time import Duration
 
 
 class ChannelObject(cmd.TextChannelConverter):
@@ -9,7 +11,7 @@ class ChannelObject(cmd.TextChannelConverter):
         return channel
 
 
-class ChannelsModule(object):
+class ChannelsModule(cmd.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -39,3 +41,7 @@ class ChannelsModule(object):
             return
         await channel.edit(slowmode_delay=mode)
         await ctx.send(f"Set the slowmode for #**{channel}** to **{mode}** seconds.")
+
+
+def setup(bot):
+    bot.add_cog(ChannelsModule(bot))

@@ -1,5 +1,5 @@
 from discord.ext import commands as cmd
-from utils import checks, chat_formatting
+from .utils import checks, chat_formatting
 import time
 
 # import psutil
