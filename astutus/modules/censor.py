@@ -2,7 +2,7 @@ import discord
 
 from discord.ext import commands as cmd
 import arrow
-from astutus.utils import checks
+from utils import checks
 
 
 class CensorModule(cmd.Cog):

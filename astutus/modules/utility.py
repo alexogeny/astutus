@@ -1,5 +1,5 @@
 from discord.ext import commands as cmd
-from astutus.utils.checks import is_bot_owner
+from utils import checks, chat_formatting
 import time
 
 # import psutil
@@ -9,7 +9,8 @@ import os
 import glob
 from urllib.parse import quote_plus
 import aiohttp
-from astutus.utils import chat_formatting
+
+# from utils import chat_formatting
 
 
 class CogNotFoundError(Exception):
@@ -105,18 +106,18 @@ class UtilityModule(cmd.Cog):
             await ctx.send("There is no definition #{}".format(pos + 1))
 
     @cmd.command()
-    @is_bot_owner()
+    @checks.is_bot_owner()
     async def shutdown(self, ctx, when: str = None):
         await self.bot.logout()
 
     @cmd.command()
-    @is_bot_owner()
+    @checks.is_bot_owner()
     async def redisclear(self, ctx, key):
         result = await self.bot.db.delete(key.format(ctx))
         await ctx.send(str(result))
 
     @cmd.command()
-    @is_bot_owner()
+    @checks.is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:
             module = f"astutus.modules.{module}"
@@ -130,7 +131,7 @@ class UtilityModule(cmd.Cog):
             await ctx.send("loaded the cog")
 
     @cmd.command()
-    @is_bot_owner()
+    @checks.is_bot_owner()
     async def reload(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:
             module = f"astutus.modules.{module}"

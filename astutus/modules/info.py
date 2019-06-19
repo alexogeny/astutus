@@ -2,7 +2,7 @@ from discord.ext import commands as cmd
 import psutil
 import arrow
 import discord
-from astutus.utils import MemberID, download_image
+from utils import MemberID, download_image
 
 
 class InfoModule(cmd.Cog):

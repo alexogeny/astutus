@@ -2,7 +2,7 @@ import discord
 import typing
 import asyncio
 from discord.ext import commands as cmd
-from astutus.utils import MemberID, checks, ActionReason, BannedMember
+from utils import MemberID, checks, ActionReason, BannedMember
 import arrow
 from itertools import starmap
 

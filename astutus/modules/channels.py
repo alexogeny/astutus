@@ -1,6 +1,6 @@
 from typing import Optional
 from discord.ext import commands as cmd
-from astutus.utils import checks, ChannelID, Duration
+from utils import checks, ChannelID, Duration
 
 
 class ChannelObject(cmd.TextChannelConverter):

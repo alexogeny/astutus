@@ -3,7 +3,7 @@ import arrow
 from typing import List, Optional
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
-from astutus.utils import checks, Truthy
+from utils import checks, Truthy
 from string import ascii_letters, digits
 
 AVAILABLE_SETTINGS = [

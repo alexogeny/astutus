@@ -2,7 +2,7 @@ from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 import discord
 from enum import Enum, unique
-from astutus.utils import (
+from utils import (
     Duration,
     checks,
     Truthy,
