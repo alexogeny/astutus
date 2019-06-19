@@ -13,6 +13,11 @@ class Redis:
             (host, port), password=pw, maxsize=10
         )
 
+    async def connect_pool_url(self, url):
+        if self.connection_pool is not None and not self.connection_pool.closed:
+            return
+        self.connection_pool = await redis.create_redis_pool(url, maxsize=10)
+
     async def reconnect(self):
         self.connection_pool = await redis.create_redis_pool(
             self.connection_pool.address

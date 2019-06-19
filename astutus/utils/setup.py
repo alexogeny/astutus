@@ -1,6 +1,7 @@
 import asyncio
 import discord
 from .redis import Redis
+import os
 
 
 def setup_bot(bot):
@@ -21,6 +22,10 @@ def setup_bot(bot):
 
     pool = Redis()
     loop = asyncio.get_event_loop()
+    rds = os.environ.get("REDISCLOUD_URL", None)
+    if rds != None and rds:
+        loop.run_until_complete(pool.connect_pool_url(rds))
+
     loop.run_until_complete(
         pool.connect_pool(
             bot.config["REDIS"]["host"],

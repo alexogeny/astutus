@@ -3,6 +3,7 @@ from discord.ext import commands as cmds
 import datetime
 import asyncio
 import discord
+import os
 
 
 async def prefix_callable(bot, message) -> list:
@@ -82,4 +83,5 @@ class AstutusBot(cmds.AutoShardedBot):
         self.exit_code = exit_code
 
     def run(self):
-        super().run(self.config["DEFAULT"]["token"], reconnect=True)
+        token = self.config["DEFAULT"].get("token", os.environ.get("DISCORD_TOKEN", ""))
+        super().run(token, reconnect=True)
