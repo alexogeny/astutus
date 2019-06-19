@@ -1,2 +1,2 @@
 release: poetry install --no-dev --extras "uvloop"
-worker: poetry run bot
+worker: python manage.py
