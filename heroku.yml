@@ -1,5 +1,5 @@
 run:
   worker:
     command:
-      - pip install
+      - pip install pyproject.toml
       - python bot.py
