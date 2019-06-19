@@ -1,6 +1,0 @@
-run:
-  worker:
-    command:
-      - pip install poetry
-      - poetry install
-      - poetry run bot
