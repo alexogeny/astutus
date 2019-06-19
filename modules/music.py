@@ -1,17 +1,18 @@
-import discord
-from discord.ext import commands as cmd
 import asyncio
-import async_timeout
 import itertools
 import sys
+import os
 import traceback
 from functools import partial
+import discord
+from discord.ext import commands as cmd
+from .utils import checks
+import async_timeout
 from youtube_dl import YoutubeDL
-from enum import Enum
 
 ytdlopts = dict(
     format="bestaudio/best",
-    outtmpl="downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s",
+    outtmpl="downloads/%(extractor)s-%(id)s-%(title)s-%(autonumber)s.%(ext)s",
     restrictfilenames=True,
     noplaylist=True,
     nocheckcertificate=True,
@@ -22,20 +23,6 @@ ytdlopts = dict(
     default_search="auto",
     source_address="0.0.0.0",
 )
-
-# ytdlopts = {
-#     'format': 'bestaudio/best',
-#     'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
-#     'restrictfilenames': True,
-#     'noplaylist': True,
-#     'nocheckcertificate': True,
-#     'ignoreerrors': False,
-#     'logtostderr': False,
-#     'quiet': True,
-#     'no_warnings': True,
-#     'default_search': 'auto',
-#     'source_address': '0.0.0.0'
-# }
 
 ffmpegopts = {"before_options": "-nostdin", "options": "-vn"}
 
@@ -51,10 +38,12 @@ class InvalidVoiceChannel(VoiceConnectionError):
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
+    """Defines a youtube-dl source"""
+
     def __init__(self, source, *, data, requester):
         super().__init__(source)
         self.requester = requester
-
+        self.source = data.get("source")
         self.title = data.get("title")
         self.web_url = data.get("webpage_url")
 
@@ -86,6 +75,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         if download:
             source = YTDL.prepare_filename(data)
+            data["source"] = source
         else:
             return {
                 "webpage_url": data["webpage_url"],
@@ -190,6 +180,9 @@ class MusicPlayer:
 
             try:
                 # We are no longer playing this song...
+                if isinstance(source, YTDLSource):
+                    if os.path.exists(source.source):
+                        os.remove(source.source)
                 await self.np.delete()
             except discord.HTTPException:
                 pass
@@ -255,6 +248,7 @@ class Music(cmd.Cog):
 
         return player
 
+    @checks.is_premium_user()
     @cmd.command(name="connect", aliases=["join"])
     async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
         """Connect to voice.
@@ -272,9 +266,7 @@ class Music(cmd.Cog):
                 raise InvalidVoiceChannel(
                     "No channel to join. Please either specify a valid channel or join one."
                 )
-        print(channel)
         vc = ctx.guild.voice_client
-        print(vc)
         if vc is not None:
             if vc.channel.id == channel.id:
                 return
@@ -283,7 +275,6 @@ class Music(cmd.Cog):
             except asyncio.TimeoutError:
                 raise VoiceConnectionError(f"Moving to channel: <{channel}> timed out.")
         else:
-            print("hello")
             try:
                 print("attempting to connect")
                 await channel.connect()
@@ -296,6 +287,7 @@ class Music(cmd.Cog):
 
         await ctx.send(f"Connected to: **{channel}**", delete_after=20)
 
+    @checks.is_premium_user()
     @cmd.command(name="play", aliases=["sing"])
     async def play_(self, ctx, *, search: str):
         """Request a song and add it to the queue.
@@ -318,7 +310,7 @@ class Music(cmd.Cog):
         # If download is False, source will be a dict which will be used later to regather the stream.
         # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
         source = await YTDLSource.create_source(
-            ctx, search, loop=self.bot.loop, download=False
+            ctx, search, loop=self.bot.loop, download=True
         )
 
         await player.queue.put(source)
@@ -331,6 +323,7 @@ class Music(cmd.Cog):
         )
         await ctx.send(source.get("webpage_url"))
 
+    @checks.is_premium_user()
     @cmd.command(name="pause")
     async def pause_(self, ctx):
         """Pause the currently playing song."""
@@ -340,12 +333,13 @@ class Music(cmd.Cog):
             return await ctx.send(
                 "I am not currently playing anything!", delete_after=20
             )
-        elif vc.is_paused():
+        if vc.is_paused():
             return
 
         vc.pause()
         await ctx.send(f"**`{ctx.author}`**: Paused the song!")
 
+    @checks.is_premium_user()
     @cmd.command(name="resume")
     async def resume_(self, ctx):
         """Resume the currently paused song."""
@@ -355,28 +349,29 @@ class Music(cmd.Cog):
             return await ctx.send(
                 "I am not currently playing anything!", delete_after=20
             )
-        elif not vc.is_paused():
+        if not vc.is_paused():
             return
 
         vc.resume()
         await ctx.send(f"**`{ctx.author}`**: Resumed the song!")
 
+    @checks.is_premium_user()
     @cmd.command(name="skip")
     async def skip_(self, ctx):
         """Skip the song."""
-        vc = ctx.voice_client
+        v_c = ctx.voice_client
 
-        if not vc or not vc.is_connected():
+        if not v_c or not v_c.is_connected():
             return await ctx.send(
                 "I am not currently playing anything!", delete_after=20
             )
 
-        if vc.is_paused():
+        if v_c.is_paused():
             pass
-        elif not vc.is_playing():
+        elif not v_c.is_playing():
             return
 
-        vc.stop()
+        v_c.stop()
         await ctx.send(f"**`{ctx.author}`**: Skipped the song!")
 
     @cmd.command(name="queue", aliases=["mq", "playlist"])
@@ -428,6 +423,7 @@ class Music(cmd.Cog):
             f"requested by `{vc.source.requester}`"
         )
 
+    @checks.is_premium_user()
     @cmd.command(name="volume", aliases=["vol"])
     async def change_volume(self, ctx, *, vol: float):
         """Change the player volume.
@@ -454,6 +450,7 @@ class Music(cmd.Cog):
         player.volume = vol / 100
         await ctx.send(f"**`{ctx.author}`**: Set the volume to **{vol}%**")
 
+    @checks.is_premium_user()
     @cmd.command(name="stop")
     async def stop_(self, ctx):
         """Stop the currently playing song and destroy the player.

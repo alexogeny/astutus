@@ -86,6 +86,25 @@ def is_mod():
     return cmd.check(predicate)
 
 
+def is_premium_user():
+    async def predicate(ctx: cmd.Context):
+        lxmcord = ctx.bot.get_guild(440785686438871040)
+        booster = lxmcord.get_role(585600912559439874)
+        patreon = lxmcord.get_role(476524707563307008)
+        member = lxmcord.get_member(ctx.author.id)
+        if not member:
+            raise cmd.BadArgument(
+                "Sorry, you are not a premium user. You can become one ... fill later"
+            )
+        if not any([x for x in [patreon, booster] if x in member.roles]):
+            raise cmd.BadArgument(
+                "Sorry, you are not a premium user. You can become one ... fill later"
+            )
+        return True
+
+    return cmd.check(predicate)
+
+
 def can_kick():
     async def predicate(ctx: cmd.Context):
         return await check_guild_permissions(ctx, {"kick_members": True})
