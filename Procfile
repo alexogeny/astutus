@@ -1,2 +1,2 @@
-release: pip install - pyproject.toml
+release: poetry install --no-dev --extras "uvloop"
 worker: poetry run bot
