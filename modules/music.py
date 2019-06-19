@@ -72,7 +72,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
             await ctx.send(
                 f'```ini\n[Added {data["title"]} to the Queue.]\n```', delete_after=15
             )
-
         if download:
             source = YTDL.prepare_filename(data)
             data["source"] = source
@@ -144,7 +143,9 @@ class MusicPlayer:
                 async with async_timeout.timeout(300):  # 5 minutes...
                     source = await self.queue.get()
             except asyncio.TimeoutError:
-                return self.destroy(self._guild)
+                if self in self._cog.players.values():
+                    return self.destroy(self._guild)
+                return
 
             if not isinstance(source, YTDLSource):
                 # Source was probably a stream (not downloaded)
@@ -206,6 +207,14 @@ class Music(cmd.Cog):
         except AttributeError:
             pass
 
+        try:  
+            for entry in self.players[guild.id].queue._queue:
+                if isinstance(entry, YTDLSource): 
+                    entry.cleanup()
+            self.players[guild.id].queue._queue.clear()
+        except KeyError:
+            pass                        
+                       
         try:
             del self.players[guild.id]
         except KeyError:
@@ -308,7 +317,7 @@ class Music(cmd.Cog):
         # If download is False, source will be a dict which will be used later to regather the stream.
         # If download is True, source will be a discord.FFmpegPCMAudio with a VolumeTransformer.
         source = await YTDLSource.create_source(
-            ctx, search, loop=self.bot.loop, download=True
+            ctx, search, loop=self.bot.loop, download=False
         )
 
         await player.queue.put_nowait(source)
@@ -319,6 +328,7 @@ class Music(cmd.Cog):
         source = await YTDLSource.create_source(
             ctx, search, loop=self.bot.loop, download=False, search_only=True
         )
+        print(source)
         await ctx.send(source.get("webpage_url"))
 
     @checks.is_premium_user()
