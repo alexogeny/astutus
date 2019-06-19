@@ -1,0 +1,5 @@
+run:
+  worker:
+    command:
+      - pip install
+      - python bot.py
