@@ -1,5 +1,6 @@
 run:
   worker:
     command:
-      - pip install pyproject.toml
-      - python bot.py
+      - pip install poetry
+      - poetry install
+      - poetry run bot
