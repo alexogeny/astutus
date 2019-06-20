@@ -102,6 +102,20 @@ def is_premium_user():
     return cmd.check(predicate)
 
 
+def is_premium_server():
+    async def predicate(ctx):
+        prem = await ctx.bot.db.hget("premium", ctx.guild.id)
+        if prem is None:
+            raise cmd.BadArgument(
+                "Not a premium server. Make it one at <https://patreon.com/{}>".format(
+                    ctx.bot.config["DEFAULT"]["patreon"]
+                )
+            )
+        return prem is not None
+
+    return cmd.check(predicate)
+
+
 def can_kick():
     async def predicate(ctx: cmd.Context):
         return await check_guild_permissions(ctx, {"kick_members": True})

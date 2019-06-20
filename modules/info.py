@@ -33,27 +33,28 @@ class InfoModule(cmd.Cog):
     @cmd.command()
     async def prefix(self, ctx):
         cstm = await self.bot.db.hget(f"{ctx.guild.id}:set", "pfx")
-        if not cstm or cstm == None:
+        if not cstm or cstm is None:
             cstm = ""
         await ctx.send(
-            "You can summon me with: **;**{}".format(cstm and f" or **{cstm}**" or "")
+            "You can summon me with: **{}**{}".format(
+                self.bot.config["DEFAULT"]["prefix"], cstm and f" or **{cstm}**" or ""
+            )
         )
 
-    @cmd.group(hidden=True)
-    async def info(self, ctx):
-        pass
-
-    @info.command(name="bot")
+    @cmd.command(name="botinfo")
     @cmd.guild_only()
     async def info_bot(self, ctx: cmd.Context):
         mem = self.process.memory_full_info().uss / 1024 ** 2
         cpu = self.process.cpu_percent() / psutil.cpu_count()
-        result = "**Bot Information**:\nCPU - {:.2f}%\nRAM - {:.2f}M\n".format(cpu, mem)
+        prem = await self.bot.db.hgetall("premium")
+        result = "**Bot Information**:\nCPU - {:.2f}%\nRAM - {:.2f}M\nPremium servers - {}".format(
+            cpu, mem, len(prem)
+        )
         await ctx.send(result)
 
-    @info.command(name="db")
+    @cmd.command(name="db")
     @cmd.guild_only()
-    async def info_db(self, ctx: cmd.Context):
+    async def dbinfo(self, ctx: cmd.Context):
         size = await self.bot.db.size()
         await ctx.send(f"Current database size: **{size}**")
 

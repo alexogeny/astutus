@@ -1,3 +1,4 @@
+import asyncio
 from discord.ext import commands as cmd
 from .utils import checks
 
@@ -18,10 +19,49 @@ class PremiumModule(cmd.Cog):
         "Shows you if you have preium."
         await ctx.send("You have premium! Yay!!!")
 
-    @cmd.command(name="premium")
-    async def premium_server(self, ctx):
+    @cmd.group(name="premium", invoke_without_command=True)
+    async def premium(self, ctx):
         "Shows you if the server is premium."
-        await ctx.send("Not a premium server.")
+        prem = await self.bot.db.hget("premium", ctx.guild.id)
+        if prem is None or not prem:
+            raise cmd.BadArgument("Not a premium server.")
+        user = "your" if prem == str(ctx.author.id) else "somebody else's"
+        await ctx.send(f":tada: This is {user} premium server!")
+
+    @premium.command(name="add")
+    @checks.is_premium_user()
+    async def premium_add(self, ctx):
+        "Sets the current server to premium, if not already."
+        prem = await self.bot.db.hget("premium", ctx.guild.id)
+        if prem is not None:
+            if int(prem) == ctx.author.id:
+                raise cmd.BadArgument(
+                    "This is your premium server.\nIf you would like to register"
+                    " a different server, do **{}premium del**".format(ctx.prefix)
+                )
+            raise cmd.BadArgument("This is somebody else's premium server.")
+        await ctx.send(
+            f"Would you like to set **{ctx.guild}** as your premium server?"
+            "\nType **yes** to confirm or **no** to cancel."
+        )
+
+        def check(msg):
+            return msg.author == ctx.author and msg.content.lower() in ["yes", "no"]
+
+        try:
+            msg = await self.bot.wait_for("message", check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            raise cmd.BadArgument("Query timed out.")
+
+        if msg.content.lower() == "no":
+            raise cmd.BadArgument(
+                "Did not set premium server for **{}**.".format(ctx.author)
+            )
+
+        await self.bot.db.hset("premium", ctx.guild.id, str(ctx.author.id))
+        await ctx.send(
+            f":tada: Set **{ctx.author}**'s premium server to **{ctx.guild}**!"
+        )
 
 
 def setup(bot):

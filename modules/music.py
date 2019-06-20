@@ -207,14 +207,14 @@ class Music(cmd.Cog):
         except AttributeError:
             pass
 
-        try:  
+        try:
             for entry in self.players[guild.id].queue._queue:
-                if isinstance(entry, YTDLSource): 
+                if isinstance(entry, YTDLSource):
                     entry.cleanup()
             self.players[guild.id].queue._queue.clear()
         except KeyError:
-            pass                        
-                       
+            pass
+
         try:
             del self.players[guild.id]
         except KeyError:
@@ -256,7 +256,7 @@ class Music(cmd.Cog):
 
         return player
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="connect", aliases=["join"])
     async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
         """Connect to voice.
@@ -294,7 +294,7 @@ class Music(cmd.Cog):
 
         await ctx.send(f"Connected to: **{channel}**", delete_after=20)
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="play", aliases=["sing"])
     async def play_(self, ctx, *, search: str):
         """Request a song and add it to the queue.
@@ -331,7 +331,7 @@ class Music(cmd.Cog):
         print(source)
         await ctx.send(source.get("webpage_url"))
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="pause")
     async def pause_(self, ctx):
         """Pause the currently playing song."""
@@ -347,7 +347,7 @@ class Music(cmd.Cog):
         vc.pause()
         await ctx.send(f"**`{ctx.author}`**: Paused the song!")
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="resume")
     async def resume_(self, ctx):
         """Resume the currently paused song."""
@@ -363,7 +363,7 @@ class Music(cmd.Cog):
         vc.resume()
         await ctx.send(f"**`{ctx.author}`**: Resumed the song!")
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="skip")
     async def skip_(self, ctx):
         """Skip the song."""
@@ -431,7 +431,7 @@ class Music(cmd.Cog):
             f"requested by `{vc.source.requester}`"
         )
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="volume", aliases=["vol"])
     async def change_volume(self, ctx, *, vol: float):
         """Change the player volume.
@@ -458,7 +458,7 @@ class Music(cmd.Cog):
         player.volume = vol / 100
         await ctx.send(f"**`{ctx.author}`**: Set the volume to **{vol}%**")
 
-    @checks.is_premium_user()
+    @checks.is_premium_server()
     @cmd.command(name="stop")
     async def stop_(self, ctx):
         """Stop the currently playing song and destroy the player.
