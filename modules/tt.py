@@ -260,15 +260,15 @@ class TTRaidGroup(cmd.Converter):
             return f"{ctx.guild.id}:tt:{arg[1]}"
 
 
-@unique
-class TTRoles(Enum):
-    G = "gm"
-    M = "master"
-    C = "captain"
-    K = "knight"
-    R = "recruit"
-    T = "timer"
 
+TTRoles = dict(
+    G="gm",
+    M="master",
+    C="captain",
+    K="knight",
+    R="recruit",
+    T="timer",
+)
 
 class TapTitansModule(cmd.Cog):
     """Tap Titans 2 is an idle RPG game on iOS and Android that lets you take the battle to the titans! Level up heroes, participate in Clan Raids, and stomp on other players in Tournaments!\nI am working hard to make improvements to this module. It's nearly a thousand lines long and that's just with decks and raids!"""
@@ -545,14 +545,16 @@ class TapTitansModule(cmd.Cog):
         r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
         ns = "**not-set**"
         roles = "\n".join(
-            [f"`{n}` @{r.get(m, ns)}" for n, m in TTRoles.__members__.items()]
+            ["`{}` @**{}**".format(
+                n,
+                discord.utils.get(ctx.guild.roles, id=int(r.get(m, 0)))
+            ) for n, m in TTRoles.items()]
         )
-        print(roles)
         await ctx.send(
             f"**{r.get('name', '<clanname>')}** [{r.get('code', '00000')}] "
             f"T{r.get('tier', 1)}Z{r.get('zone', 1)}\n"
             f"{roles}\n"
-            f"Messages are broadcast in #{r.get('announce', ns)} and queue size is **{r.get('mode', 1)}**."
+            f"Messages are broadcast in #**{discord.utils.get(ctx.guild.channels, id=int(r.get('announce', 0)))}** and queue size is **{r.get('mode', 1)}**."
         )
 
     @taptitans.group(name="set", usage="key val")

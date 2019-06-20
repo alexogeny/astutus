@@ -1,5 +1,7 @@
-from discord.ext import commands as cmd
+"""Todo module."""
+
 from typing import Optional
+from discord.ext import commands as cmd
 
 
 class TodoModule(cmd.Cog):
@@ -18,8 +20,8 @@ class TodoModule(cmd.Cog):
             )
             return
         result = []
-        for i, x in enumerate(my_todos):
-            result.append(f"**{i+1}**. {x}")
+        for i, todo in enumerate(my_todos):
+            result.append(f"**{i+1}**. {todo}")
 
         await ctx.send(
             "Ok **{}**, here's your todo list:\n{}".format(
@@ -59,8 +61,9 @@ class TodoModule(cmd.Cog):
                 f"Good job **{ctx.author}**, looks like you do not have any todos!"
             )
         else:
-            await ctx.send(f"You have **{len(my_todos)}** todos remaining.")
+            await ctx.send(f"You have **{len(my_todos)-1}** todos remaining.")
 
 
 def setup(bot):
+    """Bind the module to the bot."""
     bot.add_cog(TodoModule(bot))
