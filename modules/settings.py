@@ -16,14 +16,14 @@ AVAILABLE_SETTINGS = [
     "autorole",
     "greet",
     "prefix",
+    "restrictions",
 ]
 
 
 class SettingsKey(cmd.Converter):
     async def convert(self, ctx: cmd.Context, arg):
         if arg.lower() not in AVAILABLE_SETTINGS:
-            await ctx.send(f"**{arg}** is not a valid server setting.")
-            raise cmd.BadArgument
+            raise cmd.BadArgument(f"**{arg}** is not a valid server setting.")
         if arg == "censor" and not checks.is_mod():
             raise cmd.BadArgument
         return arg.lower()
