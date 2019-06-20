@@ -94,7 +94,14 @@ class YTDLSource(discord.PCMVolumeTransformer):
         to_run = partial(YTDL.extract_info, url=data["webpage_url"], download=False)
         data = await loop.run_in_executor(None, to_run)
 
-        return cls(discord.FFmpegPCMAudio(data["url"]), data=data, requester=requester)
+        return cls(
+            discord.FFmpegPCMAudio(
+                data["url"],
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            ),
+            data=data,
+            requester=requester,
+        )
 
 
 class MusicPlayer:
