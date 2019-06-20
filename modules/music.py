@@ -169,7 +169,7 @@ class MusicPlayer:
                 after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set),
             )
             self.np = await self._channel.send(
-                f"**Now Playing:** `{source.title}` requested by "
+                f"**Now Playing**: **{source.title}** requested by "
                 f"**{source.requester}**"
             )
             await self.next.wait()
@@ -181,9 +181,6 @@ class MusicPlayer:
             try:
                 # We are no longer playing this song...
                 await self.np.delete()
-                if isinstance(source, YTDLSource):
-                    if os.path.exists(source.source):
-                        os.remove(source.source)
             except discord.HTTPException:
                 pass
 

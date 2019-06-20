@@ -329,7 +329,7 @@ class TapTitansModule(cmd.Cog):
         if not is_mod and not is_admin:
             raise cmd.BadArgument
 
-    @tsk.loop(seconds=5)
+    @tsk.loop(seconds=10)
     async def raid_timer(self):
         now = arrow.utcnow()
         future = now.shift(hours=50)
