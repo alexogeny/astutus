@@ -33,7 +33,7 @@ class PremiumModule(cmd.Cog):
     async def premium_add(self, ctx):
         "Sets the current server to premium, if not already."
         prem = await self.bot.db.hget("premium", ctx.guild.id)
-        if prem is not None:
+        if prem is not None and ctx.author.id != 305879281580638228:
             if int(prem) == ctx.author.id:
                 raise cmd.BadArgument(
                     "This is your premium server.\nIf you would like to register"
