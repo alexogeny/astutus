@@ -91,7 +91,9 @@ class SetupModule(cmd.Cog):
             )
 
         val = msg.clean_content
-        if kind == "code":
+        if kind == "name":
+            key = kind
+        elif kind == "code":
             _, db_res = await self.bot.db.hscan("cc", match=msg.clean_content.lower())
             if db_res:
                 raise cmd.BadArgument(
@@ -107,18 +109,18 @@ class SetupModule(cmd.Cog):
                 )
             val = msg.clean_content.lower()
             key = kind
-        if kind == "announce channel":
+        elif kind == "announce channel":
             key = kind.replace(" channel", "")
             val = await cmd.TextChannelConverter().convert(ctx, msg.content)
             val = val.id
-        if kind.endswith(" role"):
+        elif kind.endswith(" role"):
             key = kind.replace(" role", "")
             try:
                 val = await cmd.RoleConverter().convert(ctx, msg.content)
             except cmd.BadArgument:
                 raise cmd.BadArgument(f"**{msg.content}** not a valid channel.")
             val = val.id
-        if kind == "raid queue size":
+        elif kind == "raid queue size":
             key = "mode"
             val = int(val)
         elif kind.startswith("raid "):
@@ -127,7 +129,9 @@ class SetupModule(cmd.Cog):
 
         await self.bot.db.hset(group, key, val)
         await self.bot.db.hset(group, "ph", phase)
-        await ctx.send(f"Set the clan **{kind}** to **{msg.content}**.")
+        await ctx.send(
+            f":white_check_mark: Set the clan **{kind}** to **{msg.content}**."
+        )
         return phase
 
     @checks.is_mod()
@@ -160,8 +164,8 @@ class SetupModule(cmd.Cog):
         if phase == 9:
             phase = await self.setup_tt2_key(ctx, group, "raid zone", phase=10)
         if phase == 10:
-            phase = await self.setup_tt2_key(ctx, group, "raid queue size", phase=10)
-        if phase == 20 and phase != 0:
+            phase = await self.setup_tt2_key(ctx, group, "raid queue size", phase=11)
+        if phase == 11 and phase != 0:
             name = await self.bot.db.hget(group, "name")
             await ctx.send(f"Looks like **{name}** clan is fully setup!")
 
