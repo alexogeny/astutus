@@ -11,7 +11,7 @@ import async_timeout
 from youtube_dl import YoutubeDL
 
 ytdlopts = dict(
-    format="bestaudio/best",
+    format="bestaudio/opus",
     outtmpl="downloads/%(extractor)s-%(id)s-%(title)s-%(autonumber)s.%(ext)s",
     restrictfilenames=True,
     noplaylist=True,

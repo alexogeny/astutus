@@ -403,6 +403,7 @@ class TapTitansModule(cmd.Cog):
             _h, _m, _s = await get_hms(arr)
             if _h < 0 or _m < 0 or _s < 0:
                 reset = reset + 1
+                await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 0)
                 await self.bot.db.hset(f"{guild.id}:tt:{group}", "reset", reset)
                 _h, _m, _s = await get_hms(arr)
                 arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
@@ -429,10 +430,14 @@ class TapTitansModule(cmd.Cog):
                     reset + 1
                 )
             )
+            edit = await chan.send('Preparing next reset timer...')
+            await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", edit.id)
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 1)
             await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
             return
         elif not len(upnext) and not len(current) and depl:
+            return
+        elif not len(upnext) and len(current) and depl:
             return
 
         members = [guild.get_member(int(m)) for m in upnext]
@@ -846,7 +851,7 @@ class TapTitansModule(cmd.Cog):
 
         if result:
             await ctx.send(
-                "**Queue** for **{}**:\n```{}```\nUse **;tt unqueue** to cancel.".format(
+                "**Queue** for **{}**:\n```css\n{}```\nUse **;tt unqueue** to cancel.".format(
                     resets, result and "\n".join(result) or " "
                 )
             )
