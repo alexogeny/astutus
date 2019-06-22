@@ -1,6 +1,18 @@
+from typing import Optional
+from decimal import Decimal
+import asyncio
+from datetime import datetime
+from itertools import zip_longest
+import difflib
+from string import ascii_lowercase, digits
+from csv import DictReader
+from math import floor
+import arrow
+import humanfriendly
+import discord
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
-import discord
+from discord.utils import get
 from enum import Enum, unique
 from .utils import checks
 from .utils.time import Duration, get_hms
@@ -10,14 +22,6 @@ from .utils.etc import (
     ttconvert_from_scientific,
     ttconvert_to_scientific,
 )
-from typing import Optional
-import asyncio
-import arrow
-from datetime import datetime
-from itertools import zip_longest
-import difflib
-from string import ascii_lowercase, digits
-from math import floor
 
 
 def rotate(table, mod):
@@ -260,15 +264,10 @@ class TTRaidGroup(cmd.Converter):
             return f"{ctx.guild.id}:tt:{arg[1]}"
 
 
+TTRoles = dict(G="gm", M="master", C="captain", K="knight", R="recruit", T="timer")
+TTCSVFiles = dict(cards="RaidSkill", zones="RaidLevel", titans="RaidEnemy")
+TTTitanlords = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
 
-TTRoles = dict(
-    G="gm",
-    M="master",
-    C="captain",
-    K="knight",
-    R="recruit",
-    T="timer",
-)
 
 class TapTitansModule(cmd.Cog):
     """Tap Titans 2 is an idle RPG game on iOS and Android that lets you take the battle to the titans! Level up heroes, participate in Clan Raids, and stomp on other players in Tournaments!\nI am working hard to make improvements to this module. It's nearly a thousand lines long and that's just with decks and raids!"""
@@ -278,6 +277,12 @@ class TapTitansModule(cmd.Cog):
         self.aliases = ["tt"]
         self.raid_timer.start()
         self.em = 440785686438871040
+        for k, v in TTCSVFiles.items():
+            setattr(self, k, [])
+            with open(f"modules/data/{v}Info.csv") as csvfile:
+                reader = DictReader(csvfile)
+                for row in reader:
+                    getattr(self, k).append(row)
 
     def cog_unload(self):
         self.raid_timer.cancel()
@@ -430,7 +435,7 @@ class TapTitansModule(cmd.Cog):
                     reset + 1
                 )
             )
-            edit = await chan.send('Preparing next reset timer...')
+            edit = await chan.send("Preparing next reset timer...")
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", edit.id)
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 1)
             await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
@@ -466,6 +471,17 @@ class TapTitansModule(cmd.Cog):
     async def taptitans(self, ctx):
         pass
 
+    async def show_slots(self, action, group, guild, res):
+        return "{} group **{}** {} ~**{}**. Currently used slots: [{}] [{}] [{}]".format(
+            action,
+            group,
+            'Deleted' in action and 'from' or 'to',
+            guild,
+            res["1"] and "x" or "",
+            res["2"] and "x" or "",
+            res["3"] and "x" or "",
+        )
+
     @taptitans.command(name="groupadd", aliases=["gadd"], usage="slot")
     @cmd.guild_only()
     @checks.is_mod()
@@ -489,15 +505,8 @@ class TapTitansModule(cmd.Cog):
                 await ctx.send("Could not add group right now. Try again later.")
                 return
             res[slot] = {"tier": 1}
-            await ctx.send(
-                "Successfully added group **{}** to ~**{}**. Currently used slots: [{}] [{}] [{}]".format(
-                    slot,
-                    ctx.guild,
-                    res["1"] and "x" or "",
-                    res["2"] and "x" or "",
-                    res["3"] and "x" or "",
-                )
-            )
+            txt = await self.show_slots("Added", slot, ctx.guild, res)
+            await ctx.send(txt)
         elif count == 3:
             await ctx.send(
                 f"~**{ctx.guild}** has reached maximum group count of **3**. Use **groupdel <x>** to delete a group."
@@ -521,15 +530,8 @@ class TapTitansModule(cmd.Cog):
             )
         )
         if result:
-            await ctx.send(
-                "Deleted group in slot **{}** from **{}**. Currently used slots: [{}] [{}] [{}]".format(
-                    slot,
-                    ctx.guild,
-                    res["1"] and "x" or "",
-                    res["2"] and "x" or "",
-                    res["3"] and "x" or "",
-                )
-            )
+            txt = await self.show_slots("Deleted", slot, ctx.guild, res)
+            await ctx.send(txt)
             return
         await ctx.send(
             "There's no group in that slot. Currently used slots: [{}] [{}] [{}]".format(
@@ -550,10 +552,12 @@ class TapTitansModule(cmd.Cog):
         r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
         ns = "**not-set**"
         roles = "\n".join(
-            ["`{}` @**{}**".format(
-                n,
-                discord.utils.get(ctx.guild.roles, id=int(r.get(m, 0)))
-            ) for n, m in TTRoles.items()]
+            [
+                "`{}` @**{}**".format(
+                    n, discord.utils.get(ctx.guild.roles, id=int(r.get(m, 0)))
+                )
+                for n, m in TTRoles.items()
+            ]
         )
         await ctx.send(
             f"**{r.get('name', '<clanname>')}** [{r.get('code', '00000')}] "
@@ -782,6 +786,83 @@ class TapTitansModule(cmd.Cog):
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 
+    @tt_raid.command(name="info", aliases=["i"])
+    async def tt_raid_info(self, ctx, tier: Optional[int] = 1, zone: Optional[int] = 1):
+        count = len(set([z["TierID"] for z in self.zones]))
+        if tier > count:
+            raise cmd.BadArgument(f"There are **{count}** tiers.")
+        elif zone > tier * 10:
+            raise cmd.BadArgument(f"There are **{tier*10}** zones in tier **{tier}**.")
+        raid = next(
+            (
+                z
+                for z in self.zones
+                if z["TierID"] == str(tier) and z["LevelID"] == str(zone)
+            )
+        )
+        enemies = raid["EnemyIDs"].split(",")
+        titans = [t for t in self.titans if t["EnemyID"] in enemies]
+        has_armor = raid["HasArmor"] == "TRUE"
+        for t in titans:
+            if has_armor:
+                t["armor_calc"] = Decimal(t["Total in Armour"]) * Decimal(raid["BaseHP"])
+            t["hp_calc"] = Decimal(t["Total in Body"]) * Decimal(raid["BaseHP"])
+            t["friendly_name"] = TTTitanlords[int(t["EnemyID"][-1]) - 1]
+        embed = discord.Embed(
+            title=f"Info for Raid - Tier {tier} Zone {zone}",
+            description="Spawns **{}**{} titans: \n{}".format(
+                raid["TitanCount"],
+                has_armor and " **armored**" or "",
+                "\n".join(
+                    "{} {} **{}**{}".format(
+                        discord.utils.get(
+                            self.bot.emojis, name=t["friendly_name"].lower()
+                        ),
+                        t["friendly_name"],
+                        humanfriendly.format_size(t["hp_calc"])[0:-1],
+                        has_armor and " (armour: **" + humanfriendly.format_size(t.get("armor_calc"))[0:-1] + "**)",
+                    )
+                    for t in titans
+                ),
+            ),
+            color=0x186281,
+        )
+        embed.add_field(
+            name="Tickets",
+            value="Cost: **{}**, Reward: **{}** on first clear".format(
+                raid["TicketCost"], raid["TicketClanReward"]
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="XP",
+            value="Clan: **{}**, Player: **{}**".format(
+                raid["XPClanReward"], raid["XPPlayerReward"]
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="{} Dust & Cards".format(
+                discord.utils.get(
+                            self.bot.emojis, name="cards_and_dust"
+                        )
+            ),
+            value="Dust: **{}**, Cards: **{}**".format(
+                raid["DustPlayerReward"], raid["CardPlayerReward"]
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="Scrolls",
+            value="Scrolls: **{}**, Fortune Scrolls: **{}**".format(
+                raid["ScrollPlayerReward"], raid["FortuneScrollPlayerReward"]
+            ),
+            inline=False,
+        )
+        embed.add_field(name="Attacks/Reset", value=raid["AttacksPerReset"])
+        print(embed.to_dict())
+        await ctx.send("", embed=embed)
+
     @taptitans.command(
         name="queue", aliases=["q"], case_insensitive=True, usage="show|clear|skip"
     )
@@ -915,7 +996,7 @@ class TapTitansModule(cmd.Cog):
                 )
             else:
                 await ctx.send(
-                    "It is not your turn but you are in the queue. To cancel your place, do **;tt uq**"
+                    "It's not your turn but you're queued. To cancel, do **;tt uq**"
                 )
         else:
             current = " ".join(current)
@@ -928,20 +1009,30 @@ class TapTitansModule(cmd.Cog):
         "Shows you information about tap titans cards."
         card, data = await TTRaidCard().convert(ctx, " ".join(card))
         if not card:
-            await ctx.send(
-                "Available cards: {}".format(
-                    ", ".join([f"**{k}**" for k in RAID_CARDS.keys()])
-                )
+            embed = discord.Embed(
+                title="Avaliable Cards",
+                description=", ".join([k for k in RAID_CARDS.keys()]),
+                color=0x186281,
             )
-            return
-        await ctx.send(
-            "{} **{}** - **{}** Tier\nTaps have a chance to {}".format(
-                discord.utils.get(self.bot.emojis, name=card.lower().replace(" ", "_")),
-                card,
-                TIER_LIST[data["t"]],
-                data["d"],
+            embed.set_thumbnail(
+                url="https://cdn.discordapp.com/emojis/591521258269835264.png"
             )
-        )
+        else:
+            embed = discord.Embed(
+                title=card.title(),
+                description="Taps have a chance to {}".format(data["d"]),
+                color=0x186281,
+            )
+            embed.set_thumbnail(
+                url=discord.utils.get(
+                    self.bot.emojis, name=card.lower().replace(" ", "_")
+                ).url
+            )
+            embed.add_field(name="Tier", value=TIER_LIST[data["t"]])
+        try:
+            await ctx.send("", embed=embed)
+        except cmd.PermissionError:
+            await ctx.send("{}\n{}".format(embed.title, embed.description))
 
     @taptitans.command(
         name="deck", aliases=["decks"], case_insensitive=True, usage="deckname"
@@ -1011,19 +1102,24 @@ class TapTitansModule(cmd.Cog):
         aliases=["arti", "arts", "artifacts"],
         invoke_without_command=True,
     )
-    async def tt_artifacts(self, ctx, artifact: Optional[str], lvl_from: Optional[int], lvl_to: Optional[int]):
+    async def tt_artifacts(
+        self,
+        ctx,
+        artifact: Optional[str],
+        lvl_from: Optional[int],
+        lvl_to: Optional[int],
+    ):
         if not artifact:
-            await ctx.send('Here is a list of the artifacts sorted by tier')
+            await ctx.send("Here is a list of the artifacts sorted by tier")
         elif artifact and not any([lvl_from, lvl_to]):
             await ctx.send("here would be artifact basic info")
         else:
             await ctx.send("heree would be artifact leveling info")
-    
-    @tt_artifacts.command(name='build')
+
+    @tt_artifacts.command(name="build")
     async def tt_artifacts_build(self, ctx, build: Optional[str]):
         if not build:
-            await ctx.send('List of builds for searching: ')
-        
+            await ctx.send("List of builds for searching: ")
 
     @taptitans.group(name="enhancement", case_insensitive=True)
     async def tt_enhance(self):
