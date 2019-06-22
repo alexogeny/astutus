@@ -1067,23 +1067,31 @@ class TapTitansModule(cmd.Cog):
         )
         if lvl_from is not None:
             lvl_from = Decimal(lvl_from)
-            print(lvl_from)
-            print(Decimal(data["EffectPerLevel"]))
-            print(Decimal(data["GrowthExpo"]))
-            effect = await tt2.artifact_boost(lvl_from, Decimal(data["EffectPerLevel"]), Decimal(data["GrowthExpo"]), bos=data["Name"]=="Book of Shadows" and True or False)
-
-            print(effect)
-            embed.add_field(
-                name=f"Effect at lvl {lvl_from}", value=str(effect), inline=False
+            effect1 = await tt2.artifact_boost(
+                lvl_from,
+                Decimal(data["EffectPerLevel"]),
+                Decimal(data["GrowthExpo"]),
+                bos=data["Name"] == "Book of Shadows" and True or False,
             )
-        # embed.add_field(name="", value="", inline=False)
-        # embed.add_field(name="", value="", inline=False)
-        # if not any([lvl_from, lvl_to]):
+            embed.add_field(
+                name=f"Effect at lvl {lvl_from}", value=str(effect1), inline=False
+            )
+        if lvl_to is not None:
+            lvl_to = Decimal(lvl_to)
+            effect2 = await tt2.artifact_boost(
+                lvl_to,
+                Decimal(data["EffectPerLevel"]),
+                Decimal(data["GrowthExpo"]),
+                bos=data["Name"] == "Book of Shadows" and True or False,
+            )
+            embed.add_field(
+                name=f"Effect at lvl {lvl_to}", value=str(effect2), inline=False
+            )
+            embed.add_field(
+                name='Difference',
+                value=f"{lvl_to/lvl_from}x boost"
+            )
         await ctx.send("", embed=embed)
-
-        # await ctx.send("here would be artifact basic info")
-        # else:
-        #     await ctx.send("heree would be artifact leveling info")
 
     @tt_artifacts.command(name="bonus", aliases=["b"])
     async def tt_artifacts_bonus(self, ctx, *bonus: Optional[str]):
@@ -1195,7 +1203,7 @@ class TapTitansModule(cmd.Cog):
         while current_skip * anniversary_platinum < count2 and result < 25:
             current_skip = mystic_impact + arcane_bargain + ed_boosts[result]
             result += 1
-        icon = self.emoji('edskip')
+        icon = self.emoji("edskip")
         await ctx.send(
             f"{icon} Optimal ED at stage **{stage}** ({count} titans) is: **{result}**."
         )
