@@ -1,6 +1,6 @@
 """Tap titans module."""
 from typing import Optional
-from decimal import Decimal
+from decimal import Decimal, getcontext
 import asyncio
 import re
 from datetime import datetime
@@ -27,10 +27,11 @@ from .utils.etc import (
     snake,
     rotate,
     lget,
-    snake_get
+    snake_get,
 )
 from .utils import tt2
 
+getcontext().prec = 4
 
 TIER_LIST = "SABCD"
 with open("modules/data/RaidDecks.json", "r") as jf:
@@ -51,7 +52,7 @@ BONUS_MAP = dict(
     Chance="Chance",
     Mana="Mana",
     Duration="Duration",
-    Gold="Gold"
+    Gold="Gold",
 )
 
 
@@ -98,7 +99,9 @@ class TTArtifact(cmd.Converter):
             closest_match = next((n for n in names if n.startswith(arg)), None)
             if closest_match:
                 match = closest_match
-                data = next((a for a in arts if snake(a["Name"]) == closest_match), None)
+                data = next(
+                    (a for a in arts if snake(a["Name"]) == closest_match), None
+                )
         if not match:
             closest_match = next(
                 (
@@ -110,7 +113,9 @@ class TTArtifact(cmd.Converter):
             )
             if closest_match:
                 match = closest_match
-                data = next((a for a in arts if snake(a["Name"]) == closest_match), None)
+                data = next(
+                    (a for a in arts if snake(a["Name"]) == closest_match), None
+                )
         return match, data
 
 
@@ -209,11 +214,7 @@ class TapTitansModule(cmd.Cog):
 
     def emoji(self, search):
         "Get an emoji from the bot's guild."
-        return get(
-            self.bot.emojis,
-            name=self.snake(search),
-            guild_id=self.em,
-        )
+        return get(self.bot.emojis, name=self.snake(search), guild_id=self.em)
 
     def cog_unload(self):
         self.raid_timer.cancel()
@@ -230,6 +231,7 @@ class TapTitansModule(cmd.Cog):
         return group
 
     async def has_timer_permissions(self, ctx, groupdict):
+        "Check if the user has permission to change the raid timer."
         roles = await self.get_roles(groupdict, *["gm", "master", "timer"])
         if not any(roles):
             raise cmd.BadArgument("No clan roles are set up.")
@@ -237,6 +239,7 @@ class TapTitansModule(cmd.Cog):
             raise cmd.BadArgument
 
     async def has_clan_permissions(self, ctx, groupdict):
+        "Check if the user has any clan role."
         roles = await self.get_roles(
             groupdict, *["gm", "master", "captain", "knight", "recruit"]
         )
@@ -246,6 +249,7 @@ class TapTitansModule(cmd.Cog):
             raise cmd.BadArgument("You do not have permission.")
 
     async def has_admin_or_mod_or_master(self, ctx, groupdict):
+        "Check if the user is admin/mod/gm/master."
         is_admin = await checks.user_has_admin_perms(ctx.author, ctx.guild)
         if is_admin:
             return True
@@ -260,6 +264,7 @@ class TapTitansModule(cmd.Cog):
 
     @tsk.loop(seconds=10)
     async def raid_timer(self):
+        "Task for updating raid timers."
         now = arrow.utcnow()
         future = now.shift(hours=50)
         await asyncio.gather(
@@ -267,12 +272,14 @@ class TapTitansModule(cmd.Cog):
         )
 
     async def update_raid_timer(self, guild, now, future):
+        "Updates all raid timers for a guild."
         await asyncio.gather(
             *(self.update_timer_group(guild, now, future, g) for g in [1, 2, 3]),
             return_exceptions=True,
         )
 
     async def update_timer_group(self, guild, now, future, group):
+        "Updates raid timer for a group."
         exists = await self.bot.db.exists(f"{guild.id}:tt:{group}")
         if not exists:
             raise asyncio.CancelledError
@@ -350,10 +357,10 @@ class TapTitansModule(cmd.Cog):
             message = int(g.get("edit", 0))
             await self.update_timer_message(chan, message, content)
 
-        if len(current) > 0:
+        if current:
             return
 
-        if not len(upnext) and not len(current) and not depl:
+        if not upnext and not current and not depl:
             await chan.send(
                 "Queue has ended! You may now queue up for reset #**{}**.".format(
                     reset + 1
@@ -364,9 +371,9 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 1)
             await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
             return
-        elif not len(upnext) and not len(current) and depl:
+        if not upnext and not current and depl:
             return
-        elif not len(upnext) and len(current) and depl:
+        if not upnext and current and depl:
             return
 
         members = [guild.get_member(int(m)) for m in upnext]
@@ -384,11 +391,13 @@ class TapTitansModule(cmd.Cog):
         )
 
     async def update_timer_message(self, channel, message, content):
-        m = await channel.fetch_message(message)
-        await m.edit(content=content)
+        """Update raid timer message."""
+        msg = await channel.fetch_message(message)
+        await msg.edit(content=content)
 
     @raid_timer.before_loop
     async def before_raid_timer(self):
+        """wait until the bot is connected to update timers"""
         await self.bot.wait_until_ready()
 
     @cmd.group(name="taptitans", aliases=["tt"], case_insensitive=True, hidden=True)
@@ -396,6 +405,7 @@ class TapTitansModule(cmd.Cog):
         pass
 
     async def show_slots(self, action, group, guild, res):
+        "Show the raid group slots in the current guild."
         return "{} group **{}** {} ~**{}**. Currently used slots: [{}] [{}] [{}]".format(
             action,
             group,
@@ -772,9 +782,7 @@ class TapTitansModule(cmd.Cog):
             inline=False,
         )
         embed.add_field(
-            name="{} Dust & Cards".format(
-                self.emoji("cards_and_dust")
-            ),
+            name="{} Dust & Cards".format(self.emoji("cards_and_dust")),
             value="Dust - **{}** Cards - **{}**".format(
                 raid["DustPlayerReward"], raid["CardPlayerReward"]
             ),
@@ -1019,8 +1027,8 @@ class TapTitansModule(cmd.Cog):
         self,
         ctx,
         artifact: Optional[TTArtifact],
-        lvl_from: Optional[int],
-        lvl_to: Optional[int],
+        lvl_from: Optional[str],
+        lvl_to: Optional[str],
     ):
         if not artifact or artifact is None:
             embed = discord.Embed(
@@ -1036,25 +1044,46 @@ class TapTitansModule(cmd.Cog):
                     inline=False,
                 )
             await ctx.send("", embed=embed)
-        elif artifact and not any([lvl_from, lvl_to]):
-            arti, data = artifact
-            emoji = self.emoji(data["Name"])
-            id = data["ArtifactID"].replace("Artifact", "")
-            b, g, r= COLOURS[self.snake(arti)]
-            embed = discord.Embed(
-                title=f"{emoji} {data['Name']} (ID: {id})",
-                description="{} is a **{}** artifact.".format(data['Name'], BONUS_MAP.get(data["BonusIcon"])),
-                color=discord.Color.from_rgb(*[floor(c) for c in [r, g, b]])
+        # elif artifact:
+        arti, data = artifact
+        emoji = self.emoji(data["Name"])
+        id = data["ArtifactID"].replace("Artifact", "")
+        b, g, r = COLOURS[self.snake(arti)]
+        embed = discord.Embed(
+            title=f"{emoji} {data['Name']} (ID: {id})",
+            description="{} is a **{}** artifact.".format(
+                data["Name"], BONUS_MAP.get(data["BonusIcon"])
+            ),
+            color=discord.Color.from_rgb(*[floor(c) for c in [r, g, b]]),
+        )
+        embed.set_thumbnail(url=str(emoji.url).replace(".gif", ".png"))
+        embed.add_field(
+            name="Max Level", value=str(int(data["MaxLevel"]) or "∞"), inline=False
+        )
+        embed.add_field(
+            name="Bonus Type",
+            value=" ".join(re.findall("[A-Z][^A-Z]*", data["BonusType"])),
+            inline=False,
+        )
+        if lvl_from is not None:
+            lvl_from = Decimal(lvl_from)
+            print(lvl_from)
+            print(Decimal(data["EffectPerLevel"]))
+            print(Decimal(data["GrowthExpo"]))
+            effect = await tt2.artifact_boost(lvl_from, Decimal(data["EffectPerLevel"]), Decimal(data["GrowthExpo"]), bos=data["Name"]=="Book of Shadows" and True or False)
+
+            print(effect)
+            embed.add_field(
+                name=f"Effect at lvl {lvl_from}", value=str(effect), inline=False
             )
-            embed.set_thumbnail(url=str(emoji.url).replace('.gif', '.png'))
-            embed.add_field(name="Max Level", value=str(int(data["MaxLevel"]) or "∞"), inline=False)
-            embed.add_field(name="Bonus Type", value=" ".join(re.findall('[A-Z][^A-Z]*', data["BonusType"])), inline=False)
-            # embed.add_field(name="", value="", inline=False)
-            # embed.add_field(name="", value="", inline=False)
-            await ctx.send("", embed=embed)
-            # await ctx.send("here would be artifact basic info")
-        else:
-            await ctx.send("heree would be artifact leveling info")
+        # embed.add_field(name="", value="", inline=False)
+        # embed.add_field(name="", value="", inline=False)
+        # if not any([lvl_from, lvl_to]):
+        await ctx.send("", embed=embed)
+
+        # await ctx.send("here would be artifact basic info")
+        # else:
+        #     await ctx.send("heree would be artifact leveling info")
 
     @tt_artifacts.command(name="bonus", aliases=["b"])
     async def tt_artifacts_bonus(self, ctx, *bonus: Optional[str]):
@@ -1130,7 +1159,7 @@ class TapTitansModule(cmd.Cog):
     ):
         (
             "Helps you calculate the optimal ED skip level you need to put into your build.\n"
-            "Optimal here means the total skip required to clear maximum splash with 1 Snap active.\n"
+            "Optimal means total skip required to maximally splash with 1 Snap active.\n"
         )
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
@@ -1166,8 +1195,9 @@ class TapTitansModule(cmd.Cog):
         while current_skip * anniversary_platinum < count2 and result < 25:
             current_skip = mystic_impact + arcane_bargain + ed_boosts[result]
             result += 1
+        icon = self.emoji('edskip')
         await ctx.send(
-            f"{discord.utils.get(self.bot.emojis, name='edskip', guild_id=self.em)} Optimal ED level at stage **{stage}** ({count} titans) is: **{result}**."
+            f"{icon} Optimal ED at stage **{stage}** ({count} titans) is: **{result}**."
         )
 
     @taptitans.group(name="titanlord", case_insensitive=True)

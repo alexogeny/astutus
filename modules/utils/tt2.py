@@ -1,25 +1,11 @@
 from math import floor, log10
 
 
-async def artifact_boost(
-    level: int,
-    per_level: int,
-    cost_exponent: float,
-    growth_rate,
-    growth_max,
-    growth_exponent,
-) -> int:
-    return round(
-        1
-        + per_level
-        * pow(
-            level,
-            pow(
-                (1 + (cost_exponent - 1) * min(growth_rate * level, growth_max)),
-                growth_exponent,
-            ),
-        )
-        + 0.5
+async def artifact_boost(level, effect, expo, bos=False):
+    return (
+        1 + (10 * effect * pow(level, expo))
+        if not bos
+        else 1 + (effect * pow(level, expo))
     )
 
 
