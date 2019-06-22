@@ -2,6 +2,7 @@
 from typing import Optional
 from decimal import Decimal
 import asyncio
+import re
 from datetime import datetime
 from itertools import zip_longest
 import difflib
@@ -23,20 +24,11 @@ from .utils.etc import (
     ttconvert_discover,
     ttconvert_from_scientific,
     ttconvert_to_scientific,
+    snake,
+    rotate,
+    lget,
+    snake_get
 )
-
-
-def rotate(table, mod):
-    """Rotate a list."""
-    return table[mod:] + table[:mod]
-
-
-def lget(_list, idx, default):
-    """Safely get a list index."""
-    try:
-        return _list[idx]
-    except IndexError:
-        return default
 
 
 TIER_LIST = "SABCD"
@@ -48,6 +40,18 @@ with open("modules/data/GoldSources.json", "r") as jf:
     GOLD_SOURCES = json.load(jf)
 with open("modules/data/TourneyData.json", "r") as jf:
     BONUSES = json.load(jf)
+with open("modules/data/ArtifactColours.json", "r") as jf:
+    COLOURS = json.load(jf)
+BONUS_MAP = dict(
+    Boost="General",
+    Dmg="Damage",
+    CostRed="Cost Reduction",
+    Equip="Equipment",
+    Chance="Chance",
+    Mana="Mana",
+    Duration="Duration",
+    Gold="Gold"
+)
 
 
 class TTRaidCard(cmd.Converter):
@@ -76,6 +80,37 @@ class TTRaidCard(cmd.Converter):
             if closest_match:
                 return closest_match, RAID_CARDS.get(closest_match)
         return None, None
+
+
+class TTArtifact(cmd.Converter):
+    async def convert(self, ctx: cmd.Context, arg):
+        arg = snake(arg)
+        arts = ctx.bot.get_cog("TapTitansModule").arts
+        names = [snake(a["Name"]) for a in arts]
+        closest_match = difflib.get_close_matches(arg, names, n=1, cutoff=0.85)
+        match, data = None, None
+        if closest_match:
+            match = closest_match[0]
+            # data = snake_get(lambda x: x["Name"], match, arts)
+            data = next((a for a in arts if snake(a["Name"]) == match), None)
+        if not match:
+            closest_match = next((n for n in names if n.startswith(arg)), None)
+            if closest_match:
+                match = closest_match
+                data = next((a for a in arts if snake(a["Name"]) == closest_match), None)
+        if not match:
+            closest_match = next(
+                (
+                    n
+                    for n in names
+                    if "".join([x[0] for x in n.lower().split("_")]) == arg.lower()
+                ),
+                None,
+            )
+            if closest_match:
+                match = closest_match
+                data = next((a for a in arts if snake(a["Name"]) == closest_match), None)
+        return match, data
 
 
 class TTDeck(cmd.Converter):
@@ -168,10 +203,15 @@ class TapTitansModule(cmd.Cog):
                 for row in reader:
                     getattr(self, k).append(row)
 
+    def snake(self, text):
+        return text.lower().replace(" ", "_").replace("'", "").replace("-", "")
+
     def emoji(self, search):
         "Get an emoji from the bot's guild."
         return get(
-            self.bot.emojis, name=search.lower().replace(" ", "_"), guild_id=self.em
+            self.bot.emojis,
+            name=self.snake(search),
+            guild_id=self.em,
         )
 
     def cog_unload(self):
@@ -971,37 +1011,77 @@ class TapTitansModule(cmd.Cog):
 
     @taptitans.group(
         name="artifact",
-        aliases=["arti", "arts", "artifacts"],
+        aliases=["arti", "arts", "artifacts", "a", "art"],
         invoke_without_command=True,
     )
     async def tt_artifacts(
         self,
         ctx,
-        artifact: Optional[str],
+        artifact: Optional[TTArtifact],
         lvl_from: Optional[int],
         lvl_to: Optional[int],
     ):
-        if not artifact:
+        if not artifact or artifact is None:
             embed = discord.Embed(
                 title="TT2 Artifacts",
-                description="A list of artifacts from Tap Titans 2, sorted by boost type."
+                description="A list of artifacts from Tap Titans 2, sorted by boost type.",
             )
-            for bonus_type in set([x["BoostIcon"] for x in self.arts]):
+            for bonus_type in set([x["BonusIcon"] for x in self.arts]):
                 embed.add_field(
-                    name=bonus_type,
-                    value=', '.join([a for a in self.arts if a['BoostIcon']==bonus_type]),
-                    inline=False
+                    name=BONUS_MAP.get(bonus_type, bonus_type),
+                    value=", ".join(
+                        [a["Name"] for a in self.arts if a["BonusIcon"] == bonus_type]
+                    ),
+                    inline=False,
                 )
-            await ctx.send("Here is a list of the artifacts sorted by tier")
+            await ctx.send("", embed=embed)
         elif artifact and not any([lvl_from, lvl_to]):
-            await ctx.send("here would be artifact basic info")
+            arti, data = artifact
+            emoji = self.emoji(data["Name"])
+            id = data["ArtifactID"].replace("Artifact", "")
+            b, g, r= COLOURS[self.snake(arti)]
+            embed = discord.Embed(
+                title=f"{emoji} {data['Name']} (ID: {id})",
+                description="{} is a **{}** artifact.".format(data['Name'], BONUS_MAP.get(data["BonusIcon"])),
+                color=discord.Color.from_rgb(*[floor(c) for c in [r, g, b]])
+            )
+            embed.set_thumbnail(url=str(emoji.url).replace('.gif', '.png'))
+            embed.add_field(name="Max Level", value=str(int(data["MaxLevel"]) or "∞"), inline=False)
+            embed.add_field(name="Bonus Type", value=" ".join(re.findall('[A-Z][^A-Z]*', data["BonusType"])), inline=False)
+            # embed.add_field(name="", value="", inline=False)
+            # embed.add_field(name="", value="", inline=False)
+            await ctx.send("", embed=embed)
+            # await ctx.send("here would be artifact basic info")
         else:
             await ctx.send("heree would be artifact leveling info")
 
-    @tt_artifacts.command(name="build")
-    async def tt_artifacts_build(self, ctx, build: Optional[str]):
-        if not build:
-            await ctx.send("List of builds for searching: ")
+    @tt_artifacts.command(name="bonus", aliases=["b"])
+    async def tt_artifacts_bonus(self, ctx, *bonus: Optional[str]):
+        bonuses = set([x["BonusIcon"] for x in self.arts])
+        if not bonus or bonus is None:
+            bonus = ""
+        else:
+            bonus = " ".join(bonus)
+        if not bonus.lower() in [BONUS_MAP.get(b, b).lower() for b in bonuses]:
+            raise cmd.BadArgument(
+                "Valid bonus types are: {}".format(
+                    ", ".join([f"**{BONUS_MAP.get(b, b)}**" for b in bonuses])
+                )
+            )
+        bonus = next(
+            (b for b, v in BONUS_MAP.items() if v.lower() == bonus.lower()), None
+        )
+        arts = [a for a in self.arts if a["BonusIcon"] == bonus]
+        embed = discord.Embed(
+            title=f"{BONUS_MAP.get(bonus, bonus)} Artifacts",
+            description="\n".join(f"{self.emoji(a['Name'])} {a['Name']}" for a in arts),
+        )
+        await ctx.send("", embed=embed)
+
+    # @tt_artifacts.command(name="build")
+    # async def tt_artifacts_build(self, ctx, build: Optional[str]):
+    #     if not build:
+    #         await ctx.send("List of builds for searching: ")
 
     @taptitans.group(name="enhancement", case_insensitive=True)
     async def tt_enhance(self):
@@ -1104,7 +1184,9 @@ class TapTitansModule(cmd.Cog):
         for b in BONUSES:
             result.append(f"{self.emoji(b[1])} {b[0]}")
         embed = discord.Embed(
-            title=f"{icon} TT2 Tournament Bonuses", description="\n".join(result), color=0x75D950
+            title=f"{icon} TT2 Tournament Bonuses",
+            description="\n".join(result),
+            color=0x75D950,
         )
         embed.set_thumbnail(url=icon.url)
         await ctx.send("", embed=embed)

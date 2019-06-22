@@ -1,12 +1,33 @@
-import aiohttp
+import re
+import asyncio
 import io
+from math import log10
+from string import ascii_lowercase
+import aiohttp
 import discord
 from discord.ext import commands as cmd
 import arrow
-import asyncio
-import re
-from math import log10
-from string import ascii_lowercase
+
+
+def snake(text):
+    return text.lower().replace(" ", "_").replace("'", "").replace("-", "")
+
+
+def snake_get(func, term, arr):
+    return next((a for a in arr if snake(func(a)) == term), None)
+
+
+def rotate(table, mod):
+    """Rotate a list."""
+    return table[mod:] + table[:mod]
+
+
+def lget(_list, idx, default):
+    """Safely get a list index."""
+    try:
+        return _list[idx]
+    except IndexError:
+        return default
 
 
 async def download_image(path):
