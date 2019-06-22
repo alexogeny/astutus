@@ -29,6 +29,7 @@ from .utils.etc import (
     lget,
     snake_get
 )
+from .utils import tt2
 
 
 TIER_LIST = "SABCD"
@@ -757,31 +758,31 @@ class TapTitansModule(cmd.Cog):
             color=0x186281,
         )
         embed.add_field(
-            name="Tickets",
-            value="Cost: **{}**, Reward: **{}** on first clear".format(
+            name=f"{self.emoji('ticket')} Tickets",
+            value="Cost - **{}** Reward - **{}** on first clear".format(
                 raid["TicketCost"], raid["TicketClanReward"]
             ),
             inline=False,
         )
         embed.add_field(
-            name="XP",
-            value="Clan: **{}**, Player: **{}**".format(
+            name=f"{self.emoji('xp')} XP",
+            value="Clan - **{}** Player - **{}**".format(
                 raid["XPClanReward"], raid["XPPlayerReward"]
             ),
             inline=False,
         )
         embed.add_field(
             name="{} Dust & Cards".format(
-                discord.utils.get(self.bot.emojis, name="cards_and_dust")
+                self.emoji("cards_and_dust")
             ),
-            value="Dust: **{}**, Cards: **{}**".format(
+            value="Dust - **{}** Cards - **{}**".format(
                 raid["DustPlayerReward"], raid["CardPlayerReward"]
             ),
             inline=False,
         )
         embed.add_field(
-            name="Scrolls",
-            value="Scrolls: **{}**, Fortune Scrolls: **{}**".format(
+            name=f"{self.emoji('hero_scroll')} Scrolls",
+            value="Scrolls - **{}** Fortune Scrolls - **{}**".format(
                 raid["ScrollPlayerReward"], raid["FortuneScrollPlayerReward"]
             ),
             inline=False,
