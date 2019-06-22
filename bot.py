@@ -1,3 +1,4 @@
+"""Discord AstutusBot."""
 import datetime
 import sys
 import os
@@ -11,17 +12,20 @@ from modules.utils.checks import user_has_role
 
 
 async def prefix_callable(bot, message) -> list:
+    """Setup the bot prefix function."""
     user_id = bot.user.id
     prefix_base = [f"<@!{user_id}> ", f"<@{user_id}> "]
     if message.guild is not None:
         prefix_base.append(bot.config["DEFAULT"]["prefix"])
         custom = await bot.db.hget(f"{message.guild.id}:set", "pfx")
-        if custom or custom != None:
+        if custom or custom is not None:
             prefix_base.append(custom)
     return prefix_base
 
 
 class AstutusBot(cmds.AutoShardedBot):
+    """Defines the bot class."""
+
     def __init__(self, config):
         super().__init__(
             command_prefix=prefix_callable,
@@ -33,12 +37,16 @@ class AstutusBot(cmds.AutoShardedBot):
         self.config = config
         self.exit_code = None
         self.prefixes = {}
+        self.booted_at = None
+        self.link_admin = None
+        self.link_normal = None
         self.db = None
         self.blacklists = dict(users=[], channels=[], servers=[])
         self.remove_command("help")
         self.load_extensions()
 
     def load_extensions(self):
+        """Load the bot's extension modules."""
         extensions = [
             f.replace(".py", "")
             for f in listdir(self.config["DEFAULT"]["cogs"])
@@ -49,24 +57,29 @@ class AstutusBot(cmds.AutoShardedBot):
                 self.load_extension(
                     "{}.{}".format(self.config["DEFAULT"]["cogs"], extension)
                 )
-            except (discord.ClientException, ModuleNotFoundError) as e:
+            except (discord.ClientException, ModuleNotFoundError):
                 print(f"Failed to load extension {extension}.", file=sys.stderr)
-                # traceback.print_exc()
 
     async def on_ready(self):
+        """Do these things when the bot is connected to discord's api."""
         if not hasattr(self, "booted_at"):
             self.booted_at = datetime.datetime.utcnow()
-        oauth = f"https://discordapp.com/api/oauth2/authorize?client_id={self.user.id}&permissions={{}}&scope=bot"
-        self.link_admin = oauth.format("8")
-        self.link_normal = oauth.format("2146954487")
+        oauth = "https://discordapp.com/api/oauth2/authorize?client_id={}&permissions={{}}&scope=bot".format(
+            self.user.id
+        )
+        setattr(self, "link_admin", oauth.format("8"))
+        setattr(self, "link_normal", oauth.format("2146954487"))
         print(f"Ready: {self.user} (ID: {self.user.id})")
         print(f"Invite link: {self.link_admin}")
 
     async def on_command_error(self, ctx, error):
+        """Hooks for discord.py command errors."""
         if isinstance(error, cmds.CommandOnCooldown):
-            cd = round(error.retry_after)
+            cooldown = round(error.retry_after)
             await ctx.send(
-                f"Woah **{ctx.author}**, please cool down a second. Try **{ctx.command.name}** again in **{cd}**s."
+                "Woah **{}**, please cool down. Try **{}** again in **{}**s.".format(
+                    ctx.author, ctx.command.name, cooldown
+                )
             )
         if isinstance(error, cmds.BadArgument):
             await ctx.send(f":negative_squared_cross_mark: {error}")
@@ -134,9 +147,8 @@ class AstutusBot(cmds.AutoShardedBot):
         await self.process_commands(message)
 
     async def stop(self, exit_code: int = 0, force: bool = False):
+        """Attempt to forcefully stop the bot."""
         if force:
-            import sys
-
             sys.exit(exit_code)
         self.db.disconnect()
         self.loop.stop()

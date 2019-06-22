@@ -1,9 +1,11 @@
+"""Tap titans module."""
 from typing import Optional
 from decimal import Decimal
 import asyncio
 from datetime import datetime
 from itertools import zip_longest
 import difflib
+import json
 from string import ascii_lowercase, digits
 from csv import DictReader
 from math import floor
@@ -25,149 +27,27 @@ from .utils.etc import (
 
 
 def rotate(table, mod):
+    """Rotate a list."""
     return table[mod:] + table[:mod]
 
 
-def lget(l, idx, default):
+def lget(_list, idx, default):
+    """Safely get a list index."""
     try:
-        return l[idx]
+        return _list[idx]
     except IndexError:
         return default
 
 
 TIER_LIST = "SABCD"
-
-RAID_DECKS = {
-    "head": [
-        ("Skull Bash", "Crushing Instinct"),
-        (
-            "Grim Shadow",
-            "Razor Wind",
-            "Inspiring Force",
-            "Prismatic Rift",
-            "Fragmentize",
-        ),
-        "Only target the Head. You need Skull Bash and Crushing Instinct for this deck, the third card can be almost anything of your choice.",
-    ],
-    "torso": [
-        ("Soul Fire", "Moonbeam"),
-        (
-            "Grim Shadow",
-            "Razor Wind",
-            "Inspiring Force",
-            "Prismatic Rift",
-            "Fragmentize",
-        ),
-        "Only target the Torso. You only need Moonbeam and Soul Fire for this deck, the third card can be almost anything of your choice.",
-    ],
-    "all": [
-        ("Whip of Lightning", "Blazing Inferno"),
-        ("Inspiring Force", "Prismatic Rift"),
-        "Target as many parts of the Titan Lord as possible. If the Titan has all its armor, use Prismatic Rift. If only Body remains, use Inspiring Force. Only use this deck if all parts are either armored or exposed.",
-    ],
-    "decay": [
-        ("Decaying Strike", "Fusion Bomb", "Rancid Gas"),
-        (),
-        "Target as many parts of the Titan Lord as possible. Use this deck only when a new Titan with full HP spawns. Rotate between all parts, switching to the next each time Fusion activates. You cannot attack a part that already has Fusion applied, otherwise Fusion will never detonate.",
-    ],
-    "focus": [
-        ("Clan Ship Barrage", "Ancestral Favor"),
-        ("Razor Wind", "Fragmentize"),
-        "Target any part of the Titan. Pick Razor Wind for the Body, and Fragmentize for the Armor.",
-    ],
-    "duo": [
-        ("Purifying Blast", "Acid Drench"),
-        ("Prismatic Rift", "Inspiring Force"),
-        "Focus on two close-proximity parts for maximal damage e.g. Head and Torso, or Shoulder and Hand. Pick Inspiring Force for Body and Prismatic Rift for Armor.",
-    ],
-}
-
-RAID_CARDS = {
-    "Crushing Instinct": {
-        "t": 1,
-        "d": "activate Crushing Instinct, increasing damage dealt to the Titan Lord's head. Best used in conjunction with Skull Bash and another card of your choice.",
-    },
-    "Soul Fire": {
-        "t": 1,
-        "d": "activate a stack of Soul Fire, increasing damage dealt to the Titan Lord’s Torso. Use in conjunction with Moon Beam and another card of your choice for best damage on the torso.",
-    },
-    "Purifying Blast": {
-        "t": 0,
-        "d": "activate Purifying Blast, consuming all Affliction stacks on the damaged part, increasing this card's damage. Best used in conjunction with Acid Drench and Inspiring Force or Prismatic Rift.",
-    },
-    "Whip of Lightning": {
-        "t": 1,
-        "d": "activate Whip of Lightning. Whip of Lightning's chance to activate increases for each afflicted Titan Lord part. Used in decks targeting as many parts of the Titan Lord as possible.",
-    },
-    "Clan Ship Barrage": {
-        "t": 1,
-        "d": "activate Clanship Barrage. Clanship Barrage's damage increases for the remainder of the attack whenever any burst card is activated. Use with another Burst card and Ancestral Favor for best results.",
-    },
-    "Razor Wind": {
-        "t": 1,
-        "d": "activate Razor Wind, dealing extra damage against the Titan Lord's Body (any part that doesn't have armor that isn't a skeleton).",
-    },
-    "Moonbeam": {
-        "t": 1,
-        "d": "activate Moon Beam, dealing extra damage against the Titan Lord's Torso, armored or not.",
-    },
-    "Fragmentize": {
-        "t": 1,
-        "d": "activate Fragmentize, dealing extra damage against the Titan Lord's Armor.",
-    },
-    "Skull Bash": {
-        "t": 1,
-        "d": "activate Skull Bash, dealing extra damage against the Titan Lord's Head, armored or not.",
-    },
-    "Grim Shadow": {
-        "t": 1,
-        "d": "apply a stack of Shadow to the targeted part. When a part is afflicted with the maximum number of Shadow stacks (7), all Shadow stacks on that part deal bonus damage. Use this card on any part, armored or not, but focus on one part only. It synergizes best with single target decks.",
-    },
-    "Fusion Bomb": {
-        "t": 2,
-        "d": "apply a stack of Fusion to the targeted part. When the Fusion affliction expires, it detonates and deals damage to the afflicted Titan Lord part. Attacking a part with a stack of Fusion causes the stack to reset its detonation timer, so go for multiple or all parts of the Titan when using Fusion Bomb to minimize damage waste.",
-    },
-    "Decaying Strike": {
-        "t": 2,
-        "d": "apply a stack of Decay to the targeted part. Decaying Strike's damage multiplies by the remaining health percentage of the damaged part. Use this when there is a new Titan Lord with full HP for best results.",
-    },
-    "Blazing Inferno": {
-        "t": 2,
-        "d": "apply a stack of Inferno to the targeted part. For each part afflicted by Inferno, this card's activation chance increases. Pair this card with Whip of Lightning in your all parts deck, they synergize well. This card is otherwise useless.",
-    },
-    "Thriving Plague": {
-        "t": 3,
-        "d": "apply a stack of Plague to the targeted part. All Plague stacks deal additional damage per second for each part afflicted by Plague. This card is good on Whip of Lightning decks, though Inferno is preferred. No use for this card in the current meta.",
-    },
-    "Radioactivity": {
-        "t": 4,
-        "d": "apply a stack of Radioactivity to the targeted part. For each second a part is afflicted by Radioactivity, all Radioactivity stacks on that part deal additional damage per second. A much worse version of Grim Shadow. Don't use it.",
-    },
-    "Acid Drench": {
-        "t": 4,
-        "d": "apply a stack of Acid to the targeted part. When a stack of Acid is applied to a Titan Lord part, the duration of all other Acid stacks on that part are reset. Use in Purifying Blast decks for best results. Do not buy this card, as it only increases its minuscule damage and not the chance, stacks or duration.",
-    },
-    "Ancestral Favor": {
-        "t": 0,
-        "d": "activate a stack of Favor, increasing all Burst Damage and Burst Chance. Pair this card with burst cards of your choice and deal massive damage to the Titan Lord.",
-    },
-    "Inspiring Force": {
-        "t": 0,
-        "d": "activate a stack of Inspiration, increasing Raid Damage dealt to the Titan Lord's Body. One of the most versatile cards in the game, useful in any Body deck.",
-    },
-    "Prismatic Rift": {
-        "t": 0,
-        "d": "activate a stack of Prismatic, increasing Damage dealt to the Titan Lord's Armor. One of the most versatile cards in the game, useful in any Armor deck.",
-    },
-    "Rancid Gas": {
-        "t": 2,
-        "d": "activate a stack of Rancid, increasing all Affliction Damage and Affliction Chance. All Affliction decks currently lack viability, so this card ranks lower.",
-    },
-    "Victory March": {
-        "t": 3,
-        "d": "activate a stack of Victory March, increasing Raid Damage dealt for each exposed Titan Lord Skeleton part. Overpowers other support cards once 6/8 Titan Lord parts have been destroyed. Do not use this card otherwise.",
-    },
-}
+with open("modules/data/RaidDecks.json", "r") as jf:
+    RAID_DECKS = json.load(jf)
+with open("modules/data/RaidCards.json", "r") as jf:
+    RAID_CARDS = json.load(jf)
+with open("modules/data/GoldSources.json", "r") as jf:
+    GOLD_SOURCES = json.load(jf)
+with open("modules/data/TourneyData.json", "r") as jf:
+    BONUSES = json.load(jf)
 
 
 class TTRaidCard(cmd.Converter):
@@ -237,8 +117,7 @@ class TTKey(cmd.Converter):
             "code",
             "name",
         ]:
-            await ctx.send(f"**{arg}** is not a valid settings key for TT2 module.")
-            raise cmd.BadArgument("Bad key for TT2 settings")
+            raise cmd.BadArgument(f"**{arg}** not a valid setting for TT2.")
         if arg == "average":
             arg == "avg"
         elif arg == "grandmaster":
@@ -247,9 +126,9 @@ class TTKey(cmd.Converter):
             arg in "gmmastercaptainknightrecruitapplicantguesttimer"
             and not checks.can_manage_roles()
         ):
-            raise cmd.BadArgument()
-        elif arg == "announce" and not checks.can_manage_channels():
-            raise cmd.BadArgument()
+            raise cmd.BadArgument("You need the manage role permission.")
+        if arg == "announce" and not checks.can_manage_channels():
+            raise cmd.BadArgument("You need the manage channel permission.")
 
         return arg.lower()
 
@@ -257,16 +136,21 @@ class TTKey(cmd.Converter):
 class TTRaidGroup(cmd.Converter):
     async def convert(self, ctx, arg):
         if arg[0] != "g" or arg[1] not in ("1", "2", "3"):
-            raise cmd.BadArgument()
-        elif arg == "gm":
-            raise cmd.BadArgument()
-        else:
-            return f"{ctx.guild.id}:tt:{arg[1]}"
+            raise cmd.BadArgument("Invalid raid group.")
+        if arg == "gm":
+            raise cmd.BadArgument("Bad?")
+        return f"{ctx.guild.id}:tt:{arg[1]}"
 
 
-TTRoles = dict(G="gm", M="master", C="captain", K="knight", R="recruit", T="timer")
-TTCSVFiles = dict(cards="RaidSkill", zones="RaidLevel", titans="RaidEnemy")
-TTTitanlords = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
+TT_ROLES = dict(G="gm", M="master", C="captain", K="knight", R="recruit", T="timer")
+TT_CSV_FILES = dict(
+    cards="RaidSkill",
+    zones="RaidLevel",
+    titans="RaidEnemy",
+    arts="Artifact",
+    equips="Equipment",
+)
+TT_TITAN_LORDS = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
 
 
 class TapTitansModule(cmd.Cog):
@@ -277,12 +161,18 @@ class TapTitansModule(cmd.Cog):
         self.aliases = ["tt"]
         self.raid_timer.start()
         self.em = 440785686438871040
-        for k, v in TTCSVFiles.items():
+        for k, v in TT_CSV_FILES.items():
             setattr(self, k, [])
             with open(f"modules/data/{v}Info.csv") as csvfile:
                 reader = DictReader(csvfile)
                 for row in reader:
                     getattr(self, k).append(row)
+
+    def emoji(self, search):
+        "Get an emoji from the bot's guild."
+        return get(
+            self.bot.emojis, name=search.lower().replace(" ", "_"), guild_id=self.em
+        )
 
     def cog_unload(self):
         self.raid_timer.cancel()
@@ -293,19 +183,15 @@ class TapTitansModule(cmd.Cog):
     async def get_raid_group_or_break(self, group, ctx):
         test = await self.bot.db.exists(group)
         if not test:
-            await ctx.send(
-                "Looks like there are not any raid groups. Set one up by ;tt group add"
+            raise cmd.BadArgument(
+                f"No raid groups. Set one up by **{ctx.prefix}setup tt2**"
             )
-            raise cmd.BadArgument()
         return group
 
     async def has_timer_permissions(self, ctx, groupdict):
         roles = await self.get_roles(groupdict, *["gm", "master", "timer"])
         if not any(roles):
-            await ctx.send(
-                "Looks like no clan roles are set up. Anyone with manage guild *and* manage roles permission can do this."
-            )
-            raise cmd.BadArgument
+            raise cmd.BadArgument("No clan roles are set up.")
         if not await checks.user_has_role([r.id for r in ctx.author.roles], *roles):
             raise cmd.BadArgument
 
@@ -314,12 +200,9 @@ class TapTitansModule(cmd.Cog):
             groupdict, *["gm", "master", "captain", "knight", "recruit"]
         )
         if not any(roles):
-            await ctx.send(
-                "Looks like no clan roles are set up. Anyone with manage guild *and* manage roles permission can do this."
-            )
-            raise cmd.BadArgument
+            raise cmd.BadArgument("No clan roles are set up.")
         if not await checks.user_has_role([r.id for r in ctx.author.roles], *roles):
-            raise cmd.BadArgument
+            raise cmd.BadArgument("You do not have permission.")
 
     async def has_admin_or_mod_or_master(self, ctx, groupdict):
         is_admin = await checks.user_has_admin_perms(ctx.author, ctx.guild)
@@ -330,9 +213,9 @@ class TapTitansModule(cmd.Cog):
             return True
         roles = await self.get_roles(groupdict, *["gm", "master"])
         if not await checks.user_has_role((r.id for r in ctx.author.roles), *roles):
-            raise cmd.BadArgument
+            raise cmd.BadArgument("You need gm/master role.")
         if not is_mod and not is_admin:
-            raise cmd.BadArgument
+            raise cmd.BadArgument("You need admin or mod permissions.")
 
     @tsk.loop(seconds=10)
     async def raid_timer(self):
@@ -475,7 +358,7 @@ class TapTitansModule(cmd.Cog):
         return "{} group **{}** {} ~**{}**. Currently used slots: [{}] [{}] [{}]".format(
             action,
             group,
-            'Deleted' in action and 'from' or 'to',
+            "Deleted" in action and "from" or "to",
             guild,
             res["1"] and "x" or "",
             res["2"] and "x" or "",
@@ -486,7 +369,11 @@ class TapTitansModule(cmd.Cog):
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupadd(self, ctx):
-        """Adds a new raid group to the server. You will only ever need more than one of these if you have more than one Tap Titans 2 clan in your discord server *looking at you AC & GT*."""
+        (
+            "Adds a new raid group to the server. You will only ever need more than one of these i"
+            "f you have more than one Tap Titans 2 clan in your discord server *looking at you AC "
+            "& GT*."
+        )
         res = dict(
             zip(
                 ["1", "2", "3"],
@@ -509,17 +396,19 @@ class TapTitansModule(cmd.Cog):
             await ctx.send(txt)
         elif count == 3:
             await ctx.send(
-                f"~**{ctx.guild}** has reached maximum group count of **3**. Use **groupdel <x>** to delete a group."
+                f"Max group count reached. Use **{ctx.prefix}groupdel <x>** to delete a group."
             )
 
     @taptitans.command(name="groupdel", aliases=["gdel"], usage="slot")
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupdel(self, ctx, slot: Optional[int]):
-        """Deletes an existing raid group in the slot. Warning - irreversible. Do this only if you mean it."""
+        (
+            "Deletes an existing raid group in the slot. Warning - irreversible. Do this only if y"
+            "ou mean it."
+        )
         if slot not in [1, 2, 3]:
-            await ctx.send("You must specify a slot between **1** and **3** to delete.")
-            return
+            raise cmd.BadArgument("Specify a slot between **1** and **3** to delete.")
         result = await self.bot.db.delete(f"{ctx.guild.id}:tt:{slot}")
         res = dict(
             zip(
@@ -547,8 +436,9 @@ class TapTitansModule(cmd.Cog):
     async def tt_groupget(self, ctx, slot: Optional[int] = 1):
         """Displays a tap titans raid group and the most important values that go into setting up a raid, including roles and broadcast channel."""
         if slot not in [1, 2, 3]:
-            await ctx.send("You must specify a slot between **1** and **3** to show.")
-            return
+            raise cmd.BadArgument(
+                "You must specify a slot between **1** and **3** to show."
+            )
         r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
         ns = "**not-set**"
         roles = "\n".join(
@@ -556,7 +446,7 @@ class TapTitansModule(cmd.Cog):
                 "`{}` @**{}**".format(
                     n, discord.utils.get(ctx.guild.roles, id=int(r.get(m, 0)))
                 )
-                for n, m in TTRoles.items()
+                for n, m in TT_ROLES.items()
             ]
         )
         await ctx.send(
@@ -610,10 +500,9 @@ class TapTitansModule(cmd.Cog):
                 return
             in_use = lget(db, 1, 0)
             if in_use and in_use != str(ctx.guild.id):
-                await ctx.send(
-                    "A guild is already using that code. Appeal to bot owner if someone stole your clan code."
+                raise cmd.BadArgument(
+                    "Code in use. Appeal to bot owner if someone stole your clan code."
                 )
-                return
             if not cc:
                 await self.bot.db.hdel("cc", cc)
             await self.bot.db.hset("cc", val, ctx.guild.id)
@@ -622,10 +511,9 @@ class TapTitansModule(cmd.Cog):
             try:
                 val = int(val)
             except:
-                raise cmd.BadArgument
+                raise cmd.BadArgument("You must supply a number between 1 and 5.")
             if not 1 <= val <= 5:
-                await ctx.send("Queue mode must be between 1 and 5.")
-                return
+                raise cmd.BadArgument("Queue mode must be between 1 and 5.")
             await self.bot.db.hset(group, key, val)
         else:
             await self.bot.db.hset(group, key, val)
@@ -676,8 +564,7 @@ class TapTitansModule(cmd.Cog):
             tier = groupdict.get("tier", 1)
             zone = groupdict.get("zone", 1)
         elif not all(1 <= x <= 10 for x in level):
-            await ctx.send("Tier/zone must be between **1** and **10**.")
-            raise cmd.BadArgument()
+            raise cmd.BadArgument("Tier/zone must be between **1** and **10**.")
         elif len(level) == 2:
             tier, zone = level
         elif len(level) == 1:
@@ -717,20 +604,17 @@ class TapTitansModule(cmd.Cog):
         groupdict = await self.bot.db.hgetall(group)
         spawn = groupdict.get("spawn", 0)
         if not spawn and not groupdict.get("cd", 0):
-            await ctx.send("No raid to clear.")
-            return
+            raise cmd.BadArgument("No raid to clear.")
         elif groupdict.get("cd", 0):
-            await ctx.send(
-                "Raid is on cooldown. Use **cancel** if you wish to cancel it."
-            )
-            return
+            raise cmd.BadArgument(f"Raid on cooldown. Use **{ctx.prefix}cancel**.")
         await self.has_timer_permissions(ctx, groupdict)
 
         now = arrow.utcnow()
         spwn_arrow = arrow.get(spawn)
         if now < spwn_arrow:
-            await ctx.send("You can't clear an unspawned raid. Use **cancel** instead.")
-            return
+            raise cmd.BadArgument(
+                f"Can't clear unspawned raid. Use **{ctx.prefix}cancel**."
+            )
         if cd == None:
             cd = now.shift(minutes=59, seconds=59)
         delta = cd - now
@@ -805,9 +689,11 @@ class TapTitansModule(cmd.Cog):
         has_armor = raid["HasArmor"] == "TRUE"
         for t in titans:
             if has_armor:
-                t["armor_calc"] = Decimal(t["Total in Armour"]) * Decimal(raid["BaseHP"])
+                t["armor_calc"] = Decimal(t["Total in Armour"]) * Decimal(
+                    raid["BaseHP"]
+                )
             t["hp_calc"] = Decimal(t["Total in Body"]) * Decimal(raid["BaseHP"])
-            t["friendly_name"] = TTTitanlords[int(t["EnemyID"][-1]) - 1]
+            t["friendly_name"] = TT_TITAN_LORDS[int(t["EnemyID"][-1]) - 1]
         embed = discord.Embed(
             title=f"Info for Raid - Tier {tier} Zone {zone}",
             description="Spawns **{}**{} titans: \n{}".format(
@@ -820,7 +706,10 @@ class TapTitansModule(cmd.Cog):
                         ),
                         t["friendly_name"],
                         humanfriendly.format_size(t["hp_calc"])[0:-1],
-                        has_armor and " (armour: **" + humanfriendly.format_size(t.get("armor_calc"))[0:-1] + "**)",
+                        has_armor
+                        and " (armour: **"
+                        + humanfriendly.format_size(t.get("armor_calc"))[0:-1]
+                        + "**)",
                     )
                     for t in titans
                 ),
@@ -843,9 +732,7 @@ class TapTitansModule(cmd.Cog):
         )
         embed.add_field(
             name="{} Dust & Cards".format(
-                discord.utils.get(
-                            self.bot.emojis, name="cards_and_dust"
-                        )
+                discord.utils.get(self.bot.emojis, name="cards_and_dust")
             ),
             value="Dust: **{}**, Cards: **{}**".format(
                 raid["DustPlayerReward"], raid["CardPlayerReward"]
@@ -860,7 +747,6 @@ class TapTitansModule(cmd.Cog):
             inline=False,
         )
         embed.add_field(name="Attacks/Reset", value=raid["AttacksPerReset"])
-        print(embed.to_dict())
         await ctx.send("", embed=embed)
 
     @taptitans.command(
@@ -880,8 +766,7 @@ class TapTitansModule(cmd.Cog):
         await self.has_clan_permissions(ctx, groupdict)
         result = groupdict.get("spawn", 0)
         if not result:
-            await ctx.send("No raid/reset to queue for.")
-            return
+            raise cmd.BadArgument("No raid/reset to queue for.")
         resets = int(groupdict.get("reset", 0))
         depl = int(groupdict.get("depl", 0))
         if not resets and not depl:
@@ -899,23 +784,20 @@ class TapTitansModule(cmd.Cog):
                 users.append(ctx.author.id)
             else:
                 await ctx.send(
-                    f"You're already #**{users.index(str(ctx.author.id))+1}** in the queue, **{ctx.author}**."
+                    f"You're already #**{users.index(str(ctx.author.id))+1}** in the queue."
                 )
                 return
         elif list in ["clear", "wipe", "erase"]:
             await self.has_timer_permissions(ctx, groupdict)
             await self.bot.db.delete(q)
             await self.bot.hdel(group, "current")
-            await ctx.send("Queue has been cleared!")
+            await ctx.send(":white_check_mark: Queue has been cleared!")
             return
         elif list in ["skip"]:
             await self.has_timer_permissions(ctx, groupdict)
             await self.bot.hdel(group, "current")
         if str(ctx.author.id) in current:
-            await ctx.send(
-                f"You are attacking, **{ctx.author}**. Use **;tt d** to finish your turn."
-            )
-            return
+            raise cmd.BadArgument(f"You're attacking. Use **{ctx.prefix}tt d**")
         u = []
 
         mode = int(groupdict.get("mode", 1))
@@ -952,8 +834,7 @@ class TapTitansModule(cmd.Cog):
         result = g.get("spawn", 0)
         depl = g.get("depl", 0)
         if not result:
-            await ctx.send("No raid/reset to queue for.")
-            return
+            raise cmd.BadArgument("No raid/reset to queue for.")
         resets = g.get("resets", 0)
         if not resets and not depl:
             resets = "first spawn"
@@ -964,13 +845,11 @@ class TapTitansModule(cmd.Cog):
         q = await self.bot.db.lrange(f"{group}:q")
         current = g.get("current", "").split()
         if str(ctx.author.id) in current:
-            await ctx.send(
-                "You can't cancel your place when it's your turn. Try **;tt d** / **;tt done** to finish your turn."
+            raise cmd.BadArgument(
+                f"You're attacking. Try **{ctx.prefix}tt done** instead."
             )
-            return
         elif not str(ctx.author.id) in q:
-            await ctx.send(f"You're not in the queue, **{ctx.author}**.")
-            return
+            raise cmd.BadArgument(f"You're not in the queue, **{ctx.author}**.")
         else:
             res = await self.bot.db.lrem(f"{group}:q", ctx.author.id)
             if res:
@@ -1011,24 +890,25 @@ class TapTitansModule(cmd.Cog):
         if not card:
             embed = discord.Embed(
                 title="Avaliable Cards",
-                description=", ".join([k for k in RAID_CARDS.keys()]),
+                description=", ".join([c["Name"] for c in self.cards]),
                 color=0x186281,
             )
-            embed.set_thumbnail(
-                url="https://cdn.discordapp.com/emojis/591521258269835264.png"
-            )
+            embed.set_thumbnail(self.emoji("tt2_card").url)
         else:
+            c_csv = next((c for c in self.cards if c["Name"] == card.title()), None)
+            icx = self.emoji(c_csv["Category"])
             embed = discord.Embed(
-                title=card.title(),
+                title=f"{icx} {card.title()}",
                 description="Taps have a chance to {}".format(data["d"]),
-                color=0x186281,
+                color=int("0x" + c_csv["Color"][1:], 16),
             )
-            embed.set_thumbnail(
-                url=discord.utils.get(
-                    self.bot.emojis, name=card.lower().replace(" ", "_")
-                ).url
-            )
+            embed.set_thumbnail(url=self.emoji(card).url)
             embed.add_field(name="Tier", value=TIER_LIST[data["t"]])
+            embed.add_field(name="Max Stacks", value=c_csv["MaxStacks"])
+            embed.add_field(
+                name="Base Chance", value=str(round(float(c_csv["Chance"]) * 100)) + "%"
+            )
+            embed.add_field(name="Max Level", value=c_csv["MaxLevel"])
         try:
             await ctx.send("", embed=embed)
         except cmd.PermissionError:
@@ -1042,33 +922,25 @@ class TapTitansModule(cmd.Cog):
         crimtain = await self.bot.fetch_user(190222871254007808)
         deck, data = await TTDeck().convert(ctx, " ".join(deck))
         if not deck or deck is None:
-            await ctx.send(
-                "Available decks: {}".format(
-                    ", ".join([f"**{x}**" for x in RAID_DECKS.keys()])
-                )
+            embed = discord.Embed(
+                title="Avaliable Decks",
+                description=", ".join(list(RAID_DECKS.keys())),
+                color=0x186281,
             )
-            return
-        await ctx.send(
-            "**{} Deck**\n\n**Core cards**\n{}\n\n**Optional cards**\n{}\n\n{}\n\ncommand inspired by **{}**".format(
-                deck.title(),
-                ", ".join(
-                    [
-                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'), guild_id=440785686438871040)} {d}"
-                        for d in data[0]
-                    ]
-                ),
-                data[1]
-                and ", ".join(
-                    [
-                        f"{discord.utils.get(self.bot.emojis, name=d.lower().replace(' ', '_'), guild_id = 440785686438871040)} {d}"
-                        for d in data[1]
-                    ]
-                )
-                or "n/a",
-                data[2],
-                crimtain,
+        else:
+            embed = discord.Embed(title=deck.title(), description=data[2])
+            embed.add_field(
+                name="Core Cards",
+                value=", ".join([f"{self.emoji(d)} {d}" for d in data[0]]),
+                inline=False,
             )
-        )
+            if data[1]:
+                embed.add_field(
+                    name="Optional Cards",
+                    value=", ".join([f"{self.emoji(d)} {d}" for d in data[1]]),
+                    inline=False,
+                )
+        await ctx.send("", embed=embed)
 
     @taptitans.command(name="optimizers", aliases=["opti", "optimisers", "optis"])
     async def tt_opti(self, ctx):
@@ -1110,6 +982,16 @@ class TapTitansModule(cmd.Cog):
         lvl_to: Optional[int],
     ):
         if not artifact:
+            embed = discord.Embed(
+                title="TT2 Artifacts",
+                description="A list of artifacts from Tap Titans 2, sorted by boost type."
+            )
+            for bonus_type in set([x["BoostIcon"] for x in self.arts]):
+                embed.add_field(
+                    name=bonus_type,
+                    value=', '.join([a for a in self.arts if a['BoostIcon']==bonus_type]),
+                    inline=False
+                )
             await ctx.send("Here is a list of the artifacts sorted by tier")
         elif artifact and not any([lvl_from, lvl_to]):
             await ctx.send("here would be artifact basic info")
@@ -1215,6 +1097,18 @@ class TapTitansModule(cmd.Cog):
     async def tt_skill(self):
         return
 
+    @taptitans.command(name="bonuses", aliases=["bonus"])
+    async def tt_bonuses(self, ctx):
+        result = []
+        icon = self.emoji("tourney_green")
+        for b in BONUSES:
+            result.append(f"{self.emoji(b[1])} {b[0]}")
+        embed = discord.Embed(
+            title=f"{icon} TT2 Tournament Bonuses", description="\n".join(result), color=0x75D950
+        )
+        embed.set_thumbnail(url=icon.url)
+        await ctx.send("", embed=embed)
+
     @taptitans.command(
         name="tournament", aliases=["tournaments", "tourneys", "tourney"], usage="next"
     )
@@ -1225,42 +1119,44 @@ class TapTitansModule(cmd.Cog):
             "You can extend the forecast up to 10 future tournaments with the <next> parameter."
         )
         if last not in range(1, 11):
-            await ctx.send(
-                "Do you really need to see {} weeks into the future?".format(
-                    round(last / 2)
-                )
-            )
-            return
+            raise cmd.BadArgement("Prediction is too far into the future.")
+        if ctx.invoked_with[-1] != "s":
+            last = 1
         prizes = "hero_weapon skill_point crafting_shard"
-        bonuses = [
-            ("x3 warlord boost", "warlord_boost"),
-            ("+5 mana regen", "mystic_staff"),
-            ("x1.2 all probability bonus", "all_probability"),
-            ("x3 sorcerer boost", "titanias_sceptre"),
-            ("x10 chesterson gold", "chesterson_gold"),
-            ("+100% multiple fairies", "fairy_chance"),
-            ("x3 knight boost", "knight_boost"),
-            ("+20% mana refund", "mystical_beans_of_senzu"),
-            ("x1.5 prestige relics", "relic"),
-            ("x10 boss gold", "boss_gold"),
-        ]
         result, i, now = [], 0, arrow.utcnow()
         origin = arrow.get(1532242116)
-        weeks, _ = divmod((now - origin).days, 7)
+        tourneys, _ = divmod((now - origin).days, 3.5)
+        tourneys = int(floor(tourneys)) + 1
         current = int(now.format("d"))
-        tourneys = weeks * 2
         icon = "tourney_red"
+        nxt = "opens"
+        clr = 0xED2110
         if current in [1, 5]:
             shifter = 2
-        if current in [2, 6]:
+        elif current in [2, 6]:
             shifter = 1
-        if current in [3, 7]:
+        elif current in [3, 7]:
             shifter = 0
             icon = "tourney"
-        if current in [4]:
+            nxt = "closes"
+            clr = 0x1C7CA1
+        elif current in [4]:
             shifter = 3
+        desc = ""
+        if last == 1:
+            start_date = now.shift(days=shifter).replace(hour=0, minute=0, second=0)
+            end_date = start_date.shift(days=1)
+            if shifter == 0:
+                delta = end_date - start_date
+            else:
+                delta = start_date - now
+            _h, _m, _s = await get_hms(delta)
+            desc = "Tournament **{}** in **{:02}**h **{:02}**m **{:02}**s.".format(
+                nxt, _h, _m, _s
+            )
+        icon = self.emoji(icon)
         prizes = rotate(prizes.split(), tourneys % 3)
-        bonuses = rotate(bonuses, tourneys % 10)
+        bonuses = rotate(BONUSES, tourneys % 10)
         flipper = lambda i: current <= 3 and i % 2 or 0
         result = [
             (
@@ -1270,21 +1166,22 @@ class TapTitansModule(cmd.Cog):
             )
             for i in range(last)
         ]
-        result = "\n===================\n".join(
-            [
-                ":calendar_spiral: `{}`\n{} {}\n{} {}".format(
-                    r[0],
-                    discord.utils.get(self.bot.emojis, name=r[1][1], guild_id=self.em),
+        embed = discord.Embed(
+            title=f"{icon} TT2 Tournament Forecast", description=desc, color=clr
+        )
+        for r in result:
+            embed.add_field(
+                name=r[0],
+                value="{} {}\n{} {}".format(
+                    self.emoji(r[1][1]),
                     r[1][0],
-                    discord.utils.get(self.bot.emojis, name=r[2], guild_id=self.em),
+                    self.emoji(r[2]),
                     r[2].replace("_", " ").title() + "s",
-                )
-                for r in result
-            ]
-        )
-        await ctx.send(
-            f"{discord.utils.get(self.bot.emojis, name=icon, guild_id=self.em)} TT2 Tournament Forecast\n===================\n{result}\n===================\n{last==3 and 'Tip: show more tourneys with ;tt tourney 8' or ''}"
-        )
+                ),
+                inline=False,
+            )
+        embed.set_thumbnail(url=icon.url)
+        await ctx.send("", embed=embed)
 
     @taptitans.command(name="convert", aliases=["cvt"], usage="value")
     async def tt_convert(self, ctx, val: Optional[str] = "1e+5000"):
@@ -1315,40 +1212,18 @@ class TapTitansModule(cmd.Cog):
     async def tt_gold(self, ctx, kind: Optional[str]):
         "Displays optimal artifacts required for a specific gold source."
         taco = await self.bot.fetch_user(381376462189625344)
-        sources = dict(
-            phom=(
-                "Pet Heart of Midas is a great, reliable, balanced gold source. It's frequent, gives you good gold, and can be used in both pushing and farming.",
-                "neko_sculpture bronzed_compass heroic_shield",
-            ),
-            fairy=(
-                "Fair is supposedly the best gold source out there, but it can be frustrating waiting for a gold ad fairy and getting an all skills fairy instead.",
-                "chest_of_contentment great_fay_medallion bronzed_compass",
-            ),
-            chesterson=(
-                "A tougher nut to crack, this one of the best gold sources for farming, but might leave you up sh*t creek when trying to push. Relies heavily on multispawn chesterson gold.",
-                "chest_of_contentment essence_of_the_kitsune coins_of_ebizu",
-            ),
-            boss=(
-                "Boss gold uses Hands of Midas in order to get large amounts of gold upon killing bosses. It benefits directly from the Heart of Midas skill too, but it is faster than waiting for a pHoM proc. Typically is weaker than pHoM.",
-                "heroic_shield laborers_pendant titanias_sceptre",
-            ),
-            inactive=(
-                "Inactive gold will be the weakest compared to any other source, but it can be reliable/relevant if you don't have Stones of the Valrunes artifact yet. Playing an active gold source will always be better nonetheless.",
-                "zakynthos_coin khrysos_bowl",
-            ),
-        )
-        if not kind or kind.lower() not in sources.keys():
+        if not kind or kind.lower() not in GOLD_SOURCES.keys():
             await ctx.send(
-                "Available gold sources:\n{}".format(", ".join(sources.keys()))
+                "Available gold sources:\n{}".format(", ".join(GOLD_SOURCES.keys()))
             )
             return
         await ctx.send(
             "**{} Gold**\n{}\n{}\n\ncommand inspired by **{}**".format(
                 kind,
-                sources[kind.lower()][0],
+                GOLD_SOURCES[kind.lower()][0],
                 " ".join(
                     str(discord.utils.get(self.bot.emojis, name=x, guild_id=self.em))
-                    for x in sources[kind.lower()][1].split()
+                    for x in GOLD_SOURCES[kind.lower()][1].split()
                 ),
                 taco,
             )

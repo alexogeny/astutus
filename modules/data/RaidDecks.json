@@ -1,0 +1,72 @@
+{
+    "head": [
+        [
+            "Skull Bash",
+            "Crushing Instinct"
+        ],
+        [
+            "Grim Shadow",
+            "Razor Wind",
+            "Inspiring Force",
+            "Prismatic Rift",
+            "Fragmentize"
+        ],
+        "Only target the Head. You need Skull Bash and Crushing Instinct for this deck, the third card can be almost anything of your choice."
+    ],
+    "torso": [
+        [
+            "Soul Fire",
+            "Moonbeam"
+        ],
+        [
+            "Grim Shadow",
+            "Razor Wind",
+            "Inspiring Force",
+            "Prismatic Rift",
+            "Fragmentize"
+        ],
+        "Only target the Torso. You only need Moonbeam and Soul Fire for this deck, the third card can be almost anything of your choice."
+    ],
+    "all": [
+        [
+            "Whip of Lightning",
+            "Blazing Inferno"
+        ],
+        [
+            "Inspiring Force",
+            "Prismatic Rift"
+        ],
+        "Target as many parts of the Titan Lord as possible. If the Titan has all its armor, use Prismatic Rift. If only Body remains, use Inspiring Force. Only use this deck if all parts are either armored or exposed."
+    ],
+    "decay": [
+        [
+            "Decaying Strike",
+            "Fusion Bomb",
+            "Rancid Gas"
+        ],
+        [],
+        "Target as many parts of the Titan Lord as possible. Use this deck only when a new Titan with full HP spawns. Rotate between all parts, switching to the next each time Fusion activates. You cannot attack a part that already has Fusion applied, otherwise Fusion will never detonate."
+    ],
+    "focus": [
+        [
+            "Clan Ship Barrage",
+            "Ancestral Favor"
+        ],
+        [
+            "Razor Wind",
+            "Fragmentize"
+        ],
+        "Target any part of the Titan. Pick Razor Wind for the Body, and Fragmentize for the Armor."
+    ],
+    "duo": [
+        [
+            "Purifying Blast",
+            "Acid Drench"
+        ],
+        [
+            "Prismatic Rift",
+            "Inspiring Force"
+        ],
+        "Focus on two close-proximity parts for maximal damage e.g. Head and Torso, or Shoulder and Hand. Pick Inspiring Force for Body and Prismatic Rift for Armor."
+    ]
+}

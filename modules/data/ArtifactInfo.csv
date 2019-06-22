@@ -1,0 +1,96 @@
+ArtifactID,Name,Note,BonusType,MaxLevel,EffectPerLevel,GrowthExpo,DamageBonus,CostCoef,CostExpo,DiscoveryPool,EnchantmentPool,EnchantmentMagnitude,Temp Column,BonusIcon
+Artifact22,Book of Shadows,-,PrestigeRelic,0,0.05,1.087,0.3,0.7,2.5,1,0,1,2,Boost
+Artifact95,Charged Card,-,GoldPerOwnedCardLevel,0,0.02,1.35,0.2,0.6,1.8,2,-1,1,1000,Gold
+Artifact2,Stone of the Valrunes,max 4 active skills,GoldPerRunningActiveSkill,0,0.01,0.97,0.2,0.6,1.8,2,-1,1,1000,Gold
+Artifact19,Chest of Contentment,-,ChestAmount,0,0.25,1.35,0.4,1,1.8,2,-1,1,1000,Gold
+Artifact1,Heroic Shield,-,GoldBoss,0,0.25,1.35,0.4,0.7,1.8,0,0,1.00E+14,1.00E+14,Gold
+Artifact20,Book of Prophecy,-,GoldAll,0,0.25,1.45,0.3,0.7,2.2,0,0,1.00E+12,1.00E+12,Gold
+Artifact66,Khrysos Bowl,"StealthGold: AllGold, InactiveGold",UnskilledGold,0,0.04,1.149,0.3,0.7,1.8,2,-1,1,1000,Gold
+Artifact43,Zakynthos Coin,-,InactiveGold,0,0.6,1.4,0.3,0.7,1.8,2,-1,1,1000,Gold
+Artifact44,Great Fay Medallion,-,FairyGold,0,0.3,1.4,0.4,1,1.8,2,-1,1,1000,Gold
+Artifact45,Neko Sculpture,pHoM,PetGoldQTEAmount,0,0.3,1.4,0.5,0.7,1.8,2,-1,1,1000,Gold
+Artifact79,Coins of Ebizu,-,MultiMonstersGold,0,0.2,1.4,0.3,0.7,1.8,2,-1,1,1000,Gold
+Artifact82,The Bronzed Compass,"Fairy, pHoM",GoldSpecialty,0,0.04,1.4,0.3,0.7,1.8,2,-1,1,1000,Gold
+Artifact94,Evergrowing Stack,-,DamagePerOwnedCardLevel,0,0.02,1.5,0.2,0.6,2.2,2,-1,1,1000,Dmg
+Artifact84,Flute of the Soloist,max 4 active skills,DamagePerRunningActiveSkill,0,0.01,1.135,0.2,0.6,2.2,1,-1,1,1.00E+06,Dmg
+Artifact26,Heavenly Sword,additive artifact damage,HSArtifactDamage,0,0.05,1.5,1,0.7,2.2,2,-1,1,1000,Dmg
+Artifact31,Divine Retribution,-,AllDamage,0,0.1,1.28,1,1,2,2,0,1,1.00E+12,Dmg
+Artifact29,Drunken Hammer,-,TapDamage,0,0.1,1.22,0.3,0.6,1.7,0,-1,1,1000,Dmg
+Artifact51,Samosek Sword,-,SwordAttackDamage,0,0.2,1.6,0.5,0.7,2,2,-1,1,1000,Dmg
+Artifact59,The Retaliator,-,CritDamage,0,0.1,1.22,0.2,0.6,1.7,2,-1,1,1000,Dmg
+Artifact83,Stryfe's Peace,"Tap, Hero",FundamentalDamage,0,0.04,1.149,1,1,2,2,-1,1,1000,Dmg
+Artifact35,Hero's Blade,-,AllHelperDamage,0,0.15,1.2,0.5,0.7,1.7,0,-1,1,1000,Dmg
+Artifact32,The Sword of Storms,-,MeleeHelperDamage,0,0.2,1.22,0.3,0.7,1.7,2,-1,1,1000,Dmg
+Artifact33,Furies Bow,-,RangedHelperDamage,0,0.2,1.22,0.3,0.7,1.7,2,-1,1,1000,Dmg
+Artifact34,Charm of the Ancient,-,SpellHelperDamage,0,0.2,1.22,0.3,0.7,1.7,2,-1,1,1000,Dmg
+Artifact61,Tiny Titan Tree,-,GroundHelperDamage,0,0.2,1.22,0.3,0.7,1.7,2,-1,1,1000,Dmg
+Artifact62,Helm of Hermes,-,FlyingHelperDamage,0,0.2,1.22,0.3,0.7,1.7,2,-1,1,1000,Dmg
+Artifact38,Fruit of Eden,-,PetDamage,0,0.1,1.4,0.5,0.7,2,2,-1,1,1000,Dmg
+Artifact30,Influential Elixir,-,ClanShipDamage,0,0.1,1.2,0.5,0.7,1.7,1,-1,1,1000,Dmg
+Artifact64,O'Ryan's Charm,"Pet, CS, SC",CompanionDamage,0,0.1,1.25,0.5,0.7,1.8,2,-1,1,1000,Dmg
+Artifact52,Heart of Storms,bonuses of damage type pets,AllPetDamageEffect,0,0.005,1,0.5,0.7,2.2,1,-1,1,1000,Boost
+Artifact53,Apollo Orb,bonuses of gold type pets,AllPetGoldEffect,0,0.02,1.177,0.5,0.7,2.2,2,-1,1,1000,Boost
+Artifact67,Earrings of Portara,"StealthDamage: AllDamage, IdleDamage",UnskilledDamage,0,0.03,1.132,0.3,0.6,1.7,2,-1,1,1000,Dmg
+Artifact42,Avian Feather,-,InactiveAllDamage,0,0.5,1.3,0.3,0.6,1.7,2,-1,1,1000,Dmg
+Artifact46,Corrupted Rune Heart,-,SplashDamage,0,0.00025,1.2,0.3,0.6,1.7,2,-1,1,1000,Dmg
+Artifact55,Durendal Sword,damage to non-bosses,TitanDamage,0,0.24,1.35,1,1,2,1,0,1,1000,Dmg
+Artifact56,Helheim Skull,damage to bosses,BossDamage,0,0.12,1.3,1,1,2,1,0,1,1000,Dmg
+Artifact75,Oath's Burden,"Tap, FS, Pet",KnightBonusBoost,0,0.02,1.177,0.5,0.65,2.2,2,-1,1,1000,Boost
+Artifact76,Crown of the Constellation,"Hero, CS, WC",WarlordBonusBoost,0,0.02,1.177,0.5,0.65,2.2,2,-1,1,1000,Boost
+Artifact77,Titania's Sceptre,"HoM, HS, SC",SorcererBonusBoost,0,0.02,1.177,0.5,0.65,2.2,2,-1,1,1000,Boost
+Artifact78,Fagin's Grip,"Inactive Gold/Dmg, DS",RogueBonusBoost,0,0.02,1.177,0.5,0.65,2.2,2,-1,1,1000,Boost
+Artifact40,Ring of Calisto,-,AllEquipmentEffect,0,0.01,0.9,0.5,0.65,2.2,2,-1,1,1000,Equip
+Artifact25,Blade of Damocles,-,SwordBoost,0,0.08,1.36,0.5,0.65,2,2,-1,1,1000,Equip
+Artifact17,Helmet of Madness,-,HelmetBoost,0,0.08,1.36,0.5,0.65,2,2,-1,1,1000,Equip
+Artifact23,Titanium Plating,-,ArmorBoost,0,0.08,1.55,0.5,0.65,2,2,-1,1,1000,Equip
+Artifact73,Moonlight Bracelet,-,AuraBoost,0,0.08,1.36,0.5,0.65,2,2,-1,1,1000,Equip
+Artifact28,Amethyst Staff,-,SlashBoost,0,0.08,1.36,0.5,0.65,2,2,-1,1,1000,Equip
+Artifact86,Sword of the Royals,"Sword Boost, Melee Hero",SophiaComboBoost,0,0.02,1.1,0.5,0.7,2.2,2,-1,1,1000,Boost
+Artifact87,Spearit's Vigil,"Helmet Boost, Flying Hero",NohniComboBoost,0,0.02,1.1,0.5,0.7,2.2,2,-1,1,1000,Boost
+Artifact88,The Cobalt Plate,"Armor Boost, Ground Hero",LanceComboBoost,0,0.02,1.1,0.5,0.7,2.2,2,-1,1,1000,Boost
+Artifact89,Sigils of Judgement,"Auro Boost, Spell Hero",KronusComboBoost,0,0.02,1.1,0.5,0.7,2.2,2,-1,1,1000,Boost
+Artifact90,Foliage of the Keeper,"Slash Boost, Ranged Hero",SajeComboBoost,0,0.02,1.1,0.5,0.7,2.2,2,-1,1,1000,Boost
+Artifact47,Invader's Gjallarhorn,-,AllActiveSkillAmount,0,0.02,1,0.2,0.6,1.8,2,-1,1,1000,Boost
+Artifact11,Titan's Mask,HS,BurstDamageSkillAmount,0,0.1,1.28,0.2,0.6,1.7,1,-1,1,1000,Dmg
+Artifact41,Royal Toxin,DS,CritBoostSkillAmount,0,0.1,1.35,0.2,0.6,1.7,1,-1,1,1000,Dmg
+Artifact9,Laborer's Pendant,HoM,HandOfMidasSkillAmount,0,0.1,1.35,0.2,0.6,1.7,1,-1,1,1000,Gold
+Artifact10,Bringer of Ragnarok,FS,TapBoostSkillAmount,0,0.1,1.25,0.2,0.6,1.7,1,-1,1,1000,Dmg
+Artifact7,Parchment of Foresight,WC,HelperBoostSkillAmount,0,0.1,1.25,0.2,0.6,1.7,1,-1,1,1000,Dmg
+Artifact6,Elixir of Eden,SC,ShadowCloneSkillAmount,0,0.1,1.28,0.2,0.6,1.7,1,-1,1,1000,Dmg
+Artifact65,Hourglass of the Impatient,-,AllActiveSkillCooldownRate,40,0.02,1,0.8,0.5,2.6,1,-1,1,1000,Duration
+Artifact48,Phantom Timepiece,-,AllActiveSkillDuration,30,1,1,0.8,1,3,1,-1,1,1000,Duration
+Artifact13,Forbidden Scroll,DS,CritBoostSkillDuration,30,2,1,1.5,0.6,2.4,2,-1,1,1000,Duration
+Artifact15,Ring of Fealty,HoM,HandOfMidasSkillDuration,30,2,1,1.5,0.6,2.4,2,-1,1,1000,Duration
+Artifact16,Glacial Axe,FS,TapBoostSkillDuration,30,2,1,1.5,0.6,2.4,2,-1,1,1000,Duration
+Artifact14,Aegis,WC,HelperBoostSkillDuration,30,2,1,1.5,0.6,2.4,2,-1,1,1000,Duration
+Artifact12,Swamp Gauntlet,SC,ShadowCloneSkillDuration,30,2,1,1.5,0.6,2.4,2,-1,1,1000,Duration
+Artifact36,Infinity Pendulum,HS,BurstDamageSkillMana,20,1,1,0.9,0.6,3,2,-1,1,1000,Duration
+Artifact27,Glove of Kuma,DS,CritBoostSkillMana,30,1,1,0.8,0.6,3,2,-1,1,1000,Mana
+Artifact39,Titan Spear,HoM,HandOfMidasSkillMana,40,1,1,0.8,0.6,3,2,-1,1,1000,Mana
+Artifact37,Oak Staff,FS,TapBoostSkillMana,30,1,1,0.8,0.6,3,2,-1,1,1000,Mana
+Artifact3,The Arcana Cloak,WC,HelperBoostSkillMana,40,1,1,0.8,0.6,3,2,-1,1,1000,Mana
+Artifact8,Hunter's Ointment,SC,ShadowCloneSkillMana,40,1,1,0.8,0.6,3,2,-1,1,1000,Mana
+Artifact50,Ambrosia Elixir,-,ManaPoolCap,40,2,1,0.8,0.6,3,1,-1,1,1000,Mana
+Artifact58,Mystic Staff,-,ManaRegen,40,0.075,1,2,0.5,2.6,1,-1,1,1000,Mana
+Artifact68,Mystical Beans of Senzu,-,ManaRefundPercent,40,0.0025,1,2,0.5,2.6,2,-1,1,1000,Mana
+Artifact18,Egg of Fortune,-,ChestChance,40,0.005,1,2,1.4,3,1,-1,1,1000,Chance
+Artifact21,Divine Chalice,-,Goldx10Chance,50,0.01,1,1,0.8,2.6,1,-1,1,1000,Chance
+Artifact5,Invader's Shield,-,FairySpawnChance,50,0.005,1,1.6,0.5,2.1,1,-1,1,1000,Chance
+Artifact4,Axe of Muerte,-,CritChance,40,0.005,1,3,0.8,2.5,1,-1,1,1000,Chance
+Artifact54,Essence of the Kitsune,Multi-Spawn Chance,MultiMonsters,40,0.005,1,3,0.8,2.5,2,-1,1,1000,Chance
+Artifact70,Boots of Hermes,Portar Chance,StageSkipMonsterSpawnChance,40,0.001,1,3,0.8,2.5,1,-1,1,1000,Chance
+Artifact74,Unbound Gauntlet,Snap Chance,MegaBombSpawnChance,40,0.0005,1,3,0.8,2.5,1,-1,1,1000,Chance
+Artifact72,Oberon Pendant,Manni Chance,ManaMonsterSpawnChance,40,0.002,1,3,0.8,2.5,1,-1,1,1000,Chance
+Artifact69,Lucky Foot of Al-Mi-Raj,All probabilities in stats panel,AllProbabilityBoost,40,0.0025,1,2,0.5,2.6,2,-1,1,1000,Chance
+Artifact63,Lost King's Mask,Cost reduction,AllUpgradeCost,40,0.02,1,0.8,0.5,3,2,-1,1,1000,CostRed
+Artifact24,Staff of Radiance,Hero cost reduction,HelperUpgradeCost,40,0.02,1,0.8,0.5,2.6,2,-1,1,1000,CostRed
+Artifact71,Morgelai Sword,Individual hero weapons,HelperWeaponBoost,50,0.01,1,0.8,0.5,3,2,-1,1,1000,Boost
+Artifact91,Ringing Stone,-,HelperWeaponSetBoost,50,0.01,1,0.8,0.5,3,2,-1,1,1000,Boost
+Artifact92,Quill of Scrolls,-,HelperScrollBoost,50,0.0005,1,0.8,0.5,3,2,-1,1,1000,Boost
+Artifact93,Old King's Stamp,-,HelperScrollSetBoost,50,0.0005,1,0.8,0.5,3,2,-1,1,1000,Boost
+Artifact49,The Master's Sword,-,TapDamageFromHelpers,40,0.0001,1,2,0.5,2.6,1,-1,1,1000,Dmg
+Artifact80,The Magnifier,bonuses of damage type artifacts,AllArtifactDamageEffect,40,0.225,1,3,2,3,2,-1,1,1000,Boost
+Artifact81,The Treasure of Fergus,bonuses of gold type artifacts,AllArtifactGoldEffect,40,0.225,1,3,2,3,2,-1,1,1000,Boost
+Artifact85,The White Dwarf,-,DamagePerOwnedArtifact,50,0.005,1,3,2,3,2,-1,1,1000,Dmg
+Artifact57,Aram Spear,Monster HP reduction,MonsterHP,40,0.02,1,2,0.5,2.6,0,-1,1,1000,Boost
+Artifact60,Ward of the Darkness,-,BossTimerDuration,60,1,1,2,0.5,2.6,1,-1,1,1000,Duration
