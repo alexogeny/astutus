@@ -58,30 +58,32 @@ BONUS_MAP = dict(
 
 class TTRaidCard(cmd.Converter):
     async def convert(self, ctx: cmd.Context, arg):
-        arg = arg.title()
-        closest_match = difflib.get_close_matches(
-            arg, list(RAID_CARDS.keys()), n=1, cutoff=0.85
-        )
+        arg = snake(arg)
+        cards = ctx.bot.get_cog("TapTitansModule").cards
+        names = [snake(c["Name"]) for c in cards]
+        closest_match = difflib.get_close_matches(arg, names, n=1, cutoff=0.85)
+        match, data = None, None
         if closest_match:
-            return closest_match[0], RAID_CARDS.get(closest_match[0])
-        if not closest_match and arg.strip():
-            closest_match = next(
-                (k for k in list(RAID_CARDS.keys()) if k.startswith(arg)), None
-            )
+            match = closest_match[0]
+            data = [c for c in cards if snake(c['Name'])==match]
+        if not match:
+            closest_match = next((n for n in names if n.startswith(arg)), None)
             if closest_match:
-                return closest_match, RAID_CARDS.get(closest_match)
-        if not closest_match and arg.strip():
+                match = closest_match
+                data = [c for c in cards if snake(c['Name'])==match]
+        if not match:
             closest_match = next(
                 (
-                    k
-                    for k in list(RAID_CARDS.keys())
-                    if "".join([x[0] for x in k.lower().split()]) == arg.lower()
+                    n
+                    for n in names
+                    if "".join([x[0] for x in n.lower().split("_")]) == arg.lower()
                 ),
                 None,
             )
             if closest_match:
-                return closest_match, RAID_CARDS.get(closest_match)
-        return None, None
+                match = closest_match
+                data = [c for c in cards if snake(c['Name'])==match]
+        return match, data
 
 
 class TTArtifact(cmd.Converter):
@@ -93,7 +95,6 @@ class TTArtifact(cmd.Converter):
         match, data = None, None
         if closest_match:
             match = closest_match[0]
-            # data = snake_get(lambda x: x["Name"], match, arts)
             data = next((a for a in arts if snake(a["Name"]) == match), None)
         if not match:
             closest_match = next((n for n in names if n.startswith(arg)), None)
@@ -190,6 +191,7 @@ TT_CSV_FILES = dict(
     titans="RaidEnemy",
     arts="Artifact",
     equips="Equipment",
+    skills="SkillTree"
 )
 TT_TITAN_LORDS = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
 
@@ -936,7 +938,9 @@ class TapTitansModule(cmd.Cog):
     async def tt_card(self, ctx, *card):
         "Shows you information about tap titans cards."
         card, data = await TTRaidCard().convert(ctx, " ".join(card))
-        if not card:
+        print(card)
+        print(data)
+        if not card or card is None:
             embed = discord.Embed(
                 title="Avaliable Cards",
                 description=", ".join([c["Name"] for c in self.cards]),
@@ -944,20 +948,20 @@ class TapTitansModule(cmd.Cog):
             )
             embed.set_thumbnail(self.emoji("tt2_card").url)
         else:
-            c_csv = next((c for c in self.cards if c["Name"] == card.title()), None)
-            icx = self.emoji(c_csv["Category"])
+            jcard = [RAID_CARDS[c] for c in RAID_CARDS.keys() if snake(c) == card][0]
+            icx = self.emoji(data["Category"])
             embed = discord.Embed(
                 title=f"{icx} {card.title()}",
-                description="Taps have a chance to {}".format(data["d"]),
-                color=int("0x" + c_csv["Color"][1:], 16),
+                description="Taps have a chance to {}".format(jcard["d"]),
+                color=int("0x" + data["Color"][1:], 16),
             )
             embed.set_thumbnail(url=self.emoji(card).url)
-            embed.add_field(name="Tier", value=TIER_LIST[data["t"]])
-            embed.add_field(name="Max Stacks", value=c_csv["MaxStacks"])
+            embed.add_field(name="Tier", value=TIER_LIST[jcard["t"]])
+            embed.add_field(name="Max Stacks", value=data["MaxStacks"])
             embed.add_field(
-                name="Base Chance", value=str(round(float(c_csv["Chance"]) * 100)) + "%"
+                name="Base Chance", value=str(round(float(data["Chance"]) * 100)) + "%"
             )
-            embed.add_field(name="Max Level", value=c_csv["MaxLevel"])
+            embed.add_field(name="Max Level", value=data["MaxLevel"])
         try:
             await ctx.send("", embed=embed)
         except cmd.PermissionError:
@@ -1087,10 +1091,7 @@ class TapTitansModule(cmd.Cog):
             embed.add_field(
                 name=f"Effect at lvl {lvl_to}", value=str(effect2), inline=False
             )
-            embed.add_field(
-                name='Difference',
-                value=f"{lvl_to/lvl_from}x boost"
-            )
+            embed.add_field(name="Difference", value=f"{lvl_to/lvl_from}x boost")
         await ctx.send("", embed=embed)
 
     @tt_artifacts.command(name="bonus", aliases=["b"])
@@ -1213,7 +1214,7 @@ class TapTitansModule(cmd.Cog):
         return
 
     @taptitans.group(name="skill", case_insensitive=True)
-    async def tt_skill(self):
+    async def tt_skill(self, ctx, *skill: Optional[str]):
         return
 
     @taptitans.command(name="bonuses", aliases=["bonus"])
@@ -1338,17 +1339,19 @@ class TapTitansModule(cmd.Cog):
                 "Available gold sources:\n{}".format(", ".join(GOLD_SOURCES.keys()))
             )
             return
-        await ctx.send(
-            "**{} Gold**\n{}\n{}\n\ncommand inspired by **{}**".format(
-                kind,
-                GOLD_SOURCES[kind.lower()][0],
-                " ".join(
-                    str(discord.utils.get(self.bot.emojis, name=x, guild_id=self.em))
-                    for x in GOLD_SOURCES[kind.lower()][1].split()
-                ),
-                taco,
-            )
+        desc, arts, img, color = GOLD_SOURCES[kind.lower()]
+        img = self.emoji(img)
+        embed = discord.Embed(
+            title=f"{img} Gold artifacts for {kind.title()} build",
+            description=desc,
+            color=int(f"0x{color}", 16)
         )
+        embed.add_field(
+            name="Artifacts",
+            value="\n".join([f"{self.emoji(a)} - {a}" for a in arts])
+        )
+        embed.set_thumbnail(url=img.url)
+        await ctx.send("", embed=embed)
 
 
 def setup(bot):

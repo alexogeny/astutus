@@ -1,22 +1,57 @@
 {
     "phom": [
         "Pet Heart of Midas is a great, reliable, balanced gold source. It's frequent, gives you good gold, and can be used in both pushing and farming.",
-        "neko_sculpture bronzed_compass heroic_shield"
+        [
+            "Neko Sculpture",
+            "Heroic Shield",
+            "The Bronzed Compass",
+            "Laborer's Pendant",
+            "Titania's Sceptre"
+        ],
+        "Pet Heart of Midas",
+        "E74C3C"
     ],
     "fairy": [
         "Fair is supposedly the best gold source out there, but it can be frustrating waiting for a gold ad fairy and getting an all skills fairy instead.",
-        "chest_of_contentment great_fay_medallion bronzed_compass"
+        [
+            "Chest of Contentment",
+            "Great Fay Medallion",
+            "The Bronzed Compass",
+            "Laborer's Pendant",
+            "Titania's Sceptre"
+        ],
+        "Fairy Charm",
+        "2471A3"
     ],
     "chesterson": [
         "A tougher nut to crack, this one of the best gold sources for farming, but might leave you up sh*t creek when trying to push. Relies heavily on multispawn chesterson gold.",
-        "chest_of_contentment essence_of_the_kitsune coins_of_ebizu"
+        [
+            "Chest of Contentment",
+            "Essence of the Kitsune",
+            "Coins of Ebizu",
+            "Laborer's Pendant",
+            "Titania's Sceptre"
+        ],
+        "Spoils of War",
+        "E74C3C"
     ],
     "boss": [
         "Boss gold uses Hands of Midas in order to get large amounts of gold upon killing bosses. It benefits directly from the Heart of Midas skill too, but it is faster than waiting for a pHoM proc. Typically is weaker than pHoM.",
-        "heroic_shield laborers_pendant titanias_sceptre"
+        [
+            "Heroic Shield",
+            "Laborer's Pendant",
+            "Titania's Sceptre"
+        ],
+        "Boss Gold Mod",
+        "F5BE00"
     ],
     "inactive": [
         "Inactive gold will be the weakest compared to any other source, but it can be reliable/relevant if you don't have Stones of the Valrunes artifact yet. Playing an active gold source will always be better nonetheless.",
-        "zakynthos_coin khrysos_bowl"
+        [
+            "Zakynthos Coin",
+            "Khrysos Bowl"
+        ],
+        "Master Thief",
+        "52BE80"
     ]
 }
