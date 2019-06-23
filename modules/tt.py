@@ -54,6 +54,12 @@ BONUS_MAP = dict(
     Duration="Duration",
     Gold="Gold",
 )
+TREE_MAP = dict(
+    Red="Knight",
+    Blue="Sorcerer",
+    Yellow="Warlord",
+    Green="Assassin"
+)
 
 
 class TTRaidCard(cmd.Converter):
@@ -1233,9 +1239,23 @@ class TapTitansModule(cmd.Cog):
     async def tt_titanlord(self):
         return
 
-    @taptitans.group(name="skill", case_insensitive=True)
+    @taptitans.group(name="skill", case_insensitive=True, aliases=["skills", "s"])
     async def tt_skill(self, ctx, *skill: Optional[str]):
-        return
+        if not skill or skill is None:
+            embed = discord.Embed(
+                title='List of TT2 Skills',
+                description="TT2 Skills sorted by skill tree."
+            )
+            for branch in set([s['Branch'] for s in self.skills]):
+                embed.add_field(
+                    name=TREE_MAP[branch.replace('Branch', '')],
+                    value='\n'.join([
+                        f"{self.emoji(s['Name'])} {s['Name']}" for s in self.skills if s["Branch"] == branch
+                    ]),
+                )
+            await ctx.send("", embed=embed)
+            return
+        await ctx.send("blah")
 
     @taptitans.command(name="bonuses", aliases=["bonus"])
     async def tt_bonuses(self, ctx):
