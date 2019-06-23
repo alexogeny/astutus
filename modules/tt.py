@@ -99,9 +99,9 @@ class TapTitansModule(cmd.Cog):
         self.aliases = ["tt"]
         self.raid_timer.start()
         self.em = 440785686438871040
-        for k, v in TT_CSV_FILES.items():
+        for k, val in TT_CSV_FILES.items():
             setattr(self, k, [])
-            with open(f"modules/data/{v}Info.csv") as csvfile:
+            with open(f"modules/data/{val}Info.csv") as csvfile:
                 reader = DictReader(csvfile)
                 for row in reader:
                     getattr(self, k).append(row)
@@ -388,7 +388,6 @@ class TapTitansModule(cmd.Cog):
                 "You must specify a slot between **1** and **3** to show."
             )
         r = await self.bot.db.hgetall(f"{ctx.guild.id}:tt:{slot}")
-        ns = "**not-set**"
         roles = "\n".join(
             [
                 "`{}` @**{}**".format(
@@ -545,7 +544,7 @@ class TapTitansModule(cmd.Cog):
     async def tt_raid_clear(
         self, ctx, group: Optional[tt2.TTRaidGroup], cd: Optional[Duration]
     ):
-        "Clears a raid. Use this only when you complete a raid. Use cancel if you want to wipe the timer."
+        "Clears a raid. Use this only when completing a raid. Use cancel to wipe the timer."
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -574,7 +573,7 @@ class TapTitansModule(cmd.Cog):
             shifter["seconds"] = 60 - _s
         if cd < spwn_arrow.shift(minutes=60):
             await ctx.send(
-                "You cannot timetravel. The cooldown end must be at least 60 minutes after the start of the raid."
+                "You cannot timetravel. Cooldown end must be 60 minutes after raid."
             )
             raise cmd.BadArgument
 
@@ -1021,16 +1020,17 @@ class TapTitansModule(cmd.Cog):
     #     if not build:
     #         await ctx.send("List of builds for searching: ")
 
-    @taptitans.group(name="enhancement", case_insensitive=True)
-    async def tt_enhance(self):
-        return
+    # @taptitans.group(name="enhancement", case_insensitive=True)
+    # async def tt_enhance(self):
+    #     return
 
-    @taptitans.group(name="enchant", case_insensitive=True)
-    async def tt_enchant(self):
-        return
+    # @taptitans.group(name="enchant", case_insensitive=True)
+    # async def tt_enchant(self):
+    #     return
 
-    async def titancount(self, stage, ip, ab, snap):
-        return round(max((stage // 500 * 2 + 8 - (ip + ab)) / max(2 * snap, 1), 1))
+    async def titancount(self, stage, ip_, ab_, snap):
+        "calculate titancount at any given stage"
+        return round(max((stage // 500 * 2 + 8 - (ip_ + ab_)) / max(2 * snap, 1), 1))
 
     @taptitans.command(
         name="titancount",
@@ -1108,12 +1108,13 @@ class TapTitansModule(cmd.Cog):
             f"{icon} Optimal ED at stage **{stage}** ({count} titans) is: **{result}**."
         )
 
-    @taptitans.group(name="titanlord", case_insensitive=True)
-    async def tt_titanlord(self):
-        return
+    # @taptitans.group(name="titanlord", case_insensitive=True)
+    # async def tt_titanlord(self):
+    #     return
 
     @taptitans.group(name="skill", case_insensitive=True, aliases=["skills", "s"])
     async def tt_skill(self, ctx, skill: Optional[tt2.TTSkill], lvl: Optional[int] = 0):
+        "Shows you info about tap titans skills."
         if not skill or skill is None:
             emoji = self.emoji("skill_tree")
             embed = discord.Embed(

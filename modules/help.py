@@ -1,5 +1,6 @@
 # import discord
 from discord.ext import commands as cmd
+
 # import difflib
 
 
@@ -25,12 +26,7 @@ class HelpModule(cmd.Cog):
             or command[0].lower() in getattr(v, "aliases", [])
         ]
         if not cog:
-            await ctx.send(
-                "Sorry, I could not find a module by the name: **{}**".format(
-                    command[0].lower()
-                )
-            )
-            return
+            raise cmd.BadArgument(f"No module with name: **{command[0].lower()}**")
         command = [cog[0].replace("Module", "").lower()] + command[1:]
         cx = next(
             (
