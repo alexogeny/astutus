@@ -29,7 +29,7 @@ from .utils.etc import (
     rotate,
     lget,
     snake_get,
-    get_closest_match
+    get_closest_match,
 )
 from .utils import tt2
 
@@ -61,6 +61,7 @@ BONUS_MAP = dict(
 TREE_MAP = dict(Red="Knight", Blue="Sorcerer", Yellow="Warlord", Green="Assassin")
 SKILL_COLOURS = dict(red="FF6034", yellow="F7D530", blue="51B7EF", green="5BC65B")
 
+
 class TTDeck(cmd.Converter):
     async def convert(self, ctx, arg):
         arg = arg.lower()
@@ -76,6 +77,7 @@ class TTDeck(cmd.Converter):
             if closest_match:
                 return closest_match, RAID_DECKS.get(closest_match)
         return None, None
+
 
 TT_ROLES = dict(G="gm", M="master", C="captain", K="knight", R="recruit", T="timer")
 TT_CSV_FILES = dict(
@@ -506,7 +508,7 @@ class TapTitansModule(cmd.Cog):
             _h, _m, _s = await get_hms(dt)
             await ctx.send(f"Raid {rs_txt} in **{_h}**h **{_m}**m **{_s}**s.")
             return
-        if not level or len(level) == 0 or level == None:
+        if not level or len(level) == 0 or level is None:
             tier = groupdict.get("tier", 1)
             zone = groupdict.get("zone", 1)
         elif not all(1 <= x <= 10 for x in level):
@@ -516,7 +518,7 @@ class TapTitansModule(cmd.Cog):
         elif len(level) == 1:
             tier, zone = level, 1
         await self.bot.db.hset(group, "depl", 0)
-        if not time or time == None:
+        if not time or time is None:
             time = await Duration().convert(ctx, "24h")
         await self.bot.db.hset(group, "spawn", time.timestamp)
         time = time.humanize()
@@ -544,7 +546,7 @@ class TapTitansModule(cmd.Cog):
         self, ctx, group: Optional[tt2.TTRaidGroup], cd: Optional[Duration]
     ):
         "Clears a raid. Use this only when you complete a raid. Use cancel if you want to wipe the timer."
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
@@ -561,7 +563,7 @@ class TapTitansModule(cmd.Cog):
             raise cmd.BadArgument(
                 f"Can't clear unspawned raid. Use **{ctx.prefix}cancel**."
             )
-        if cd == None:
+        if cd is None:
             cd = now.shift(minutes=59, seconds=59)
         delta = cd - now
         _h, _m, _s = await get_hms(delta)
@@ -596,7 +598,7 @@ class TapTitansModule(cmd.Cog):
     @tt_raid.command(name="cancel", aliases=["abort", "stop"])
     async def tt_raid_cancel(self, ctx, group: Optional[tt2.TTRaidGroup]):
         "Cancels a currently scheduled raid."
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
@@ -607,12 +609,8 @@ class TapTitansModule(cmd.Cog):
             await ctx.send("No raid to cancel.")
             return
         else:
-            await self.bot.db.hdel(group, "edit")
-            await self.bot.db.hdel(group, "spawn")
-            await self.bot.db.hdel(group, "cd")
-            await self.bot.db.hdel(group, "current")
-            await self.bot.db.hdel(group, "depl")
-            await self.bot.db.hdel(group, "reset")
+            for k in "edit spawn cd current depl reset".split():
+                await self.bot.db.hdel(group, k)
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 
@@ -703,7 +701,7 @@ class TapTitansModule(cmd.Cog):
             "**clear** clears the entire queue and any currently attacking groups.\n"
             "**skip** skips the currently attack group e.g. if someone goes afk"
         )
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
@@ -789,9 +787,7 @@ class TapTitansModule(cmd.Cog):
         q = await self.bot.db.lrange(f"{group}:q")
         current = g.get("current", "").split()
         if str(ctx.author.id) in current:
-            raise cmd.BadArgument(
-                f"You're attacking. Try **{ctx.prefix}tt done** instead."
-            )
+            raise cmd.BadArgument(f"Try **{ctx.prefix}tt done** instead.")
         elif not str(ctx.author.id) in q:
             raise cmd.BadArgument(f"You're not in the queue, **{ctx.author}**.")
         else:
@@ -808,18 +804,15 @@ class TapTitansModule(cmd.Cog):
         g = await self.bot.db.hgetall(group)
         await self.has_clan_permissions(ctx, g)
         if not g.get("spawn", 0):
-            await ctx.send("No raid/reset rn.")
-            return
+            raise cmd.BadArgument("No raid/reset rn.")
         current = g.get("current", "").split()
         if not str(ctx.author.id) in current:
             q = await self.bot.db.lrange(f"{group}:q")
             if not str(ctx.author.id) in q:
-                await ctx.send(
-                    "Looks like it is not your turn and you are not in the queue."
-                )
+                raise cmd.BadArgument("It's not your turn & you're not queued.")
             else:
-                await ctx.send(
-                    "It's not your turn but you're queued. To cancel, do **;tt uq**"
+                raise cmd.BadArgument(
+                    f"It's not your go. Do **{ctx.prefix}tt uq** to unqueue."
                 )
         else:
             current = " ".join(current)
@@ -1146,7 +1139,7 @@ class TapTitansModule(cmd.Cog):
             emoji = self.emoji(data["Name"])
             embed = discord.Embed(
                 title=f"{emoji} {data['Name']}",
-                description='\n'.join(SKILL_TREE[desc]),
+                description="\n".join(SKILL_TREE[desc]),
                 color=int(
                     f'0x{SKILL_COLOURS[data["Branch"].lower().replace("branch", "")]}',
                     16,
@@ -1276,11 +1269,7 @@ class TapTitansModule(cmd.Cog):
             f, t = "letter", "scientific"
         await ctx.send(
             "{} Conversion of **{}** from **{}** to **{}** is: **{}**".format(
-                discord.utils.get(self.bot.emojis, name="_orange", guild_id=self.em),
-                val,
-                f,
-                t,
-                result,
+                self.emoji("_orange"), val, f, t, result
             )
         )
 
