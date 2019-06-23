@@ -59,18 +59,21 @@ BONUS_MAP = dict(
 class TTRaidCard(cmd.Converter):
     async def convert(self, ctx: cmd.Context, arg):
         arg = snake(arg)
+        print(arg)
+        if not arg.strip() or arg is None:
+            return None, None
         cards = ctx.bot.get_cog("TapTitansModule").cards
         names = [snake(c["Name"]) for c in cards]
         closest_match = difflib.get_close_matches(arg, names, n=1, cutoff=0.85)
         match, data = None, None
         if closest_match:
             match = closest_match[0]
-            data = [c for c in cards if snake(c['Name'])==match]
+            data = next((c for c in cards if snake(c["Name"]) == match), None)
         if not match:
             closest_match = next((n for n in names if n.startswith(arg)), None)
             if closest_match:
                 match = closest_match
-                data = [c for c in cards if snake(c['Name'])==match]
+                data = next((c for c in cards if snake(c["Name"]) == match), None)
         if not match:
             closest_match = next(
                 (
@@ -82,7 +85,7 @@ class TTRaidCard(cmd.Converter):
             )
             if closest_match:
                 match = closest_match
-                data = [c for c in cards if snake(c['Name'])==match]
+                data = next((c for c in cards if snake(c["Name"]) == match), None)
         return match, data
 
 
@@ -191,7 +194,7 @@ TT_CSV_FILES = dict(
     titans="RaidEnemy",
     arts="Artifact",
     equips="Equipment",
-    skills="SkillTree"
+    skills="SkillTree",
 )
 TT_TITAN_LORDS = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
 
@@ -938,34 +941,43 @@ class TapTitansModule(cmd.Cog):
     async def tt_card(self, ctx, *card):
         "Shows you information about tap titans cards."
         card, data = await TTRaidCard().convert(ctx, " ".join(card))
-        print(card)
-        print(data)
         if not card or card is None:
+            card = self.emoji("tt2_card")
             embed = discord.Embed(
-                title="Avaliable Cards",
-                description=", ".join([c["Name"] for c in self.cards]),
-                color=0x186281,
+                title=f"{card} Avaliable Cards",
+                description="List of cards in TT2 raids, sorted by category.",
+                color=int("0x186281", 16),
             )
-            embed.set_thumbnail(self.emoji("tt2_card").url)
+            for category in ["Affliction", "Support", "Burst"]:
+                emoji = self.emoji(category)
+                embed.add_field(
+                    name=f"{emoji} {category}",
+                    value="\n".join(
+                        [
+                            f"{self.emoji(c['Name'])} {c['Name']}"
+                            for c in self.cards
+                            if c["Category"] == category and c["Name"] in RAID_CARDS
+                        ]
+                    ),
+                )
+            embed.set_thumbnail(url=card.url)
         else:
             jcard = [RAID_CARDS[c] for c in RAID_CARDS.keys() if snake(c) == card][0]
             icx = self.emoji(data["Category"])
             embed = discord.Embed(
-                title=f"{icx} {card.title()}",
+                title=f"{icx} {data['Name']}",
                 description="Taps have a chance to {}".format(jcard["d"]),
                 color=int("0x" + data["Color"][1:], 16),
             )
-            embed.set_thumbnail(url=self.emoji(card).url)
+
+            embed.set_thumbnail(url=self.emoji(data["Name"]).url)
             embed.add_field(name="Tier", value=TIER_LIST[jcard["t"]])
             embed.add_field(name="Max Stacks", value=data["MaxStacks"])
             embed.add_field(
                 name="Base Chance", value=str(round(float(data["Chance"]) * 100)) + "%"
             )
             embed.add_field(name="Max Level", value=data["MaxLevel"])
-        try:
-            await ctx.send("", embed=embed)
-        except cmd.PermissionError:
-            await ctx.send("{}\n{}".format(embed.title, embed.description))
+        await ctx.send("", embed=embed)
 
     @taptitans.command(
         name="deck", aliases=["decks"], case_insensitive=True, usage="deckname"
@@ -1344,11 +1356,10 @@ class TapTitansModule(cmd.Cog):
         embed = discord.Embed(
             title=f"{img} Gold artifacts for {kind.title()} build",
             description=desc,
-            color=int(f"0x{color}", 16)
+            color=int(f"0x{color}", 16),
         )
         embed.add_field(
-            name="Artifacts",
-            value="\n".join([f"{self.emoji(a)} - {a}" for a in arts])
+            name="Artifacts", value="\n".join([f"{self.emoji(a)} - {a}" for a in arts])
         )
         embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
