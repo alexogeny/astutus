@@ -989,9 +989,17 @@ class TapTitansModule(cmd.Cog):
         if not deck or deck is None:
             embed = discord.Embed(
                 title="Avaliable Decks",
-                description=", ".join(list(RAID_DECKS.keys())),
+                description=f"Thanks to {crimtain} for helping to come up with these decks.",
                 color=0x186281,
             )
+            for key in RAID_DECKS.keys():
+                embed.add_field(
+                    name=f"{key.title()} Deck",
+                    value='\n'.join(
+                        f"{self.emoji(c)} {c}"
+                        for c in RAID_DECKS[key][0]
+                    )
+                )
         else:
             embed = discord.Embed(title=deck.title(), description=data[2])
             embed.add_field(
