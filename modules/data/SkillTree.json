@@ -1,0 +1,163 @@
+{
+    "TAPDMG": [
+        "Hone your skills as the Sword Master by strengthening your tapping power with the teachings of the old guards.",
+        "- Tap Damage directly increases all damage done by Sword Master Attacks, all forms of Pet Attacks, and Heavenly Strikes.",
+        "- Tap Damage provides a reduced bonus to Shadow Clone attacks."
+    ],
+    "TAPDMGFROMHELPERS": [
+        "The Heroes you hire lend their strength to increase your sword-wielding powers, converting a portion of their hero damage into tap damage.",
+        "- Converts a reduced amount of Hero Damage into Tap Damage.",
+        "- Weapon Sets and Base Hero Upgrades are applied at the full rate, but only a portion of All Hero and Class Hero bonuses are converted.",
+        "- Your Tap Damage bonus directly multiplies with Tap Damage from Heroes.",
+        "- This skill improves all damage sources that are improved by increased Tap Damage."
+    ],
+    "PETDMG": [
+        "The strong bond between you and your pet encourages it to protect you with more furious attacks.",
+        "- Pet Damage improves all pet attacks, including Lightning Burst and Flash Zip.",
+        "- Required Taps per Attack reduces the number of taps per bonus pet attack from 20 by the listed amount."
+    ],
+    "PETGOLDQTE": [
+        "King Midas has given your pet the power to generate gold. WHen your pet is glowing, tap it to earn additional gold.",
+        "- Heart of Midas Gold gives a multiple of the Boss Gold dropped from your current stage.",
+        "- The strength of Heart of Midas increases as you continue to reach higher level stages.",
+        "- Heart of Midas receives a partial bonus from the Hand of Midas active skill."
+    ],
+    "HEAVYSTRIKES": [
+        "Maximum Critical Damage directly improves all Sword Master Critical Hits, and gives an averaged increase to pet, clan ship, and Shadow Clone attacks.",
+        "Shadow Clone attacks suffer a damage penalty when your Critical Chance is low."
+    ],
+    "FIRETAPSKILLBOOST": [
+        "Directly increases Sword Master Attack Damage and Heavenly Strikes.",
+        "Gives a reduced bonus to Shadow Clone damage."
+    ],
+    "PETQTE": [
+        "Charges and delivers a powerful burst attack that can be used against normal Titans and Bosses.",
+        "When successfully defeating an enemy, the left over splash damage can splash through bosses.",
+        "Pet splash skip is increased by a factor of {0} when determining splash kills from this skill."
+    ],
+    "FRENZY": [
+        "Adds bonus attacks per second and Tap Damage while actively tapping.",
+        "Bonus Taps per second count towards generating additional Pet Attacks and Hand of Midas Tap Gold.",
+        "When Mana Siphon and Lightning Strike are unlocked, bonus taps per second will help activate these skills as well."
+    ],
+    "BOSSDMGQTE": [
+        "The final tap of each Flash Zip sequence deals Lightning Burst damage, however this attack does not splash through bosses.",
+        "After this skill is unlocked, your pet will become temporarily charged after each Lightning Burst or Flash Zip."
+    ],
+    "ALLHELPERDMG": [
+        "Directly increases Hero Damage, Clan Ship Damage, and Summon Clan Mate damage.",
+        "Also increases Tap Damage and all dependent damage sources by a reduced amount when Tap Damage from Heroes is unlocked."
+    ],
+    "CHESTGOLD": [
+        "Increases gold dropped from Fairy Chests, Splash Overkills, and Inactive Gold Earned.",
+        "Potentially increases Perk Gold from Make it Rain and Clan Crates."
+    ],
+    "HELPERBOOST": [
+        "There are two different types of Unlockable Hero Skills: Multiplicative and Additive.",
+        "Multiplicative skills are bonuses of the form x(Bonus), such all types of Damage and Gold Amount Hero Skills.",
+        "Additive skills are bonuses of the form +(Bonus), such as all Chance and Mana related Hero Skills."
+    ],
+    "CLANQTE": [
+        "Initiating this ability causes your Clan Ship to fire a bonus attack while your Clan Mate is summoned into battle.",
+        "The bonus clan ship attack receives a boost to splash skip by a factor of {0}.",
+        "Your Clan Mate's damage directly depends on the strength of your Clan Ship Damage."
+    ],
+    "HELPERDMGQTE": [
+        "The Astral Orb can be tapped up to {0} times per sequence, where each tap independently multiplies your All Hero Damage Bonus for {1} seconds.",
+        "Finishing the sequence quickly will give you the strongest possible All Hero Damage increase from this skill."
+    ],
+    "HELPERDMGSKILLBOOST": [
+        "Inspired heroes deal a multiple of your total hero DPS with the base War Cry Bonus.",
+        "The amount and percentage of damage dealt by Inspired Heroes can be seen in the hero scroll list tab."
+    ],
+    "HELPERINSPIREDWEAKEN": [
+        "Each projectile from an Inspired hero weakens enemies, causing the current Titan to take more damage from hero based sources.",
+        "The weakening effect favors hero and clan ship damage types, making it less effective for non-hero based damage."
+    ],
+    "CLANSHIPDMG": [
+        "Clan Based Damage increases damage dealt by both your Clan Ship and summoned Clan Mates.",
+        "The increase in Maximum Splash Count only applies to attacks made by your Clan Ship."
+    ],
+    "CLANSHIPSTUN": [
+        "Other than Lightning Strikes and Doom, all damage sources are increased by the Stun Damage Bonus when made against stunned Titans.",
+        "Boss countdown timers are temporarily frozen while a Boss Titan is stunned."
+    ],
+    "MPCAPACITYBOOST": [
+        "Allows you to store more mana while inactive, and also increases the effectiveness of Mana Siphon."
+    ],
+    "MANAMONSTER": [
+        "Earn the specified amount of mana each time Manni Mana is defeated.",
+        "Manni Mana spawns take priority over Chesterson Spawns."
+    ],
+    "BURSTSKILLBOOST": [
+        "Angelic Radiance must be unlocked in order for Heavenly Strike to have the potential to splash through bosses.",
+        "Splash Skip reduces the remaining number of non-boss Titans per stage for purposes of calculating Splash Overkills, down to the minimum amount of 1."
+    ],
+    "CLONEDMG": [
+        "Increases your Shadow Clone attack damage and attack rate.",
+        "The attack rate increase does not improve your Shadow Clone's ability to use Mana Siphon or case Lightning Strikes, when those skills are unlocked and active.",
+        "Bonus Shadow Clone damage dealt to Stunned Titans is only temporary."
+    ],
+    "FAIRY": [
+        "After an initial Fairy spawns, you have a chance to spawn an additional Fairy as given by your Multiple Fairy Chance.",
+        "For each successful Multiple Fairy Spawn, your Multiple Fairy Chance is halved and used again in attempt to spawn an additional Fairy."
+    ],
+    "MIDASSKILLBOOST": [
+        "Drops additional gold each time Hand of Midas is activated.",
+        "The Fairy Gold multiplier acts as an additional bonus on top of the Hand of Midas effect for fairy gold drops."
+    ],
+    "CLONESKILLBOOST": [
+        "Your Shadow Clone damage always depends on the strongest value of relevant bonuses while active.",
+        "If your damage bonuses decrease while Shadow Clone is active, its damage will not decrease.",
+        "If your damage bonuses increase while Shadow Clone is active, its damage will increase accordingly."
+    ],
+    "MANASTEALSKILLBOOST": [
+        "You have a {0} chance to trigger Mana Siphon with each Sword Master attack or Shadow Clone special attempt.",
+        "Each successful Mana Siphon roll will restore a percentage of your maximum Mana Capacity by the specified amount."
+    ],
+    "CRITSKILLBOOST": [
+        "You have a {0} chance to trigger a Lightning Strike with each Sword Master attack or Shadow Clone special attempt.",
+        "Lightning Strikes can only trigger when one of your six active skills are activated.",
+        "Weakens Titans by reducing a portion of their remaining hit points with each strike."
+    ],
+    "BOSSTIMER": [
+        "Dimensional Shift effects only apply when Shadow Clone is active.",
+        "Increases the Primary Effect of all Active Skills, including the strength of Shadow Clone itself.",
+        "Increases the duration of Active Skills; this duration boost is lost when Shadow Clone ends."
+    ],
+    "OFFLINEGOLD": [
+        "Increases gold earned from all gold sources.",
+        "An additional bonus is given to Inactive Gold earned during inactive play."
+    ],
+    "CRITSKILLBOOSTDMG": [
+        "Directly increases Sword Master Attack Damage when a successful Deadly Strike attack is made.",
+        "Deadly Strike gives an averaged bonus to all Heavenly Strikes.",
+        "This skill does not affect inactive play."
+    ],
+    "AUTOADVANCE": [
+        "Your ability to inactively advance stages is limited by your Inactive DPS.",
+        "In Tournaments you may only inactively advance up to the highest submitted stage for each respective tournament."
+    ],
+    "MULTIMONSTERS": [
+        "Multi-Spawns count as bonus kills for that stage, but do not allow you to skip bosses.",
+        "Each Multi-Spawn increases the gold drop of that Titan by {0}%, including bonus gold earned by Hand of Midas.",
+        "Multi-Spawns can trigger during Inactive Play, which increases Inactive Gold earned and can potentially reduce the average number of non-boss Titans per stage.",
+        "When Manni Mana spawns, each additional Multi-Spawn increases the mana drop of Manni Mana by {1}%."
+    ],
+    "PETOFFLINEDMG": [
+        "Allows your Pet to score Deadly Critical Hits while Deadly Strike is active.",
+        "Includes Pet Damage in your Inactive DPS total.",
+        "Lightning Burst and Flash Zip attacks receive a reduced averaged bonus from Deadly Strike."
+    ],
+    "INACTIVECLANSHIP": [
+        "Allows your Clan Ship to score Deadly Critical Hits while Deadly Strike is active.",
+        "Includes Clan Ship Damage in your Inactive DPS total.",
+        "The bonus damage received from Deadly Strike is reduced from the amount listed in the skill description."
+    ],
+    "OFFLINECLONEDMG": [
+        "Allows your Shadow Clone to score Deadly Critical Hits while Deadly Strike is active.",
+        "Includes Shadow Clone Damage in your Inactive DPS total.",
+        "Shadow Clone does not need to be active in order to factor into Inactive DPS before going idle.",
+        "The bonus damage received from Deadly Strike is reduced from the amount listed in the skill description."
+    ]
+}

@@ -10,6 +10,7 @@ import json
 from string import ascii_lowercase, digits
 from csv import DictReader
 from math import floor
+from random import choice
 import arrow
 import humanfriendly
 import discord
@@ -28,6 +29,7 @@ from .utils.etc import (
     rotate,
     lget,
     snake_get,
+    get_closest_match
 )
 from .utils import tt2
 
@@ -44,6 +46,8 @@ with open("modules/data/TourneyData.json", "r") as jf:
     BONUSES = json.load(jf)
 with open("modules/data/ArtifactColours.json", "r") as jf:
     COLOURS = json.load(jf)
+with open("modules/data/SkillTree.json", "r") as jf:
+    SKILL_TREE = json.load(jf)
 BONUS_MAP = dict(
     Boost="General",
     Dmg="Damage",
@@ -54,80 +58,8 @@ BONUS_MAP = dict(
     Duration="Duration",
     Gold="Gold",
 )
-TREE_MAP = dict(
-    Red="Knight",
-    Blue="Sorcerer",
-    Yellow="Warlord",
-    Green="Assassin"
-)
-
-
-class TTRaidCard(cmd.Converter):
-    async def convert(self, ctx: cmd.Context, arg):
-        arg = snake(arg)
-        print(arg)
-        if not arg.strip() or arg is None:
-            return None, None
-        cards = ctx.bot.get_cog("TapTitansModule").cards
-        names = [snake(c["Name"]) for c in cards]
-        closest_match = difflib.get_close_matches(arg, names, n=1, cutoff=0.85)
-        match, data = None, None
-        if closest_match:
-            match = closest_match[0]
-            data = next((c for c in cards if snake(c["Name"]) == match), None)
-        if not match:
-            closest_match = next((n for n in names if n.startswith(arg)), None)
-            if closest_match:
-                match = closest_match
-                data = next((c for c in cards if snake(c["Name"]) == match), None)
-        if not match:
-            closest_match = next(
-                (
-                    n
-                    for n in names
-                    if "".join([x[0] for x in n.lower().split("_")]) == arg.lower()
-                ),
-                None,
-            )
-            if closest_match:
-                match = closest_match
-                data = next((c for c in cards if snake(c["Name"]) == match), None)
-        return match, data
-
-
-class TTArtifact(cmd.Converter):
-    async def convert(self, ctx: cmd.Context, arg):
-        arg = snake(arg)
-        arts = ctx.bot.get_cog("TapTitansModule").arts
-        names = [snake(a["Name"]) for a in arts]
-        closest_match = difflib.get_close_matches(arg, names, n=1, cutoff=0.85)
-        match, data = None, None
-        if closest_match:
-            match = closest_match[0]
-            data = next((a for a in arts if snake(a["Name"]) == match), None)
-        if not match:
-            closest_match = next((n for n in names if n.startswith(arg)), None)
-            if closest_match:
-                match = closest_match
-                data = next(
-                    (a for a in arts if snake(a["Name"]) == closest_match), None
-                )
-        if not match:
-            closest_match = next(
-                (
-                    n
-                    for n in names
-                    if "".join([x[0] for x in n.lower().split("_")]) == arg.lower()
-                ),
-                None,
-            )
-            if closest_match:
-                match = closest_match
-                data = next(
-                    (a for a in arts if snake(a["Name"]) == closest_match), None
-                )
-        return match, data
-
+TREE_MAP = dict(Red="Knight", Blue="Sorcerer", Yellow="Warlord", Green="Assassin")
+SKILL_COLOURS = dict(red="FF6034", yellow="F7D530", blue="51B7EF", green="5BC65B")
 
 class TTDeck(cmd.Converter):
     async def convert(self, ctx, arg):
@@ -144,54 +76,6 @@ class TTDeck(cmd.Converter):
             if closest_match:
                 return closest_match, RAID_DECKS.get(closest_match)
         return None, None
-
-
-class TTKey(cmd.Converter):
-    async def convert(self, ctx: cmd.Context, arg):
-        if arg.lower() not in [
-            "grandmaster",
-            "gm",
-            "master",
-            "captain",
-            "knight",
-            "recruit",
-            "guest",
-            "applicant",
-            "timer",
-            "tier",
-            "zone",
-            "average",
-            "avg",
-            "announce",
-            "farm",
-            "mode",
-            "code",
-            "name",
-        ]:
-            raise cmd.BadArgument(f"**{arg}** not a valid setting for TT2.")
-        if arg == "average":
-            arg == "avg"
-        elif arg == "grandmaster":
-            arg == "gm"
-        if (
-            arg in "gmmastercaptainknightrecruitapplicantguesttimer"
-            and not checks.can_manage_roles()
-        ):
-            raise cmd.BadArgument("You need the manage role permission.")
-        if arg == "announce" and not checks.can_manage_channels():
-            raise cmd.BadArgument("You need the manage channel permission.")
-
-        return arg.lower()
-
-
-class TTRaidGroup(cmd.Converter):
-    async def convert(self, ctx, arg):
-        if arg[0] != "g" or arg[1] not in ("1", "2", "3"):
-            raise cmd.BadArgument("Invalid raid group.")
-        if arg == "gm":
-            raise cmd.BadArgument("Bad?")
-        return f"{ctx.guild.id}:tt:{arg[1]}"
-
 
 TT_ROLES = dict(G="gm", M="master", C="captain", K="knight", R="recruit", T="timer")
 TT_CSV_FILES = dict(
@@ -521,9 +405,9 @@ class TapTitansModule(cmd.Cog):
     @taptitans.group(name="set", usage="key val")
     @cmd.guild_only()
     @checks.is_mod()
-    async def tt_set(self, ctx, group: Optional[TTRaidGroup], key: TTKey, val):
+    async def tt_set(self, ctx, group: Optional[tt2.TTRaidGroup], key: tt2.TTKey, val):
         "Set a settings key for tap titans clan."
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
@@ -591,12 +475,12 @@ class TapTitansModule(cmd.Cog):
     async def tt_raid(
         self,
         ctx,
-        group: Optional[TTRaidGroup],
+        group: Optional[tt2.TTRaidGroup],
         level: cmd.Greedy[int],
         time: Optional[Duration],
     ):
         "Sets a raid to spawn after the given time."
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
@@ -657,7 +541,7 @@ class TapTitansModule(cmd.Cog):
 
     @tt_raid.command(name="clear", aliases=["end", "ended", "cleared", "cd"])
     async def tt_raid_clear(
-        self, ctx, group: Optional[TTRaidGroup], cd: Optional[Duration]
+        self, ctx, group: Optional[tt2.TTRaidGroup], cd: Optional[Duration]
     ):
         "Clears a raid. Use this only when you complete a raid. Use cancel if you want to wipe the timer."
         if group == None:
@@ -710,7 +594,7 @@ class TapTitansModule(cmd.Cog):
         await self.bot.db.hset(group, "edit", msg.id)
 
     @tt_raid.command(name="cancel", aliases=["abort", "stop"])
-    async def tt_raid_cancel(self, ctx, group: Optional[TTRaidGroup]):
+    async def tt_raid_cancel(self, ctx, group: Optional[tt2.TTRaidGroup]):
         "Cancels a currently scheduled raid."
         if group == None:
             group = f"{ctx.guild.id}:tt:1"
@@ -812,7 +696,7 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(
         name="queue", aliases=["q"], case_insensitive=True, usage="show|clear|skip"
     )
-    async def tt_queue(self, ctx, group: Optional[TTRaidGroup], list=None):
+    async def tt_queue(self, ctx, group: Optional[tt2.TTRaidGroup], list=None):
         (
             "Enter into the tap titans raid queue.\n"
             "**show** displays the queue.\n"
@@ -867,7 +751,7 @@ class TapTitansModule(cmd.Cog):
             temp = str(len(result) + 1)
             r = []
             for u in c:
-                if u != None:
+                if u is not None:
                     ux = await self.bot.fetch_user(int(u))
                     r.append(f"{ux}")
             result.append(temp + ". " + ", ".join(r))
@@ -883,10 +767,10 @@ class TapTitansModule(cmd.Cog):
 
     @taptitans.command(name="unqueue", aliases=["unq", "uq"], case_insensitive=True)
     async def tt_unqueue(
-        self, ctx, group: Optional[TTRaidGroup], members: cmd.Greedy[MemberID]
+        self, ctx, group: Optional[tt2.TTRaidGroup], members: cmd.Greedy[MemberID]
     ):
         "Remove yourself from the tap titans raid queue."
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
@@ -916,9 +800,9 @@ class TapTitansModule(cmd.Cog):
                 await ctx.send(f"Ok **{ctx.author}**, I removed you from the queue.")
 
     @taptitans.command(name="done", aliases=["d"])
-    async def tt_done(self, ctx, group: Optional[TTRaidGroup]):
+    async def tt_done(self, ctx, group: Optional[tt2.TTRaidGroup]):
         "Mark yourself as done in the raid queue. Will only work if you're currently attacking."
-        if group == None:
+        if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
@@ -946,7 +830,7 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(name="card", aliases=["cards"], case_insensitive=True)
     async def tt_card(self, ctx, *card):
         "Shows you information about tap titans cards."
-        card, data = await TTRaidCard().convert(ctx, " ".join(card))
+        card, data = await tt2.TTRaidCard().convert(ctx, " ".join(card))
         if not card or card is None:
             card = self.emoji("tt2_card")
             embed = discord.Embed(
@@ -1001,10 +885,7 @@ class TapTitansModule(cmd.Cog):
             for key in RAID_DECKS.keys():
                 embed.add_field(
                     name=f"{key.title()} Deck",
-                    value='\n'.join(
-                        f"{self.emoji(c)} {c}"
-                        for c in RAID_DECKS[key][0]
-                    )
+                    value="\n".join(f"{self.emoji(c)} {c}" for c in RAID_DECKS[key][0]),
                 )
         else:
             embed = discord.Embed(title=deck.title(), description=data[2])
@@ -1056,7 +937,7 @@ class TapTitansModule(cmd.Cog):
     async def tt_artifacts(
         self,
         ctx,
-        artifact: Optional[TTArtifact],
+        artifact: Optional[tt2.TTArtifact],
         lvl_from: Optional[str],
         lvl_to: Optional[str],
     ):
@@ -1074,7 +955,6 @@ class TapTitansModule(cmd.Cog):
                     inline=False,
                 )
             await ctx.send("", embed=embed)
-        # elif artifact:
         arti, data = artifact
         emoji = self.emoji(data["Name"])
         id = data["ArtifactID"].replace("Artifact", "")
@@ -1240,22 +1120,58 @@ class TapTitansModule(cmd.Cog):
         return
 
     @taptitans.group(name="skill", case_insensitive=True, aliases=["skills", "s"])
-    async def tt_skill(self, ctx, *skill: Optional[str]):
+    async def tt_skill(self, ctx, skill: Optional[tt2.TTSkill], lvl: Optional[int] = 0):
         if not skill or skill is None:
+            emoji = self.emoji("skill_tree")
             embed = discord.Embed(
-                title='List of TT2 Skills',
-                description="TT2 Skills sorted by skill tree."
+                title=f"{emoji} List of TT2 Skills",
+                description="TT2 Skills sorted by skill tree.",
+                color=int("0x{}".format(choice(list(SKILL_COLOURS.values()))), 16),
             )
-            for branch in set([s['Branch'] for s in self.skills]):
+            embed.set_thumbnail(url=emoji.url)
+            for branch in ["Red", "Yellow", "Blue", "Green"]:
                 embed.add_field(
-                    name=TREE_MAP[branch.replace('Branch', '')],
-                    value='\n'.join([
-                        f"{self.emoji(s['Name'])} {s['Name']}" for s in self.skills if s["Branch"] == branch
-                    ]),
+                    name=TREE_MAP[branch],
+                    value="\n".join(
+                        [
+                            f"{self.emoji(s['Name'])} {s['Name']}"
+                            for s in self.skills
+                            if s["Branch"] == f"Branch{branch}"
+                        ]
+                    ),
                 )
-            await ctx.send("", embed=embed)
-            return
-        await ctx.send("blah")
+        else:
+            skill, data = skill
+            desc = [x for x in SKILL_TREE if x.lower() == data["TalentID"].lower()][0]
+            emoji = self.emoji(data["Name"])
+            embed = discord.Embed(
+                title=f"{emoji} {data['Name']}",
+                description='\n'.join(SKILL_TREE[desc]),
+                color=int(
+                    f'0x{SKILL_COLOURS[data["Branch"].lower().replace("branch", "")]}',
+                    16,
+                ),
+            )
+            embed.add_field(name="Tier", value=data["Tier"])
+            embed.add_field(name="Max Level", value=data["MaxLevel"])
+            embed.add_field(name="SP required to unlock", value=data["SPReq"])
+            embed.set_thumbnail(url=emoji.url)
+            if lvl:
+                level = data.get(f"A{lvl}", None)
+                if level and Decimal(level):
+                    embed.add_field(
+                        name=f"Effect at level {lvl}", value=level, inline=False
+                    )
+                    embed.add_field(
+                        name=f"SP Cost for level {lvl}", value=data[f"C{lvl-1}"]
+                    )
+                    embed.add_field(
+                        name=f"Cumulative SP cost for level {lvl}",
+                        value="{}".format(
+                            sum([int(data[f"C{x}"]) for x in range(0, lvl)])
+                        ),
+                    )
+        await ctx.send("", embed=embed)
 
     @taptitans.command(name="bonuses", aliases=["bonus"])
     async def tt_bonuses(self, ctx):
@@ -1288,7 +1204,7 @@ class TapTitansModule(cmd.Cog):
         result, i, now = [], 0, arrow.utcnow()
         origin = arrow.get(1532242116)
         tourneys, _ = divmod((now - origin).days, 3.5)
-        tourneys = int(floor(tourneys)) + 1
+        tourneys = int(round(tourneys))
         current = int(now.format("d"))
         icon = "tourney_red"
         nxt = "opens"
@@ -1309,7 +1225,7 @@ class TapTitansModule(cmd.Cog):
             start_date = now.shift(days=shifter).replace(hour=0, minute=0, second=0)
             end_date = start_date.shift(days=1)
             if shifter == 0:
-                delta = end_date - start_date
+                delta = end_date - now
             else:
                 delta = start_date - now
             _h, _m, _s = await get_hms(delta)

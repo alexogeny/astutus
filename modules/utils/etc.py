@@ -7,6 +7,36 @@ import aiohttp
 import discord
 from discord.ext import commands as cmd
 import arrow
+import difflib
+
+
+async def get_closest_match(arg, items):
+    if not arg.strip() or arg is None:
+        return None, None
+    names = [snake(i["Name"]) for i in items]
+    closest_match = difflib.get_close_matches(arg, names, n=1, cutoff=0.85)
+    match, data = None, None
+    if closest_match:
+        match = closest_match[0]
+        data = next((a for a in items if snake(a["Name"]) == match), None)
+    if not match:
+        closest_match = next((n for n in names if n.startswith(arg)), None)
+        if closest_match:
+            match = closest_match
+            data = next((a for a in items if snake(a["Name"]) == closest_match), None)
+    if not match:
+        closest_match = next(
+            (
+                n
+                for n in names
+                if "".join([x[0] for x in n.lower().split("_")]) == arg.lower()
+            ),
+            None,
+        )
+        if closest_match:
+            match = closest_match
+            data = next((a for a in items if snake(a["Name"]) == closest_match), None)
+    return match, data
 
 
 def snake(text):
