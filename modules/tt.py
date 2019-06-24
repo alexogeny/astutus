@@ -1191,14 +1191,14 @@ class TapTitansModule(cmd.Cog):
             "You can extend the forecast up to 10 future tournaments with the <next> parameter."
         )
         if last not in range(1, 11):
-            raise cmd.BadArgement("Prediction is too far into the future.")
+            raise cmd.BadArgument("Prediction is too far into the future.")
         if ctx.invoked_with[-1] != "s":
             last = 1
         prizes = "hero_weapon skill_point crafting_shard"
         result, i, now = [], 0, arrow.utcnow()
         origin = arrow.get(1532242116)
         tourneys, _ = divmod((now - origin).days, 3.5)
-        tourneys = int(round(tourneys))
+        tourneys = int(round(tourneys)) + 1
         current = int(now.format("d"))
         icon = "tourney_red"
         nxt = "opens"
@@ -1212,6 +1212,7 @@ class TapTitansModule(cmd.Cog):
             icon = "tourney"
             nxt = "closes"
             clr = 0x1C7CA1
+            tourneys = tourneys - 1
         elif current in [4]:
             shifter = 3
         desc = ""

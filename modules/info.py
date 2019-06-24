@@ -32,6 +32,7 @@ class InfoModule(cmd.Cog):
 
     @cmd.command()
     async def prefix(self, ctx):
+        "Show's the bot's current prefix for this guild."
         cstm = await self.bot.db.hget(f"{ctx.guild.id}:set", "pfx")
         if not cstm or cstm is None:
             cstm = ""

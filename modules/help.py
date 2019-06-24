@@ -1,4 +1,4 @@
-# import discord
+import discord
 from discord.ext import commands as cmd
 
 # import difflib
@@ -12,11 +12,11 @@ class HelpModule(cmd.Cog):
     async def help(self, ctx, *command):
         "Displays help about stuff."
         if not command:
-            support_text = "Currently available modules for **{}**. Type **{}{} <module>** (without brackets) to access the help page for a module:\n{{}}".format(
-                self.bot.user.mention, ctx.prefix, ctx.command
+            embed = discord.Embed(
+                title=f'Available modules for {self.bot.user}',
+                description=", ".join([f"{c.replace('Module', '')}" for c in self.bot.cogs])
             )
-            hlp = ", ".join([f"**{c.replace('Module', '')}**" for c in self.bot.cogs])
-            await ctx.send(support_text.format(hlp))
+            await ctx.send("", embed=embed)
             return
         command = list(command)
         cog = [
@@ -37,61 +37,55 @@ class HelpModule(cmd.Cog):
             None,
         )
         if len(command) > 1 and cx is not None:
-            result = "Help for command **{}{}**\n\n**Description**\n{}\n\n**Usage**\n{}"
+            embed = discord.Embed(
+                title=f'Help for command **{ctx.prefix}{cx}**',
+                description=cx.help or "No help file found."
+            )
             usg = (
-                cx.usage
-                and f"{ctx.prefix}{' '.join(command)} {' '.join(f'<{x}>' for x in cx.usage.split())}"
-                or ""
+                f"{ctx.prefix}{' '.join(command)} {' '.join((f'<{x}>' for x in cx.usage.split()))}"
+                if cx.usage else ''
             )
-            await ctx.send(
-                result.format(
-                    ctx.prefix,
-                    cx,
-                    cx.help or "No help file found.",
-                    usg or "No usage found.",
-                )
+            embed.add_field(
+                name='Usage',
+                value=usg or "No usage found."
             )
+            await ctx.send('', embed=embed)
             return
-        elif len(cog) > 1:
-            await ctx.send(
+        if len(cog) > 1:
+            raise cmd.BadArgument(
                 "I found multiple modules. Please try to narrow your search: {}".format(
                     ", ".join([f"**{c.replace('Module', '').lower()}**" for c in cog])
                 )
             )
-            return
         cg = self.bot.get_cog(cog[0])
         subcommands = list(cg.walk_commands())
         module = cg.qualified_name.replace("Module", "").lower()
         cmd_grp = ", ".join(
-            set(
-                [
-                    str(s).replace(module, "").strip()
-                    for s in subcommands
-                    if hasattr(s, "walk_commands") and not str(s) == module
-                ]
-            )
+            {
+                str(s).replace(module, "").strip()
+                for s in subcommands
+                if hasattr(s, "walk_commands") and not str(s) == module
+            }
         )
         cmd_lst = ", ".join(
-            set(
-                [
-                    str(s).replace(module, "").strip()
-                    for s in subcommands
-                    if len(str(s).split()) == 2 and not hasattr(s, "walk_commands")
-                ]
-            )
+            {
+                str(s).replace(module, "").strip()
+                for s in subcommands
+                if len(str(s).split()) in [1, 2] and not hasattr(s, "walk_commands")
+            }
         )
         aliases = ", ".join(getattr(cg, "aliases", []))
-        cmd_grp = cmd_grp and f"**Command Groups**\n{cmd_grp}\n\n" or ""
-        cmd_lst = cmd_lst and f"**Commands**\n{cmd_lst}\n\n" or ""
-        await ctx.send(
-            "Help for **{}** module:\n\n**Description**\n{}\n\n{}{}{}".format(
-                module,
-                cg.__doc__ or "none found.",
-                aliases and f"**Aliases**\n{aliases}\n\n" or "",
-                cmd_grp,
-                cmd_lst,
-            )
+        embed = discord.Embed(
+            title=f'Help for **{module}** module',
+            description=cg.__doc__ or "No helpfile found."
         )
+        if aliases:
+            embed.add_field(name='Aliases', value=aliases, inline=False)
+        if cmd_grp:
+            embed.add_field(name='Command Groups', value=cmd_grp)
+        if cmd_lst:
+            embed.add_field(name='Commands', value=cmd_lst)
+        await ctx.send("", embed=embed)
 
 
 def setup(bot):
