@@ -830,7 +830,7 @@ class TapTitansModule(cmd.Cog):
                 description="List of cards in TT2 raids, sorted by category.",
                 color=int("0x186281", 16),
             )
-            for category in ["Affliction", "Support", "Burst"]:
+            for category in ["Burst", "Affliction", "Support"]:
                 emoji = self.emoji(category)
                 embed.add_field(
                     name=f"{emoji} {category}",
@@ -1282,21 +1282,25 @@ class TapTitansModule(cmd.Cog):
         "Displays optimal artifacts required for a specific gold source."
         taco = await self.bot.fetch_user(381376462189625344)
         if not kind or kind.lower() not in GOLD_SOURCES.keys():
-            await ctx.send(
-                "Available gold sources:\n{}".format(", ".join(GOLD_SOURCES.keys()))
+            ebizu = self.emoji("coins of ebizu")
+            embed = discord.Embed(
+                title=f'{ebizu} TT2 gold sources',
+                description='\n'.join([f"{self.emoji(val[2])} {k}" for k, val in GOLD_SOURCES.items()]),
+                color=0xE2BB39
             )
-            return
-        desc, arts, img, color = GOLD_SOURCES[kind.lower()]
-        img = self.emoji(img)
-        embed = discord.Embed(
-            title=f"{img} Gold artifacts for {kind.title()} build",
-            description=desc,
-            color=int(f"0x{color}", 16),
-        )
-        embed.add_field(
-            name="Artifacts", value="\n".join([f"{self.emoji(a)} - {a}" for a in arts])
-        )
-        embed.set_thumbnail(url=img.url)
+            embed.set_thumbnail(url=str(ebizu.url).replace('.gif', '.png'))
+        else:
+            desc, arts, img, color = GOLD_SOURCES[kind.lower()]
+            img = self.emoji(img)
+            embed = discord.Embed(
+                title=f"{img} Gold artifacts for {kind.title()} build",
+                description=desc,
+                color=int(f"0x{color}", 16),
+            )
+            embed.add_field(
+                name="Artifacts", value="\n".join([f"{self.emoji(a)} - {a}" for a in arts])
+            )
+            embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
 
 

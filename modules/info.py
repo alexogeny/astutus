@@ -42,9 +42,14 @@ class InfoModule(cmd.Cog):
             )
         )
 
-    @cmd.command(name="botinfo")
+    @cmd.group(name="info", invoke_without_command=True, aliases=["i"])
+    async def info(self, ctx):
+        return
+
+    @info.command(name="bot")
     @cmd.guild_only()
-    async def info_bot(self, ctx: cmd.Context):
+    async def botinfo(self, ctx: cmd.Context):
+        "Get information about the bot!"
         mem = self.process.memory_full_info().uss / 1024 ** 2
         cpu = self.process.cpu_percent() / psutil.cpu_count()
         prem = await self.bot.db.hgetall("premium")
@@ -53,7 +58,7 @@ class InfoModule(cmd.Cog):
         )
         await ctx.send(result)
 
-    @cmd.command(name="db")
+    @info.command(name="db")
     @cmd.guild_only()
     async def dbinfo(self, ctx: cmd.Context):
         size = await self.bot.db.size()
