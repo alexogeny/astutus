@@ -64,11 +64,10 @@ class TrackingModule(cmd.Cog):
         previous_nicks = await self.bot.db.lrange(obj, 0, -1)
         if not previous_nicks:
             raise cmd.BadArgument(f"Looks like **{user}** has no previous usernames.")
-        else:
-            previous_nicks = [f"**{n}**" for n in previous_nicks]
-            await ctx.send(
-                f"Previous usernames for **{user}** include: {', '.join(previous_nicks)}."
-            )
+        previous_nicks = [f"**{n}**" for n in previous_nicks]
+        await ctx.send(
+            f"Previous usernames for **{user}** include: {', '.join(previous_nicks)}."
+        )
 
     async def track_last_seen(self, member):
         await self.bot.db.hset("tr:ls", member.id, arrow.utcnow().timestamp)

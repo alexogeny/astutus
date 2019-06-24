@@ -1,4 +1,3 @@
-import asyncio
 import aioredis as redis
 
 
@@ -41,7 +40,7 @@ class Redis:
         return await self.execute("INCR", key)
 
     async def zincrement(self, key, member, score: int = None):
-        if score == None:
+        if score is None:
             score = 1
         return await self.execute("ZINCRBY", key, score, member)
 

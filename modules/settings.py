@@ -65,6 +65,25 @@ class SettingsModule(cmd.Cog):
         await self.bot.db.hset(f"{ctx.guild.id}:set", "autorole", role.id)
         await ctx.send(f"Set the autorole to @**{role}**!")
 
+    @settings.command(name="logging")
+    @checks.is_mod()
+    async def logging(
+        self, ctx, logtype, channel: Optional[cmd.TextChannelConverter] = None
+    ):
+        logtypes = "messages avatars channels roles pins".split()
+        if logtype.lower() not in logtypes:
+            raise cmd.BadArgument(
+                "**Log type** must be one of: {}".format(
+                    ", ".join([f"**{l}**" for l in logtypes])
+                )
+            )
+        if channel is None:
+            raise cmd.BadArgument("Could not find channel with that name.")
+        await self.bot.db.hset(f"{ctx.guild.id}:set", f"log{logtype}", channel.id)
+        await ctx.send(
+            f":white_check_mark: Set **log{logtype}** channel to #**{channel}**!"
+        )
+
     @settings.command(name="greet", aliases=["welcome"])
     @checks.is_mod()
     async def greet(self, ctx, *message):

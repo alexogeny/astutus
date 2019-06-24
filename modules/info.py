@@ -16,19 +16,21 @@ class InfoModule(cmd.Cog):
     @cmd.command()
     @cmd.cooldown(1, 30, cmd.BucketType.user)
     async def avatar(self, ctx, user: MemberID = None):
-        if user == None:
+        if user is None:
             user = ctx.author.id
-        async with ctx.typing():
-            user_profile = await self.bot.fetch_user(user)
-            base, _ = str(user_profile.avatar_url).split("?")
-            name, ext = ".".join(base.split(".")[:-1]), base.split(".")[-1]
-            if user_profile.is_avatar_animated():
-                ext = "gif"
-            discord_file = discord.File(
-                await download_image(f"{name}.{ext}"),
-                filename=f"{user_profile}_avatar.{ext}",
+        log = self.bot.get_cog("LoggingModule")
+        if user:
+            user = self.bot.get_user(user)
+        cache = log.avatar_cache
+        if not cache.get(str(user.id), None):
+            i = await log.upload_to_imgur(
+                str(user.avatar_url_as(static_format="png", size=1024)), anon=True
             )
-        await ctx.send(content=f"**{user_profile}**'s avatar:", file=discord_file)
+            cache[str(user.id)] = i["link"]
+        async with ctx.typing():
+            embed = discord.Embed(title=f"**{user}**'s avatar")
+            embed.set_image(url=cache[str(user.id)])
+            await ctx.send(embed=embed)
 
     @cmd.command()
     async def prefix(self, ctx):

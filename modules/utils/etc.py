@@ -3,11 +3,9 @@ import asyncio
 import io
 from math import log10
 from string import ascii_lowercase
-import aiohttp
-import discord
-from discord.ext import commands as cmd
-import arrow
 import difflib
+import aiohttp
+from discord.ext import commands as cmd
 
 
 async def get_closest_match(arg, items):

@@ -68,9 +68,9 @@ class HelpModule(cmd.Cog):
                     if hasattr(sub, "walk_commands") and not strsub == module:
                         groups.append(strsub.replace(module, "").strip())
                     elif len(strsub.split()) < 3:
-                        if not module in strsub:
+                        if not module in strsub and not sub.hidden:
                             commands.append(strsub)
-                        elif strsub.replace(module, ""):
+                        elif strsub.replace(module, "") and not sub.hidden:
                             commands.append(strsub.replace(module, ""))
                 aliases = ", ".join(getattr(cg, "aliases", []))
                 title = f"Help for **{module}** module"

@@ -105,18 +105,18 @@ class UtilityModule(cmd.Cog):
         except IndexError:
             await ctx.send("There is no definition #{}".format(pos + 1))
 
-    @cmd.command()
+    @cmd.command(hidden=True)
     @checks.is_bot_owner()
     async def shutdown(self, ctx, when: str = None):
         await self.bot.logout()
 
-    @cmd.command()
+    @cmd.command(hidden=True)
     @checks.is_bot_owner()
     async def redisclear(self, ctx, key):
         result = await self.bot.db.delete(key.format(ctx))
         await ctx.send(str(result))
 
-    @cmd.command()
+    @cmd.command(hidden=True)
     @checks.is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:
@@ -130,7 +130,7 @@ class UtilityModule(cmd.Cog):
         else:
             await ctx.send("loaded the cog")
 
-    @cmd.command()
+    @cmd.command(hidden=True)
     @checks.is_bot_owner()
     async def reload(self, ctx: cmd.Context, *, module: str):
         if "modules" not in module:
