@@ -60,6 +60,7 @@ BONUS_MAP = dict(
 )
 TREE_MAP = dict(Red="Knight", Blue="Sorcerer", Yellow="Warlord", Green="Assassin")
 SKILL_COLOURS = dict(red="FF6034", yellow="F7D530", blue="51B7EF", green="5BC65B")
+TIMER_TEXT = "Raid {} **{:02}**h **{:02}**m **{:02}**s."
 
 
 class TTDeck(cmd.Converter):
@@ -177,10 +178,9 @@ class TapTitansModule(cmd.Cog):
 
     async def update_timer_group(self, guild, now, future, group):
         "Updates raid timer for a group."
-        exists = await self.bot.db.exists(f"{guild.id}:tt:{group}")
-        if not exists:
-            raise asyncio.CancelledError
         g = await self.bot.db.hgetall(f"{guild.id}:tt:{group}")
+        if not g:
+            raise asyncio.CancelledError
         spawn = g.get("spawn", 0)
         cd = g.get("cd", 0)
         if not any([spawn, cd]):
@@ -191,95 +191,81 @@ class TapTitansModule(cmd.Cog):
             or cd
             and not now < arrow.get(cd or future.timestamp)
         ):
-            await self.update_timer_queue(guild, now, future, group, g)
+            await self.update_timer_queue(guild, now, group, g)
             raise asyncio.CancelledError
-        c = int(g.get("announce", 0))
-        if not c:
-            raise asyncio.CancelledError
-        chan = guild.get_channel(c)
-        if not chan:
+        chan = guild.get_channel(int(g.get("announce", 0)))
+        if chan is None:
             raise asyncio.CancelledError
         reset = g.get("reset", 0)
         if not reset and not cd:
-            reset = "start"
+            reset = "starts in"
         elif cd:
-            reset = "cooldown end"
+            reset = "cooldown ends in"
+            dt = arrow.get(cd) - now
         else:
-            reset = f"reset #**{reset}** start"
+            reset = f"reset #**{reset}** starts in"
         if spawn:
             dt = arrow.get(spawn) - now
-        elif cd:
-            dt = arrow.get(cd) - now
-        _h, _m, _s = await get_hms(dt)
-        content = "Raid {}s in **{:02}**h **{:02}**m **{:02}**s.".format(
-            reset, _h, _m, _s
-        )
+        hms = await get_hms(dt)
+        content = TIMER_TEXT.format(reset, hms[0], hms[1], hms[2])
         message = int(g.get("edit", 0))
         if message:
             await self.update_timer_message(chan, message, content)
         else:
             await chan.send(content)
 
-    async def update_timer_queue(self, guild, now, future, group, g):
-        q = await self.bot.db.lrange(f"{guild.id}:tt:{group}:q")
+    async def update_timer_queue(self, guild, now, group, g):
+        fmt_group = f"{guild.id}:tt:{group}"
+        q = await self.bot.db.lrange(f"{fmt_group}:q")
         spawn = g.get("spawn", 0)
         cd = g.get("cd", 0)
         c = int(g.get("announce", 0))
         chan = guild.get_channel(c)
-        current = g.get("current", "").split()
+        current = g.get("current", "").strip().split()
         qmode = int(g.get("mode", 1))
         upnext = q[0:qmode]
         depl = int(g.get("depl", 0))
         reset = int(g.get("reset", 0))
-        if not current and not q and (spawn or depl):
+        if (not current and not q and spawn) or depl:
             arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
-            _h, _m, _s = await get_hms(arr)
-            if _h < 0 or _m < 0 or _s < 0:
+            hms = await get_hms(arr)
+            if any([x < 0 for x in hms]):
                 reset = reset + 1
-                await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 0)
-                await self.bot.db.hset(f"{guild.id}:tt:{group}", "reset", reset)
-                _h, _m, _s = await get_hms(arr)
+                await self.bot.db.hset(fmt_group, "depl", 0)
+                await self.bot.db.hset(fmt_group, "reset", reset)
+                hms = await get_hms(arr)
                 arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
-            content = "Raid reset #**{}** starts in **{:02}**h **{:02}**m **{:02}**s.".format(
-                reset + 1, _h, _m, _s
+            content = TIMER_TEXT.format(
+                f"reset #**{reset+1}** starts in", hms[0], hms[1], hms[2]
             )
             message = int(g.get("edit", 0))
             await self.update_timer_message(chan, message, content)
-        elif not current and not q and (cd or depl):
+        elif not current and not q and cd:
             arr = now - arrow.get(cd)
-            _h, _m, _s = await get_hms(arr)
-            content = "Raid cooldown ended **{:02}**h **{:02}**m **{:02}**s ago.".format(
-                _h, _m, _s
-            )
+            hms = await get_hms(arr)
+            content = TIMER_TEXT.format("cooldown ended", hms[0], hms[1], hms[2])
             message = int(g.get("edit", 0))
             await self.update_timer_message(chan, message, content)
 
-        if current:
+        if current or depl:
             return
 
-        if not upnext and not current and not depl:
-            await chan.send(
-                "Queue has ended! You may now queue up for reset #**{}**.".format(
-                    reset + 1
-                )
-            )
+        if not q and not current and not depl:
+            await chan.send(f"Queue done! You may queue for reset #**{reset+1}**.")
             edit = await chan.send("Preparing next reset timer...")
-            await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", edit.id)
-            await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 1)
-            await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
+            await self.bot.db.hset(fmt_group, "edit", edit.id)
+            await self.bot.db.hset(fmt_group, "depl", 1)
+            await self.bot.db.delete(f"{fmt_group}:q")
             return
-        if not upnext and not current and depl:
-            return
-        if not upnext and current and depl:
-            return
+
 
         members = [guild.get_member(int(m)) for m in upnext]
         cnt = 0
         while cnt < len(upnext):
-            await self.bot.db.lrem(f"{guild.id}:tt:{group}:q", upnext[cnt])
+            await self.bot.db.lrem(f"{fmt_group}:q", upnext[cnt])
             cnt += 1
         await self.bot.db.hset(
-            f"{guild.id}:tt:{group}", "current", " ".join([str(m.id) for m in members])
+            fmt_group, "current", " ".join([str(m.id) for m in members])
         )
         await chan.send(
             "It's {}'s turn to attack the raid!".format(
@@ -787,12 +773,11 @@ class TapTitansModule(cmd.Cog):
         current = g.get("current", "").split()
         if str(ctx.author.id) in current:
             raise cmd.BadArgument(f"Try **{ctx.prefix}tt done** instead.")
-        elif not str(ctx.author.id) in q:
+        if not str(ctx.author.id) in q:
             raise cmd.BadArgument(f"You're not in the queue, **{ctx.author}**.")
-        else:
-            res = await self.bot.db.lrem(f"{group}:q", ctx.author.id)
-            if res:
-                await ctx.send(f"Ok **{ctx.author}**, I removed you from the queue.")
+        res = await self.bot.db.lrem(f"{group}:q", ctx.author.id)
+        if res:
+            await ctx.send(f"Ok **{ctx.author}**, I removed you from the queue.")
 
     @taptitans.command(name="done", aliases=["d"])
     async def tt_done(self, ctx, group: Optional[tt2.TTRaidGroup]):
@@ -810,9 +795,7 @@ class TapTitansModule(cmd.Cog):
             if not str(ctx.author.id) in q:
                 raise cmd.BadArgument("It's not your turn & you're not queued.")
             else:
-                raise cmd.BadArgument(
-                    f"It's not your go. Do **{ctx.prefix}tt uq** to unqueue."
-                )
+                raise cmd.BadArgument(f"Not your go. Do **{ctx.prefix}tt uq** instead.")
         else:
             current = " ".join(current)
             current = current.replace(str(ctx.author.id), "")
@@ -1262,6 +1245,7 @@ class TapTitansModule(cmd.Cog):
             "Allows you to convert a scientific/letter notation into the opposite version.\n"
             "The bot will automagically figure out which way you want to convert.\n"
         )
+
         result, f, t = None, "scientific", "letter"
         mode = await ttconvert_discover(val)
         if mode == 0:
@@ -1269,11 +1253,12 @@ class TapTitansModule(cmd.Cog):
         elif mode == 1:
             result = await ttconvert_to_scientific(val)
             f, t = "letter", "scientific"
-        await ctx.send(
-            "{} Conversion of **{}** from **{}** to **{}** is: **{}**".format(
-                self.emoji("_orange"), val, f, t, result
-            )
-        )
+        icon = self.emoji("orange_equals")
+        embed = discord.Embed(title="TT2 notation conversion", color=0xF89D2A)
+        embed.add_field(name=f"From {f}", value=val)
+        embed.add_field(name=f"To {t}", value=result)
+        embed.set_thumbnail(url=icon.url)
+        await ctx.send("", embed=embed)
 
     @taptitans.command(
         name="gold", aliases=["goldsource", "goldsources"], usage="<kind>"
@@ -1284,11 +1269,13 @@ class TapTitansModule(cmd.Cog):
         if not kind or kind.lower() not in GOLD_SOURCES.keys():
             ebizu = self.emoji("coins of ebizu")
             embed = discord.Embed(
-                title=f'{ebizu} TT2 gold sources',
-                description='\n'.join([f"{self.emoji(val[2])} {k}" for k, val in GOLD_SOURCES.items()]),
-                color=0xE2BB39
+                title=f"{ebizu} TT2 gold sources",
+                description="\n".join(
+                    [f"{self.emoji(val[2])} {k}" for k, val in GOLD_SOURCES.items()]
+                ),
+                color=0xE2BB39,
             )
-            embed.set_thumbnail(url=str(ebizu.url).replace('.gif', '.png'))
+            embed.set_thumbnail(url=str(ebizu.url).replace(".gif", ".png"))
         else:
             desc, arts, img, color = GOLD_SOURCES[kind.lower()]
             img = self.emoji(img)
@@ -1298,7 +1285,8 @@ class TapTitansModule(cmd.Cog):
                 color=int(f"0x{color}", 16),
             )
             embed.add_field(
-                name="Artifacts", value="\n".join([f"{self.emoji(a)} - {a}" for a in arts])
+                name="Artifacts",
+                value="\n".join([f"{self.emoji(a)} - {a}" for a in arts]),
             )
             embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
