@@ -21,15 +21,16 @@ class InfoModule(cmd.Cog):
         log = self.bot.get_cog("LoggingModule")
         if user:
             user = self.bot.get_user(user)
-        cache = log.avatar_cache
-        if not cache.get(str(user.id), None):
+        cached = await self.bot.db.hget("avatar_cache", user.id)
+        if not cached:
             i = await log.upload_to_imgur(
                 str(user.avatar_url_as(static_format="png", size=1024)), anon=True
             )
-            cache[str(user.id)] = i["link"]
+            await self.bot.db.hset("avatar_cache", user.id, i["link"])
+            cached = i["link"]
         async with ctx.typing():
             embed = discord.Embed(title=f"**{user}**'s avatar")
-            embed.set_image(url=cache[str(user.id)])
+            embed.set_image(url=cached)
             await ctx.send(embed=embed)
 
     @cmd.command()

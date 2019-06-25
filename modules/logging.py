@@ -12,8 +12,8 @@ class LoggingModule(cmd.Cog):
         self.imgur = ImgurClient(
             self.bot.config["IMGUR"]["client"], self.bot.config["IMGUR"]["secret"]
         )
-        self.image_cache = {}
-        self.avatar_cache = {}
+        # self.image_cache = await bot.db.hgetall("image_log")
+        # self.avatar_cache = {}
 
     async def upload_to_imgur(self, url, anon=False):
         return self.imgur.upload_from_url(url, anon=anon)
@@ -84,14 +84,14 @@ class LoggingModule(cmd.Cog):
                     i = await self.upload_to_imgur(attachment.url, anon=True)
                     attch.append(i["link"])
         if attch:
-            self.image_cache[message.id] = attch
+            await self.bot.db.hset('image_cache', message.id, ' '.join(attch))
+            # self.image_cache[message.id] = attch
 
     @cmd.Cog.listener()
     async def on_message_delete(self, message):
         if message.author.bot:
             return
-        attch = self.image_cache.get(message.id, [])
-        print(attch)
+        attch = await self.bot.db.hget('image_cache', message.id)
         log_is_on = await self.bot.db.hget(f"{message.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
@@ -111,6 +111,7 @@ class LoggingModule(cmd.Cog):
             value=message.content[0:900] or "No message content detected.",
         )
         if attch:
+            attch = attch.split()
             embed.add_field(name="Images", value="\n".join([a for a in attch]))
             embed.set_image(url=attch[0])
         await chan.send("", embed=embed)
@@ -124,7 +125,7 @@ class LoggingModule(cmd.Cog):
             i = await self.upload_to_imgur(
                 str(after.avatar_url_as(static_format="png", size=1024)), anon=True
             )
-            self.avatar_cache[str(after.id)] = i["link"]
+            await self.bot.hset('avatar_cache', after.id, i["link"])
         chans_to_log_avatars = []
         for guild in self.bot.guilds:
             log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging")
@@ -138,9 +139,9 @@ class LoggingModule(cmd.Cog):
                 await self.bot.db.hdel(f"{guild.guild.id}:set", "logavatars")
             else:
                 chans_to_log_avatars.append(chan)
-        if chans_to_log_avatars:
+        if chans_to_log_avatars and i is not None:
             embed = discord.Embed(title=f"**{after}**'s new avatar")
-            embed.set_image(url=self.avatar_cache[str(after.id)])
+            embed.set_image(url=i["link"])
             for chan in chans_to_log_avatars:
                 async with chan.typing():
                     await chan.send(embed=embed)
