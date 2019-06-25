@@ -127,6 +127,9 @@ class Redis:
     async def size(self):
         return await self.execute("DBSIZE")
 
+    async def info(self):
+        return await self.execute("INFO", "memory")
+
     async def execute(self, command, *args):
         if self.connection_pool is None or self.connection_pool.closed:
             try:

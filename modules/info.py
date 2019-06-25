@@ -4,6 +4,7 @@ import arrow
 import discord
 from .utils.converters import MemberID
 from .utils.etc import download_image
+import humanfriendly
 
 
 class InfoModule(cmd.Cog):
@@ -13,21 +14,24 @@ class InfoModule(cmd.Cog):
         self.bot = bot
         self.process = psutil.Process()
 
-    @cmd.command()
-    @cmd.cooldown(1, 30, cmd.BucketType.user)
-    async def avatar(self, ctx, user: MemberID = None):
+    async def get_or_upload_avatar(self, ctx, user):
         if user is None:
             user = ctx.author.id
-        log = self.bot.get_cog("LoggingModule")
-        if user:
-            user = self.bot.get_user(user)
+        user = await self.bot.fetch_user(user)
         cached = await self.bot.db.hget("avatar_cache", user.id)
+        log = self.bot.get_cog("LoggingModule")
         if not cached:
             i = await log.upload_to_imgur(
                 str(user.avatar_url_as(static_format="png", size=1024)), anon=True
             )
             await self.bot.db.hset("avatar_cache", user.id, i["link"])
             cached = i["link"]
+        return cached, user
+
+    @cmd.command()
+    @cmd.cooldown(1, 30, cmd.BucketType.user)
+    async def avatar(self, ctx, user: MemberID = None):
+        cached, user = await self.get_or_upload_avatar(ctx, user)
         async with ctx.typing():
             embed = discord.Embed(title=f"**{user}**'s avatar")
             embed.set_image(url=cached)
@@ -49,23 +53,114 @@ class InfoModule(cmd.Cog):
     async def info(self, ctx):
         return
 
+    @info.command(name="user", aliases=["member"])
+    @cmd.guild_only()
+    async def info_user(self, ctx, user: MemberID = None):
+        cached, user = await self.get_or_upload_avatar(ctx, user)
+        member = ctx.guild.get_member(user.id)
+        embed = None
+        title = f"Information about {user}"
+        if member is not None:
+            description = f"Member of {ctx.guild}"
+            embed = discord.Embed(
+                title=title, description=description, color=member.color
+            )
+        else:
+            description = f"Not a member of {ctx.guild}"
+            embed = discord.Embed(title=title, description=description)
+        created = (ctx.message.created_at - user.created_at).days
+        plural = "s" if created != 1 else ""
+        embed.add_field(name="Born", value=f"**{created}** day{plural} ago")
+        if member is not None:
+
+            joined = (ctx.message.created_at - member.joined_at).days
+            plural = "s" if joined != 1 else ""
+            embed.add_field(name="Joined", value=f"**{joined}** day{plural} ago")
+
+            roles = [x.mention for x in member.roles if x.name != "@everyone"]
+            plural = "s" if len(roles) != 1 else ""
+            embed.add_field(
+                name=f"Role{plural}",
+                value=", ".join(roles) if roles else "None.",
+                inline=False,
+            )
+            warnings = await self.bot.db.zscore(f"{ctx.guild.id}:wrncnt", user.id)
+            if warnings is not None:
+                warnings = int(warnings)
+                if warnings:
+                    embed.add_field(name=f"Warnings", value=warnings)
+        else:
+            embed.description = "Not a member of the server."
+        embed.set_thumbnail(url=cached)
+        await ctx.send(embed=embed)
+
     @info.command(name="bot")
     @cmd.guild_only()
-    async def botinfo(self, ctx: cmd.Context):
+    async def info_bot(self, ctx: cmd.Context):
         "Get information about the bot!"
-        mem = self.process.memory_full_info().uss / 1024 ** 2
-        cpu = self.process.cpu_percent() / psutil.cpu_count()
-        prem = await self.bot.db.hgetall("premium")
-        result = "**Bot Information**:\nCPU - {:.2f}%\nRAM - {:.2f}M\nPremium servers - {}".format(
-            cpu, mem, len(prem)
+        emoji = self.bot.get_cog("TapTitansModule").emoji("elixum")
+        embed = discord.Embed(
+            title=f"{emoji} {self.bot.user}",
+            description="Please insert coin to continue.",
+            color=0x473080,
         )
-        await ctx.send(result)
+        embed.set_thumbnail(url=emoji.url)
+        embed.add_field(
+            name="Author",
+            value=str(self.bot.get_user(305879281580638228)),
+            inline=False,
+        )
+        embed.add_field(
+            name="Memory",
+            value=humanfriendly.format_size(self.process.memory_full_info().uss),
+        )
+        embed.add_field(
+            name="CPU", value=self.process.cpu_percent() / psutil.cpu_count()
+        )
+        total_members = sum(1 for _ in self.bot.get_all_members())
+        total_online = len(
+            {
+                m.id
+                for m in self.bot.get_all_members()
+                if m.status is not discord.Status.offline
+            }
+        )
+        total_unique = len(self.bot.users)
+        embed.add_field(name="Guilds", value=len(self.bot.guilds))
+        prem = await self.bot.db.hgetall("premium")
+        embed.add_field(name="Premium Servers", value=len(prem))
+        text_channels = []
+        voice_channels = []
+        for guild in self.bot.guilds:
+            voice_channels.extend(guild.voice_channels)
+            text_channels.extend(guild.text_channels)
+
+        text = len(text_channels)
+        voice = len(voice_channels)
+        embed.add_field(
+            name="Channels",
+            value=f"{text + voice:,} total - {text:,} text - {voice:,} voice",
+        )
+        embed.add_field(
+            name="Members",
+            value=f"{total_members} total - {total_unique} unique - {total_online} online",
+            inline=False,
+        )
+        await ctx.send(embed=embed)
 
     @info.command(name="db")
     @cmd.guild_only()
-    async def dbinfo(self, ctx: cmd.Context):
+    async def info_db(self, ctx: cmd.Context):
+        embed = discord.Embed()
         size = await self.bot.db.size()
-        await ctx.send(f"Current database size: **{size}**")
+        embed.add_field(name="Keys", value=size)
+        # await ctx.send(f"Current database size: **{size}**")
+        memory = (await self.bot.db.info()).splitlines()
+        memory = next((m for m in memory if m.startswith("used_memory_human:")), None)
+        if memory:
+            _, result = memory.split(":")
+            embed.add_field(name="Size", value=result)
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
