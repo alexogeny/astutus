@@ -303,11 +303,7 @@ class TapTitansModule(cmd.Cog):
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupadd(self, ctx):
-        (
-            "Adds a new raid group to the server. You will only ever need more than one of these i"
-            "f you have more than one Tap Titans 2 clan in your discord server *looking at you AC "
-            "& GT*."
-        )
+        "Add a raid group."
         res = dict(
             zip(
                 ["1", "2", "3"],
@@ -337,10 +333,7 @@ class TapTitansModule(cmd.Cog):
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupdel(self, ctx, slot: Optional[int]):
-        (
-            "Deletes an existing raid group in the slot. Warning - irreversible. Do this only if y"
-            "ou mean it."
-        )
+        "Delete a raid group."
         if slot not in [1, 2, 3]:
             raise cmd.BadArgument("Specify a slot between **1** and **3** to delete.")
         result = await self.bot.db.delete(f"{ctx.guild.id}:tt:{slot}")
@@ -368,7 +361,7 @@ class TapTitansModule(cmd.Cog):
     @cmd.guild_only()
     @checks.is_mod()
     async def tt_groupget(self, ctx, slot: Optional[int] = 1):
-        """Displays a tap titans raid group and the most important values that go into setting up a raid, including roles and broadcast channel."""
+        "Display a raid group."
         if slot not in [1, 2, 3]:
             raise cmd.BadArgument(
                 "You must specify a slot between **1** and **3** to show."
@@ -680,12 +673,7 @@ class TapTitansModule(cmd.Cog):
         name="queue", aliases=["q"], case_insensitive=True, usage="show|clear|skip"
     )
     async def tt_queue(self, ctx, group: Optional[tt2.TTRaidGroup], list=None):
-        (
-            "Enter into the tap titans raid queue.\n"
-            "**show** displays the queue.\n"
-            "**clear** clears the entire queue and any currently attacking groups.\n"
-            "**skip** skips the currently attack group e.g. if someone goes afk"
-        )
+        "Enter into the tap titans raid queue."
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
@@ -1048,10 +1036,7 @@ class TapTitansModule(cmd.Cog):
         arcane_bargain: Optional[int] = 0,
         anniversary_platinum: Optional[float] = 1.0,
     ):
-        (
-            "Helps you calculate the optimal ED skip level you need to put into your build.\n"
-            "Optimal means total skip required to maximally splash with 1 Snap active.\n"
-        )
+        "Optimal ed calculator"
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
         current_skip = mystic_impact + arcane_bargain

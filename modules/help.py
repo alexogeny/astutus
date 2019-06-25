@@ -1,7 +1,9 @@
+import json
 import discord
 from discord.ext import commands as cmd
 
-# import difflib
+with open("modules/data/Help.json", "r") as jf:
+    HELP = json.load(jf)
 
 
 class HelpModule(cmd.Cog):
@@ -37,27 +39,19 @@ class HelpModule(cmd.Cog):
                     )
                 )
             command = [cog[0].replace("Module", "").lower()] + command[1:]
-            cx = next(
-                (
-                    s
-                    for s in self.bot.walk_commands()
-                    if " ".join(command) == str(s)
-                    or command[-1] in s.aliases
-                    and not hasattr(s, "walk_commands")
-                ),
-                None,
-            )
-            if cx is None:
-                cx = self.bot.get_command(command[-1])
+            cx = self.bot.get_command(" ".join(command))
+
             if cx is not None and len(command) > 1:
                 title = f"Help for command **{ctx.prefix}{cx}**"
-                description = cx.help or "No help file found."
-                usg = (
-                    f"{ctx.prefix}{' '.join(command)} {' '.join((f'<{x}>' for x in cx.usage.split()))}"
-                    if cx.usage
-                    else ""
+                obj = HELP.get(str(cx), {})
+                description = obj.get("desc", "Not found.")
+                fields["Usage"] = (
+                    "\n".join([f"{ctx.prefix}{u}" for u in obj.get("usage", [])])
+                    or "Not found."
                 )
-                fields["Usage"] = usg or "No usage found."
+                aliases = ", ".join(getattr(cx, "aliases", []))
+                if aliases:
+                    fields["Aliases"] = aliases
             else:
                 cg = self.bot.get_cog(cog[0])
                 subcommands = list(cg.walk_commands())
