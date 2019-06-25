@@ -124,6 +124,31 @@ class TapTitansModule(cmd.Cog):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.pool.close())
 
+    async def sql_query_db(self, statement, parameters=None):
+        result = None
+        async with self.pool.acquire() as connection:
+            async with connection.transaction():
+                if parameters is not None:
+                    result = await connection.execute(statement, *parameters)
+                elif ' WHERE ' in statement:
+                    result = await connection.fetchrow(statement)
+                else:
+                    result = await connection.fetch(statement)
+        return result
+    
+    async def sql_insert(self, table, data_dict):
+        keys = ', '.join(f'"{m}"' for m in data_dict.keys())
+        print(keys)
+        values = ', '.join(f'${i+1}' for i,x in enumerate(data_dict.values()))
+        print(values)
+        print(f'INSERT INTO "{table}" ({keys}) VALUES ({values})')
+        res = await self.sql_query_db(
+            f'INSERT INTO "{table}" ({keys}) VALUES ({values})',
+            parameters=tuple(data_dict.values())
+        )
+        print(res)
+        return
+
     async def get_roles(self, groupdict, *roles):
         return [int(groupdict.get(r, 0)) for r in roles]
 
@@ -527,9 +552,7 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, "edit", edit.id)
 
     @tt_raid.command(name='upload', aliases=['u'])
-    async def tt_raid_upload(self, ctx, date, level, *, data):
-        print(ctx.args)
-        print(data)
+    async def tt_raid_upload(self, ctx, group: int, date, level, *, data):
         if not len(level.split('/'))==2:
             raise cmd.BadArgument('Level must be in the format 0/0')
         if not len(date.split('.')) == 3:
@@ -537,7 +560,21 @@ class TapTitansModule(cmd.Cog):
         result = []
         for row in DictReader(data.split('\n')):
             result.append(row)
-        print(result)
+        res_dict = {}
+        for r in result:
+            res_dict[r['ID']] = {
+                'attacks': r['Attacks'],
+                'damage': r['Damage']
+            }
+        data = dict(
+            id=ctx.guild.id,
+            date=date,
+            gid=group,
+            export_data=res_dict,
+            level=level
+        )
+        await self.sql_insert("raidgroup", data)
+        await ctx.send('Successfully uploaded data.')
 
     @tt_raid.command(name="clear", aliases=["end", "ended", "cleared", "cd"])
     async def tt_raid_clear(

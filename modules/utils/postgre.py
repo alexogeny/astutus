@@ -33,12 +33,16 @@ CREATE TABLE IF NOT EXISTS "{name}"(
 """
 
 _raidgroup = """CREATE TABLE IF NOT EXISTS RaidGroup(
-    "id" numeric PRIMARY KEY,
+    "id" numeric,
+    "date" text,
     "gid" numeric,
-    "export_data" jsonb default '{}'::jsonb,
+    "export_data" json default '{}'::json,
     "level" text
 );"""
 
-_migrators = ("""ALTER TABLE RaidGroup ADD COLUMN IF NOT EXISTS "level" text;""",)
+_migrators = (
+    """ALTER TABLE RaidGroup ADD COLUMN IF NOT EXISTS "level" text;""",
+    """ALTER TABLE RaidGroup ADD COLUMN IF NOT EXISTS "date" text;""",
+)
 
-RaidGroup = defaultdict(lambda: dict(id=0, gid=0, export_data={}, level=""))
+RaidGroup = defaultdict(lambda: dict(id=0, date="", gid=0, export_data={}, level=""))
