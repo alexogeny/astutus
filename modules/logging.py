@@ -12,8 +12,6 @@ class LoggingModule(cmd.Cog):
         self.imgur = ImgurClient(
             self.bot.config["IMGUR"]["client"], self.bot.config["IMGUR"]["secret"]
         )
-        # self.image_cache = await bot.db.hgetall("image_log")
-        # self.avatar_cache = {}
 
     async def upload_to_imgur(self, url, anon=False):
         return self.imgur.upload_from_url(url, anon=anon)
@@ -48,7 +46,6 @@ class LoggingModule(cmd.Cog):
     async def on_message_edit(self, before, after):
         if not hasattr(after, "guild") or after.author.bot:
             return
-        # print(payload.data)
         log_is_on = await self.bot.db.hget(f"{before.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
@@ -77,21 +74,20 @@ class LoggingModule(cmd.Cog):
         if not hasattr(message, "guild"):
             return
         attch = []
-        if message.attachments:
+        if message.attachments and not message.channel.nsfw:
             for attachment in message.attachments:
                 if any([x in attachment.url for x in [".gif", ".jpg", ".png"]]):
                     print(attachment.url)
                     i = await self.upload_to_imgur(attachment.url, anon=True)
                     attch.append(i["link"])
         if attch:
-            await self.bot.db.hset('image_cache', message.id, ' '.join(attch))
-            # self.image_cache[message.id] = attch
+            await self.bot.db.hset("image_cache", message.id, " ".join(attch))
 
     @cmd.Cog.listener()
     async def on_message_delete(self, message):
         if message.author.bot:
             return
-        attch = await self.bot.db.hget('image_cache', message.id)
+        attch = await self.bot.db.hget("image_cache", message.id)
         log_is_on = await self.bot.db.hget(f"{message.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
@@ -125,7 +121,7 @@ class LoggingModule(cmd.Cog):
             i = await self.upload_to_imgur(
                 str(after.avatar_url_as(static_format="png", size=1024)), anon=True
             )
-            await self.bot.hset('avatar_cache', after.id, i["link"])
+            await self.bot.db.hset("avatar_cache", after.id, i["link"])
         chans_to_log_avatars = []
         for guild in self.bot.guilds:
             log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging")

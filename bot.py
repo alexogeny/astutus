@@ -53,6 +53,7 @@ class AstutusBot(cmds.AutoShardedBot):
             if isfile(join(self.config["DEFAULT"]["cogs"], f))
         ]
         for extension in extensions:
+            print(extension)
             try:
                 self.load_extension(
                     "{}.{}".format(self.config["DEFAULT"]["cogs"], extension)

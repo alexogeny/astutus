@@ -189,5 +189,11 @@
             "tt gold <type>",
             "tt gold chesterson"
         ]
+    },
+    "seen": {
+        "desc": "Displays information about when the bot last saw a person.",
+        "usage": [
+            "seen <user>"
+        ]
     }
 }

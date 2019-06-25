@@ -12,6 +12,7 @@ from csv import DictReader
 from math import floor
 from random import choice
 import arrow
+import asyncpg
 import humanfriendly
 import discord
 from discord.ext import commands as cmd
@@ -32,6 +33,7 @@ from .utils.etc import (
     get_closest_match,
 )
 from .utils import tt2
+from .utils.postgre import get_db, RaidGroup
 
 getcontext().prec = 4
 
@@ -98,6 +100,9 @@ class TapTitansModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.aliases = ["tt"]
+        loop = asyncio.get_event_loop()
+        pool = loop.run_until_complete(get_db())
+        self.pool = pool
         self.raid_timer.start()
         self.em = 440785686438871040
         for k, val in TT_CSV_FILES.items():
@@ -116,6 +121,8 @@ class TapTitansModule(cmd.Cog):
 
     def cog_unload(self):
         self.raid_timer.cancel()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.pool.close())
 
     async def get_roles(self, groupdict, *roles):
         return [int(groupdict.get(r, 0)) for r in roles]
@@ -518,6 +525,19 @@ class TapTitansModule(cmd.Cog):
         elif not announce:
             announce = await self.bot.db.hset(group, "announce", ctx.channel.id)
             await self.bot.db.hset(group, "edit", edit.id)
+
+    @tt_raid.command(name='upload', aliases=['u'])
+    async def tt_raid_upload(self, ctx, date, level, *, data):
+        print(ctx.args)
+        print(data)
+        if not len(level.split('/'))==2:
+            raise cmd.BadArgument('Level must be in the format 0/0')
+        if not len(date.split('.')) == 3:
+            raise cmd.BadArgument('You must specify a date in the format yyyy.mm.dd')
+        result = []
+        for row in DictReader(data.split('\n')):
+            result.append(row)
+        print(result)
 
     @tt_raid.command(name="clear", aliases=["end", "ended", "cleared", "cd"])
     async def tt_raid_clear(
@@ -1275,7 +1295,6 @@ class TapTitansModule(cmd.Cog):
             )
             embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
-
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
