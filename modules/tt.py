@@ -553,8 +553,14 @@ class TapTitansModule(cmd.Cog):
     async def tt_raid_average(self, ctx, kind: Optional[str] = "player", player: Optional[MemberID]=None):
         if kind.lower() not in ["player", "clan"]:
             raise cmd.BadArgument(f"Average type must be one of: **player**, **clan**")
-        if player is None and kind == 'player':
-            raise cmd.BadArgument("You do not have a support code set.")
+        code = None
+        if kind == 'player':
+            if player is None:
+                player = ctx.author.id
+            player = await self.bot.fetch_user(player)
+            code = await self.bot.db.hget(f'{player.id}:tt', 'sc')
+            if code is None or not code:
+                raise cmd.BadArgument("You do not have a support code set.")
         postie = self.bot.get_cog("PostgreModule")
         data = await postie.sql_query_db(
             f"SELECT * FROM raidgroup WHEREALL id = {ctx.guild.id}"
@@ -565,8 +571,8 @@ class TapTitansModule(cmd.Cog):
             for datapoint in data:
                 ddict = dict(datapoint)["export_data"]
                 if kind == 'player':
-                    sum_hits.append(int(ddict.get(player, {}).get("attacks", 0)))
-                    sum_dmg.append(int(ddict.get(player, {}).get("damage", 0)))
+                    sum_hits.append(int(ddict.get(code, {}).get("attacks", 0)))
+                    sum_dmg.append(int(ddict.get(code, {}).get("damage", 0)))
                 else:
                     for key in ddict:
                         sum_dmg.append(int(ddict[key].get("damage", 0)))
@@ -1341,7 +1347,21 @@ class TapTitansModule(cmd.Cog):
             )
             embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
-
-
+    
+    @taptitans.group(name='my', invoke_without_command=True)
+    async def tt_my(self, ctx):
+        return
+    
+    @tt_my.command(name='code', aliases=['sc'])
+    async def tt_my_code(self, ctx, code):
+        code = code.lower().strip()
+        if not 4 < len(code) < 10:
+            raise cmd.BadArgument('Invalid code supplied.')
+        dbc = await self.bot.db.hget('tt:psc', code)
+        if dbc is not None:
+            raise cmd.BadArgument('Code already clamed. Visit <https://discord.gg/WvcryZW>!')
+        await self.bot.db.hset('tt:psc', code, ctx.author.id)
+        await self.bot.db.hset(f"{ctx.author.id}:tt", 'sc', code)
+        await ctx.send(f':white_check_mark: Registered code **{code}** to **{ctx.author}**.')
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
