@@ -86,16 +86,23 @@ def is_mod():
     return cmd.check(predicate)
 
 
+async def check_for_premium_user(ctx):
+    lxmcord = ctx.bot.get_guild(440785686438871040)
+    booster = lxmcord.get_role(585600912559439874)
+    patreon = lxmcord.get_role(476524707563307008)
+    member = lxmcord.get_member(ctx.author.id)
+    if not member:
+        return False
+    if not [x for x in [patreon, booster] if x in member.roles]:
+        return False
+    return True
+
+
 def is_premium_user():
     async def predicate(ctx: cmd.Context):
-        lxmcord = ctx.bot.get_guild(440785686438871040)
-        booster = lxmcord.get_role(585600912559439874)
-        patreon = lxmcord.get_role(476524707563307008)
-        member = lxmcord.get_member(ctx.author.id)
+        is_premium = await check_for_premium_user(ctx)
         msg = "Sorry, you are not a premium user. You can become one at <https://patreon.com/lxmcneill> or boost the server with Nitro: https://discord.gg/WvcryZW"
-        if not member:
-            raise cmd.BadArgument(msg)
-        if not any([x for x in [patreon, booster] if x in member.roles]):
+        if not is_premium:
             raise cmd.BadArgument(msg)
         return True
 

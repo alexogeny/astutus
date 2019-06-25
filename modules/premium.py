@@ -39,6 +39,9 @@ class PremiumModule(cmd.Cog):
                     "This is your premium server.\nIf you would like to register"
                     " a different server, do **{}premium del**".format(ctx.prefix)
                 )
+            all_prem = await self.bot.db.hgetall("premium")
+            if [val for val in all_prem.values() if val == str(ctx.author.id)]:
+                raise cmd.BadArgument("You already have a premium server set!")
             raise cmd.BadArgument("This is somebody else's premium server.")
         await ctx.send(
             f"Would you like to set **{ctx.guild}** as your premium server?"
