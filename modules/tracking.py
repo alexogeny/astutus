@@ -109,19 +109,16 @@ class TrackingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_member_update(self, before, member):
-        if before.status != member.status:
-            await self.track_last_seen(member)
+        await self.track_last_seen(member)
         if before.name != member.name:
-            await self.track_last_seen(member)
             await self.track_username(member, before.name)
         nick_before = before.display_name
         nick_after = member.display_name
         if nick_before != nick_after and hasattr(member, "guild"):
-            await self.track_last_seen(member)
             await self.track_nickname(member, nick_before)
 
     @cmd.Cog.listener()
-    async def on_typing(self, channel, member, when):
+    async def on_typing(self, _, member, __):
         await self.track_last_seen(member)
 
     @cmd.Cog.listener()
