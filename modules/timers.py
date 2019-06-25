@@ -18,7 +18,7 @@ class TimerModule(cmd.Cog):
     def cog_unload(self):
         self.timer_timer.cancel()
 
-    @tsk.loop(seconds=5)
+    @tsk.loop(seconds=6)
     async def timer_timer(self):
         now = arrow.utcnow()
         for guild in self.bot.guilds:

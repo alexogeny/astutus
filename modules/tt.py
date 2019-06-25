@@ -12,7 +12,6 @@ from csv import DictReader
 from math import floor
 from random import choice
 import arrow
-import asyncpg
 import humanfriendly
 import discord
 from discord.ext import commands as cmd
@@ -33,7 +32,6 @@ from .utils.etc import (
     get_closest_match,
 )
 from .utils import tt2
-from .utils.postgre import get_db, RaidGroup
 
 getcontext().prec = 4
 
@@ -100,9 +98,7 @@ class TapTitansModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         self.aliases = ["tt"]
-        loop = asyncio.get_event_loop()
-        pool = loop.run_until_complete(get_db())
-        self.pool = pool
+
         self.raid_timer.start()
         self.em = 440785686438871040
         for k, val in TT_CSV_FILES.items():
@@ -121,33 +117,6 @@ class TapTitansModule(cmd.Cog):
 
     def cog_unload(self):
         self.raid_timer.cancel()
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.pool.close())
-
-    async def sql_query_db(self, statement, parameters=None):
-        result = None
-        async with self.pool.acquire() as connection:
-            async with connection.transaction():
-                if parameters is not None:
-                    result = await connection.execute(statement, *parameters)
-                elif ' WHERE ' in statement:
-                    result = await connection.fetchrow(statement)
-                else:
-                    result = await connection.fetch(statement)
-        return result
-    
-    async def sql_insert(self, table, data_dict):
-        keys = ', '.join(f'"{m}"' for m in data_dict.keys())
-        print(keys)
-        values = ', '.join(f'${i+1}' for i,x in enumerate(data_dict.values()))
-        print(values)
-        print(f'INSERT INTO "{table}" ({keys}) VALUES ({values})')
-        res = await self.sql_query_db(
-            f'INSERT INTO "{table}" ({keys}) VALUES ({values})',
-            parameters=tuple(data_dict.values())
-        )
-        print(res)
-        return
 
     async def get_roles(self, groupdict, *roles):
         return [int(groupdict.get(r, 0)) for r in roles]
@@ -289,7 +258,6 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(fmt_group, "depl", 1)
             await self.bot.db.delete(f"{fmt_group}:q")
             return
-
 
         members = [guild.get_member(int(m)) for m in upnext]
         cnt = 0
@@ -551,30 +519,71 @@ class TapTitansModule(cmd.Cog):
             announce = await self.bot.db.hset(group, "announce", ctx.channel.id)
             await self.bot.db.hset(group, "edit", edit.id)
 
-    @tt_raid.command(name='upload', aliases=['u'])
+    @tt_raid.command(name="upload", aliases=["u"])
     async def tt_raid_upload(self, ctx, group: int, date, level, *, data):
-        if not len(level.split('/'))==2:
-            raise cmd.BadArgument('Level must be in the format 0/0')
-        if not len(date.split('.')) == 3:
-            raise cmd.BadArgument('You must specify a date in the format yyyy.mm.dd')
+        if not len(level.split("/")) == 2:
+            raise cmd.BadArgument("Level must be in the format 0/0")
+        if not len(date.split(".")) == 3:
+            raise cmd.BadArgument("You must specify a date in the format yyyy.mm.dd")
         result = []
-        for row in DictReader(data.split('\n')):
+        for row in DictReader(data.split("\n")):
             result.append(row)
         res_dict = {}
         for r in result:
-            res_dict[r['ID']] = {
-                'attacks': r['Attacks'],
-                'damage': r['Damage']
-            }
+            res_dict[r["ID"]] = {"attacks": r["Attacks"], "damage": r["Damage"]}
+        print(res_dict)
         data = dict(
-            id=ctx.guild.id,
-            date=date,
-            gid=group,
-            export_data=res_dict,
-            level=level
+            id=ctx.guild.id, date=date, gid=group, export_data=res_dict, level=level
         )
-        await self.sql_insert("raidgroup", data)
-        await ctx.send('Successfully uploaded data.')
+        postie = self.bot.get_cog("PostgreModule")
+        await postie.sql_insert("raidgroup", data)
+        await ctx.send("Successfully uploaded data.")
+
+    async def num_to_hum(self, num):
+        num = humanfriendly.format_number(round(num))
+        print(num)
+        nmap = "K M B T".split()
+        commas = num.count(",")
+        points = num.split(",")
+        if not commas:
+            return num
+        return f"{points[0]}.{points[1]}{nmap[commas-1]}"
+
+    @tt_raid.command(name="average", aliases=["avg"])
+    async def tt_raid_average(self, ctx, kind: Optional[str] = "player", player: Optional[MemberID]=None):
+        if kind.lower() not in ["player", "clan"]:
+            raise cmd.BadArgument(f"Average type must be one of: **player**, **clan**")
+        if player is None and kind == 'player':
+            raise cmd.BadArgument("You do not have a support code set.")
+        postie = self.bot.get_cog("PostgreModule")
+        data = await postie.sql_query_db(
+            f"SELECT * FROM raidgroup WHEREALL id = {ctx.guild.id}"
+        )
+        sum_hits = []
+        sum_dmg = []
+        async with ctx.typing():
+            for datapoint in data:
+                ddict = dict(datapoint)["export_data"]
+                if kind == 'player':
+                    sum_hits.append(int(ddict.get(player, {}).get("attacks", 0)))
+                    sum_dmg.append(int(ddict.get(player, {}).get("damage", 0)))
+                else:
+                    for key in ddict:
+                        sum_dmg.append(int(ddict[key].get("damage", 0)))
+                        sum_hits.append(int(ddict[key].get("attacks", 0)))
+
+            hf_sum_hits = await self.num_to_hum(sum(sum_hits))
+            hf_sum_dmg = await self.num_to_hum(sum(sum_dmg))
+            print(hf_sum_dmg)
+            title = 'Raid data for clan'
+            if kind == 'player':
+                title = f'Raid data for player {player}'
+            embed = discord.Embed(title=title)
+            average = await self.num_to_hum(sum(sum_dmg) / sum(sum_hits))
+            embed.add_field(name="Average", value=average, inline=False)
+            embed.add_field(name="Hits", value=hf_sum_hits)
+            embed.add_field(name="Damage", value=hf_sum_dmg)
+            await ctx.send(embed=embed)
 
     @tt_raid.command(name="clear", aliases=["end", "ended", "cleared", "cd"])
     async def tt_raid_clear(
@@ -1332,6 +1341,7 @@ class TapTitansModule(cmd.Cog):
             )
             embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
+
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
