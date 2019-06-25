@@ -1354,6 +1354,19 @@ class TapTitansModule(cmd.Cog):
     async def tt_my(self, ctx):
         return
 
+    @tt_my.command(name='profile')
+    async def tt_my_profile(self, ctx, player: MemberID = None):
+        if not player or player is None:
+            player = ctx.author.id
+        player = await self.bot.fetch_user(player)
+        embed = discord.Embed(
+            title=f'TT2 Stats for **{player}**'
+        )
+        stats = await self.bot.db.hgetall(f"{player.id}:tt")
+        for stat, value in stats.items():
+            embed.add_field(name=stat, value=value)
+        await ctx.send(embed=embed)
+
     @tt_my.command(name="code", aliases=["sc"])
     async def tt_my_code(self, ctx, code):
         code = code.lower().strip()
@@ -1370,31 +1383,31 @@ class TapTitansModule(cmd.Cog):
             f":white_check_mark: Registered code **{code}** to **{ctx.author}**."
         )
 
-    @tt_my.command(name="raidlevel", aliases=["prl"])
-    async def tt_my_prl(self, ctx, prl: Optional[int]):
-        if prl is not None:
-            await self.bot.db.hset(f"{ctx.author.id}:tt", "prl", prl)
-            await ctx.send(
-                f":white_check_mark: Set **{ctx.author}**'s raid level to **{prl}**."
-            )
-        else:
-            prl = await self.bot.db.hget(f"{ctx.author.id}:tt", "prl")
-            if not prl or prl is None:
-                raise cmd.BadArgument(f"**{ctx.author}** has no raid level set.")
-            await ctx.send(f"{ctx.author}'s raid level is **{prl}**.")
+    async def get_or_set(self, ctx, key, val, insert=None):
+        if insert is not None:
+            await self.bot.db.hset(key, val, insert)
+            await ctx.send(f"**{ctx.author}**'s {val} set to **{insert}**.")
+            return
+        insert = await self.bot.db.hget(key, val)
+        if not insert or insert is None:
+            raise cmd.BadArgument(f"**{val}** not found for user.")
+        await ctx.send(f"**{ctx.author}**'s {val} is **{insert}**.")
 
-    @tt_my.command(name="totalcardlevel", aliases=["tcl", "cardlevel"])
-    async def tt_my_prl(self, ctx, prl: Optional[int]):
-        if prl is not None:
-            await self.bot.db.hset(f"{ctx.author.id}:tt", "tcl", prl)
-            await ctx.send(
-                f":white_check_mark: Set **{ctx.author}**'s total card level to **{prl}**."
-            )
-        else:
-            prl = await self.bot.db.hget(f"{ctx.author.id}:tt", "tcl")
-            if not prl or prl is None:
-                raise cmd.BadArgument(f"**{ctx.author}** has no total card level set.")
-            await ctx.send(f"{ctx.author}'s total card level is **{prl}**.")
+    @tt_my.command(name="raidlevel", aliases=["prl"])
+    async def tt_my_prl(self, ctx, prl: Optional[int] = None):
+        await self.get_or_set(ctx, f"{ctx.author.id}:tt", "prl", insert=prl)
+
+    @tt_my.command(name="totalcardlevel", aliases=["tcl"])
+    async def tt_my_tcl(self, ctx, tcl: Optional[int] = None):
+        await self.get_or_set(ctx, f"{ctx.author.id}:tt", "tcl", insert=tcl)
+
+    @tt_my.command(name="lifetimerelics", aliases=["ltr"])
+    async def tt_my_ltr(self, ctx, ltr: Optional[str] = None):
+        await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ltr", insert=ltr)
+
+    @tt_my.command(name="skillpoints", aliases=["sp"])
+    async def tt_my_sp(self, ctx, sp: Optional[int] = None):
+        await self.get_or_set(ctx, f"{ctx.author.id}:tt", "sp", insert=sp)
 
 
 def setup(bot):
