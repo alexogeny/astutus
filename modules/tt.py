@@ -550,15 +550,17 @@ class TapTitansModule(cmd.Cog):
         return f"{points[0]}.{points[1]}{nmap[commas-1]}"
 
     @tt_raid.command(name="average", aliases=["avg"])
-    async def tt_raid_average(self, ctx, kind: Optional[str] = "player", player: Optional[MemberID]=None):
+    async def tt_raid_average(
+        self, ctx, kind: Optional[str] = "player", player: Optional[MemberID] = None
+    ):
         if kind.lower() not in ["player", "clan"]:
             raise cmd.BadArgument(f"Average type must be one of: **player**, **clan**")
         code = None
-        if kind == 'player':
+        if kind == "player":
             if player is None:
                 player = ctx.author.id
             player = await self.bot.fetch_user(player)
-            code = await self.bot.db.hget(f'{player.id}:tt', 'sc')
+            code = await self.bot.db.hget(f"{player.id}:tt", "sc")
             if code is None or not code:
                 raise cmd.BadArgument("You do not have a support code set.")
         postie = self.bot.get_cog("PostgreModule")
@@ -570,7 +572,7 @@ class TapTitansModule(cmd.Cog):
         async with ctx.typing():
             for datapoint in data:
                 ddict = dict(datapoint)["export_data"]
-                if kind == 'player':
+                if kind == "player":
                     sum_hits.append(int(ddict.get(code, {}).get("attacks", 0)))
                     sum_dmg.append(int(ddict.get(code, {}).get("damage", 0)))
                 else:
@@ -581,9 +583,9 @@ class TapTitansModule(cmd.Cog):
             hf_sum_hits = await self.num_to_hum(sum(sum_hits))
             hf_sum_dmg = await self.num_to_hum(sum(sum_dmg))
             print(hf_sum_dmg)
-            title = 'Raid data for clan'
-            if kind == 'player':
-                title = f'Raid data for player {player}'
+            title = "Raid data for clan"
+            if kind == "player":
+                title = f"Raid data for player {player}"
             embed = discord.Embed(title=title)
             average = await self.num_to_hum(sum(sum_dmg) / sum(sum_hits))
             embed.add_field(name="Average", value=average, inline=False)
@@ -1347,21 +1349,53 @@ class TapTitansModule(cmd.Cog):
             )
             embed.set_thumbnail(url=img.url)
         await ctx.send("", embed=embed)
-    
-    @taptitans.group(name='my', invoke_without_command=True)
+
+    @taptitans.group(name="my", invoke_without_command=True)
     async def tt_my(self, ctx):
         return
-    
-    @tt_my.command(name='code', aliases=['sc'])
+
+    @tt_my.command(name="code", aliases=["sc"])
     async def tt_my_code(self, ctx, code):
         code = code.lower().strip()
         if not 4 < len(code) < 10:
-            raise cmd.BadArgument('Invalid code supplied.')
-        dbc = await self.bot.db.hget('tt:psc', code)
+            raise cmd.BadArgument("Invalid code supplied.")
+        dbc = await self.bot.db.hget("tt:psc", code)
         if dbc is not None:
-            raise cmd.BadArgument('Code already clamed. Visit <https://discord.gg/WvcryZW>!')
-        await self.bot.db.hset('tt:psc', code, ctx.author.id)
-        await self.bot.db.hset(f"{ctx.author.id}:tt", 'sc', code)
-        await ctx.send(f':white_check_mark: Registered code **{code}** to **{ctx.author}**.')
+            raise cmd.BadArgument(
+                "Code already clamed. Visit <https://discord.gg/WvcryZW>!"
+            )
+        await self.bot.db.hset("tt:psc", code, ctx.author.id)
+        await self.bot.db.hset(f"{ctx.author.id}:tt", "sc", code)
+        await ctx.send(
+            f":white_check_mark: Registered code **{code}** to **{ctx.author}**."
+        )
+
+    @tt_my.command(name="raidlevel", aliases=["prl"])
+    async def tt_my_prl(self, ctx, prl: Optional[int]):
+        if prl is not None:
+            await self.bot.db.hset(f"{ctx.author.id}:tt", "prl", prl)
+            await ctx.send(
+                f":white_check_mark: Set **{ctx.author}**'s raid level to **{prl}**."
+            )
+        else:
+            prl = await self.bot.db.hget(f"{ctx.author.id}:tt", "prl")
+            if not prl or prl is None:
+                raise cmd.BadArgument(f"**{ctx.author}** has no raid level set.")
+            await ctx.send(f"{ctx.author}'s raid level is **{prl}**.")
+
+    @tt_my.command(name="totalcardlevel", aliases=["tcl", "cardlevel"])
+    async def tt_my_prl(self, ctx, prl: Optional[int]):
+        if prl is not None:
+            await self.bot.db.hset(f"{ctx.author.id}:tt", "tcl", prl)
+            await ctx.send(
+                f":white_check_mark: Set **{ctx.author}**'s total card level to **{prl}**."
+            )
+        else:
+            prl = await self.bot.db.hget(f"{ctx.author.id}:tt", "tcl")
+            if not prl or prl is None:
+                raise cmd.BadArgument(f"**{ctx.author}** has no total card level set.")
+            await ctx.send(f"{ctx.author}'s total card level is **{prl}**.")
+
+
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
