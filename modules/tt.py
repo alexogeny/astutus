@@ -65,30 +65,31 @@ TREE_MAP = dict(Red="Knight", Blue="Sorcerer", Yellow="Warlord", Green="Assassin
 SKILL_COLOURS = dict(red="FF6034", yellow="F7D530", blue="51B7EF", green="5BC65B")
 TIMER_TEXT = "Raid {} **{:02}**h **{:02}**m **{:02}**s."
 BRANCH_MAPS = {
-    'red': [
-        ('', 'TapDmg', ''),
-        ('TapDmgFromHelpers', 'PetDmg', 'PetGoldQTE'),
-        ('HeavyStrikes', 'FireTapSkillBoost', 'PetQTE'),
-        ('Frenzy', '', 'BossDmgQTE')
+    "red": [
+        ("", "TapDmg", ""),
+        ("TapDmgFromHelpers", "PetDmg", "PetGoldQTE"),
+        ("HeavyStrikes", "FireTapSkillBoost", "PetQTE"),
+        ("Frenzy", "", "BossDmgQTE"),
     ],
-    'yellow': [
-        ('', 'AllHelperDmg', ''),
-        ('ChestGold', 'HelperDmgSkillBoost', 'ClanShipDmg'),
-        ('HelperBoost', 'HelperInspiredWeaken', 'ClanQTE'),
-        ('HelperDmgQTE', '', 'ClanShipStun')
+    "yellow": [
+        ("", "AllHelperDmg", ""),
+        ("ChestGold", "HelperDmgSkillBoost", "ClanShipDmg"),
+        ("HelperBoost", "HelperInspiredWeaken", "ClanQTE"),
+        ("HelperDmgQTE", "", "ClanShipStun"),
     ],
-    'blue': [
-        ('', 'MPCapacityBoost', ''),
-        ('MidasSkillBoost', 'BurstSkillBoost', 'CloneDmg'),
-        ('Fairy', 'ManaStealSkillBoost', 'CloneSkillBoost'),
-        ('ManaMonster', 'CritSkillBoost', 'BossTimer')
+    "blue": [
+        ("", "MPCapacityBoost", ""),
+        ("MidasSkillBoost", "BurstSkillBoost", "CloneDmg"),
+        ("Fairy", "ManaStealSkillBoost", "CloneSkillBoost"),
+        ("ManaMonster", "CritSkillBoost", "BossTimer"),
     ],
-    'green': [
-        ('', 'OfflineGold', ''),
-        ('CritSkillBoostDmg', 'AutoAdvance', 'MultiMonsters'),
-        ('PetOfflineDmg', 'InactiveClanShip', 'OfflineCloneDmg')
-    ]
+    "green": [
+        ("", "OfflineGold", ""),
+        ("CritSkillBoostDmg", "AutoAdvance", "MultiMonsters"),
+        ("PetOfflineDmg", "InactiveClanShip", "OfflineCloneDmg"),
+    ],
 }
+
 
 class TTDeck(cmd.Converter):
     async def convert(self, ctx, arg):
@@ -117,6 +118,7 @@ TT_CSV_FILES = dict(
     skills="SkillTree",
 )
 TT_TITAN_LORDS = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
+
 
 class TapTitansModule(cmd.Cog):
     """Tap Titans 2 is an idle RPG game on iOS and Android that lets you take the battle to the titans! Level up heroes, participate in Clan Raids, and stomp on other players in Tournaments!\nI am working hard to make improvements to this module. It's nearly a thousand lines long and that's just with decks and raids!"""
@@ -577,6 +579,53 @@ class TapTitansModule(cmd.Cog):
         if not commas:
             return num
         return f"{points[0]}.{points[1]}{nmap[commas-1]}"
+
+    async def get_raid_performance(self, prl, tcl, dmg):
+        base = int(self.bot.config["TT2"]["basedmg"])
+        pct = float(self.bot.config["TT2"]["cardpct"])
+        tcc = int(self.bot.config["TT2"]["tcc"])
+        return 100*(dmg / (((base) * ((prl / 100) + 0.99) * ((1+pct) ** (tcl - tcc)))))
+
+    @tt_raid.command(name="performance", aliases=["pfm", "perf"])
+    async def tt_raid_perf(
+        self,
+        ctx,
+        kind: Optional[str] = "player",
+        player: Optional[MemberID] = None,
+        last: Optional[int] = 1,
+    ):
+        if kind.lower() not in ["player", "clan"]:
+            raise cmd.BadArgument(f"Type be one of: **player**, **clan**")
+        code, prl, tcl = None, None, None
+        if kind == "player":
+            if player is None:
+                player = ctx.author.id
+            player = await self.bot.fetch_user(player)
+            code = await self.bot.db.hget(f"{player.id}:tt", "sc")
+            if code is None or not code:
+                raise cmd.BadArgument("You do not have a support code set.")
+            prl = await self.bot.db.hget(f"{player.id}:tt", "prl")
+            tcl = await self.bot.db.hget(f"{player.id}:tt", "tcl")
+        postie = self.bot.get_cog("PostgreModule")
+        data = await postie.sql_query_db(
+            f"SELECT * FROM raidgroup WHEREALL id = {ctx.guild.id}"
+        )
+        print(data)
+        if last == 1:
+            dp = dict(data[-1])
+            pprint(dp)
+            sum_hits, sum_dmg = [], []
+            playerd = dp["export_data"].get(code, {})
+            sum_hits.append(int(playerd.get("attacks", 0)))
+            sum_dmg.append(int(playerd.get("damage", 0)))
+            avg = sum(sum_dmg) / sum(sum_hits)
+            print(avg)
+            perf = await self.get_raid_performance(int(prl), int(tcl), avg / 1000)
+            print(perf)
+            embed = discord.Embed(
+                title=f"Performance for {player} in last raid", description=f"{perf:.2f}%"
+            )
+            await ctx.send(embed=embed)
 
     @tt_raid.command(name="average", aliases=["avg"])
     async def tt_raid_average(
@@ -1120,47 +1169,48 @@ class TapTitansModule(cmd.Cog):
             for skill, data in self.skills_opti.items():
                 dm_keys = list(data["efficiencies"]["damage"].keys())
                 gl_keys = list(data["efficiencies"]["gold"].keys())
-                if (bld in dm_keys or gld in gl_keys) and tree[data['branch']].get(skill, 0) < data['max']:
-                    if spent[data["branch"]] >= data["spreq"] or data['talentreq'] in tree[data['branch']]:
-                        nxt = data['efficiencies'].get('damage', {})
+                if (bld in dm_keys or gld in gl_keys) and tree[data["branch"]].get(
+                    skill, 0
+                ) < data["max"]:
+                    if (
+                        spent[data["branch"]] >= data["spreq"]
+                        or data["talentreq"] in tree[data["branch"]]
+                    ):
+                        nxt = data["efficiencies"].get("damage", {})
                         nxt = nxt.get(bld, [])
                         if not nxt:
-                            nxt = data['efficiencies'].get('gold', {})
+                            nxt = data["efficiencies"].get("gold", {})
                             nxt = nxt.get(gld, [])
                         if nxt:
-                            nxt = nxt[tree[data['branch']].get(skill, 0)]
-                        if skill != 'AutoAdvance':
+                            nxt = nxt[tree[data["branch"]].get(skill, 0)]
+                        if skill != "AutoAdvance":
                             choices[skill] = (data, nxt)
             try:
-                sort_choices = sorted(
-                    list(choices.values()),
-                    key=lambda k: k[1])
+                sort_choices = sorted(list(choices.values()), key=lambda k: k[1])
             except Exception as e:
                 print(e)
             chosen = sort_choices[-1][0]
-            if chosen['name'] not in tree[chosen['branch']]:
-                if chosen['talentreq'] not in tree[chosen['branch']]:
-                    trq=self.skills_opti.get(chosen['talentreq'])
-                    if trq.get('talentreq', None) is not None:
-                        if trq['talentreq'] not in tree[chosen['branch']]:
-                            tree[chosen['branch']][trq['talentreq']] = 1
-                    tree[chosen['branch']][chosen['talentreq']] = 1
-                tree[chosen['branch']][chosen['name']] = 1
+            if chosen["name"] not in tree[chosen["branch"]]:
+                if chosen["talentreq"] not in tree[chosen["branch"]]:
+                    trq = self.skills_opti.get(chosen["talentreq"])
+                    if trq.get("talentreq", None) is not None:
+                        if trq["talentreq"] not in tree[chosen["branch"]]:
+                            tree[chosen["branch"]][trq["talentreq"]] = 1
+                    tree[chosen["branch"]][chosen["talentreq"]] = 1
+                tree[chosen["branch"]][chosen["name"]] = 1
             else:
-                tree[chosen['branch']][chosen['name']] += 1
+                tree[chosen["branch"]][chosen["name"]] += 1
             spent = await tt2.get_total_sp_spent(tree, self.skills)
-        emoji = self.emoji('skill_tree')
-        embed = discord.Embed(
-            title=f"{emoji} {build} {gold} build for {sp} SP",
-        )
+        emoji = self.emoji("skill_tree")
+        embed = discord.Embed(title=f"{emoji} {build} {gold} build for {sp} SP")
         embed.set_thumbnail(url=emoji.url)
-        blank = self.emoji('blank')
+        blank = self.emoji("blank")
         for branch in tree:
-            branch_data = BRANCH_MAPS[branch.replace('Branch', '').lower()]
+            branch_data = BRANCH_MAPS[branch.replace("Branch", "").lower()]
             data = tree[branch]
             result = {}
             for d in data:
-                nmx = next((s['Name'] for s in self.skills if s['TalentID']==d), None)
+                nmx = next((s["Name"] for s in self.skills if s["TalentID"] == d), None)
                 emj = self.emoji(nmx)
                 result[d] = [emj, data[d]]
             txt = []
@@ -1171,18 +1221,24 @@ class TapTitansModule(cmd.Cog):
                         tmp.append(f"{blank} `__`")
                     else:
                         leaves = result.get(node, [blank, 0])
-                        if leaves[0].name != 'blank':
+                        if leaves[0].name != "blank":
                             tmp.append(f"{leaves[0]}  `{leaves[1]:02d}`")
                         else:
-                            nmx_temp = next((s['Name'] for s in self.skills if s['TalentID'] == node))
+                            nmx_temp = next(
+                                (
+                                    s["Name"]
+                                    for s in self.skills
+                                    if s["TalentID"] == node
+                                )
+                            )
                             emj_temp = self.emoji(nmx_temp)
                             tmp.append(f"{emj_temp} `__`")
-                txt.append(''.join(tmp))
+                txt.append("".join(tmp))
             embed.add_field(
-                name=TREE_MAP[branch.replace('Branch', '')],
-                value='\n'.join(txt)
+                name=TREE_MAP[branch.replace("Branch", "")], value="\n".join(txt)
             )
         await ctx.send(embed=embed)
+
     # @taptitans.group(name="enhancement", case_insensitive=True)
     # async def tt_enhance(self):
     #     return
@@ -1525,9 +1581,10 @@ class TapTitansModule(cmd.Cog):
     async def tt_my_sp(self, ctx, sp: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "sp", insert=sp)
 
-    @tt_my.command(name='maxstage', aliases=['ms'])
+    @tt_my.command(name="maxstage", aliases=["ms"])
     async def tt_my_ms(self, ctx, ms: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ms", insert=ms)
+
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
