@@ -84,6 +84,8 @@ class LevelsModule(cmd.Cog):
             log = self.bot.get_cog("InfoModule")
             img = await log.get_or_upload_guildicon(ctx.guild)
             embed.set_thumbnail(url=img)
+        else:
+            embed.set_thumbnail(url="https://i.imgur.com/q2I08K7.png")
         await ctx.send(embed=embed)
 
     @cmd.command()

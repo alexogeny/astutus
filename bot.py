@@ -87,7 +87,11 @@ class AstutusBot(cmds.AutoShardedBot):
 
     async def process_commands(self, message: discord.Message):
         ctx = await self.get_context(message)
-        if ctx.command is None or ctx.author.bot:
+        if ctx.command is None or ctx.author.bot or not getattr(ctx, "guild"):
+            return
+
+        disabled = await ctx.bot.db.lrange(f"{ctx.guild.id}:disable")
+        if ctx.command.cog_name.replace("Module", "").lower() in disabled:
             return
 
         restrictions = await ctx.bot.db.hget(f"{ctx.guild.id}:toggle", "restrictions")

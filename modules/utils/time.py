@@ -16,9 +16,9 @@ import arrow
 # )
 
 COMPILED = re.compile(
-    r"(?:(?P<years>\d{1,2}){0,1}(?=[y: ]{0,2})(?<=\d)[y :]+)?"
-    r"(?:(?P<weeks>\d{1,2}){0,1}(?=[w: ]{0,2})(?<=\d)[w :]+)?"
-    r"(?:(?P<days>\d{1,2}){0,1}(?=[d: ]{0,2})(?<=\d)[d :]+)?"
+    r"(?:(?P<years>\d{1,2}){0,1}(?=[y: ]{0,2})(?<=\d)[y ]+)?"
+    r"(?:(?P<weeks>\d{1,2}){0,1}(?=[w: ]{0,2})(?<=\d)[w ]+)?"
+    r"(?:(?P<days>\d{1,2}){0,1}(?=[d: ]{0,2})(?<=\d)[d ]+)?"
     r"(?:(?P<hours>\d{1,2}){0,1}(?=[h: ]{0,2})(?<=\d)[h :]+)?"
     r"(?:(?P<minutes>\d{1,2}){0,1}(?=[m: ]{0,2})(?<=\d)[m :]+)?"
     r"(?:(?P<seconds>\d{1,2}){0,1}(?=[s: ]{0,2})(?<=\d)[s :]{0,2})?",
@@ -38,13 +38,12 @@ class Duration(cmd.Converter):
     async def convert(self, ctx: cmd.Context, argument):
         if not COMPILED.match(argument.strip()).group(0):
             raise cmd.BadArgument("bad time")
-        else:
-            res = await convert(argument)
-            return res
+        res = await convert(argument)
+        return res
 
 
-async def get_hms(timedelta: timedelta):
-    total_seconds = int(timedelta.total_seconds())
+async def get_hms(delta: timedelta):
+    total_seconds = int(delta.total_seconds())
     hours, remainder = divmod(total_seconds, 60 * 60)
     minutes, seconds = divmod(remainder, 60)
     return hours, minutes, seconds

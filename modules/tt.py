@@ -659,7 +659,6 @@ class TapTitansModule(cmd.Cog):
 
             hf_sum_hits = await self.num_to_hum(sum(sum_hits))
             hf_sum_dmg = await self.num_to_hum(sum(sum_dmg))
-            print(hf_sum_dmg)
             title = "Raid data for clan"
             if kind == "player":
                 title = f"Raid data for player {player}"
