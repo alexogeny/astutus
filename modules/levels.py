@@ -47,6 +47,31 @@ class LevelsModule(cmd.Cog):
         await ctx.send(f":white_check_mark: Updated **{user}** xp to **{amount}**")
 
     @checks.is_mod()
+    @cmd.command(name="xpshow", aliases=["xpsh"])
+    async def xpshow(self, ctx):
+        users, channels = [], []
+        ignored = await self.bot.db.lrange(f"{ctx.guild.id}:xp:ign")
+        if not ignored:
+            raise cmd.BadArgument(f"Not ignoring any user/channel XP in {ctx.guild}")
+        print(ignored)
+        for ign in ignored:
+            chan = ctx.guild.get_channel(int(ign))
+            if chan is not None:
+                channels.append(chan.mention)
+            else:
+                user = await self.bot.fetch_user(int(ign))
+                if user is not None:
+                    users.append(user.mention)
+        print(users)
+        print(channels)
+        embed = discord.Embed(title=f"Current XP filters for {ctx.guild}")
+        if channels:
+            embed.add_field(name="Channels", value=", ".join(channels))
+        if users:
+            embed.add_field(name="Users", value=", ".join(users))
+        await ctx.send(embed=embed)
+
+    @checks.is_mod()
     @cmd.command(name="xpignore", aliases=["xpig"])
     async def xp_ignore(
         self, ctx, *to_ignore: Union[cmd.TextChannelConverter, cmd.MemberConverter]
