@@ -20,7 +20,7 @@ class InfoModule(cmd.Cog):
         user = await self.bot.fetch_user(user)
         cached = await self.bot.db.hget("avatar_cache", user.id)
         log = self.bot.get_cog("LoggingModule")
-        if not cached:
+        if not cached or cached is None:
             i = await log.upload_to_imgur(
                 str(user.avatar_url_as(static_format="png", size=1024)), anon=True
             )
@@ -31,7 +31,7 @@ class InfoModule(cmd.Cog):
     async def get_or_upload_guildicon(self, guild):
         cached = await self.bot.db.hget("guild_cache", guild.id)
         log = self.bot.get_cog("LoggingModule")
-        if not cached:
+        if not cached or cached is None:
             i = await log.upload_to_imgur(
                 str(guild.icon_url_as(static_format="png", size=1024)), anon=True
             )

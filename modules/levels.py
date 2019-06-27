@@ -80,6 +80,10 @@ class LevelsModule(cmd.Cog):
             name="My Rank",
             value="```css\n{}. {} - {}xp\n```".format(rank, ctx.author, user_xp),
         )
+        if where != "Global":
+            log = self.bot.get_cog("InfoModule")
+            img = await log.get_or_upload_guildicon(ctx.guild)
+            embed.set_thumbnail(url=img)
         await ctx.send(embed=embed)
 
     @cmd.command()
