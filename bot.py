@@ -85,6 +85,11 @@ class AstutusBot(cmds.AutoShardedBot):
         if isinstance(error, cmds.BadArgument):
             await ctx.send(f":negative_squared_cross_mark: {error}")
 
+        if isinstance(error, cmds.BadUnionArgument):
+            await ctx.send(
+                f":negative_squred_cross_mark: You didn't supply any valid items! {ctx.prefix}help {ctx.command.qualified_name}"
+            )
+
     async def process_commands(self, message: discord.Message):
         ctx = await self.get_context(message)
         if ctx.command is None or ctx.author.bot or not getattr(ctx, "guild"):

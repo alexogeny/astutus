@@ -12,7 +12,7 @@ class DisableModule(cmd.Cog):
 
     @checks.is_mod()
     @cmd.group(name="disable", aliases=["dis"], invoke_without_command=True)
-    async def disable(self, ctx, *, module=None):
+    async def disable(self, ctx):
         disabled = await self.bot.db.lrange(f"{ctx.guild.id}:disable")
         if not disabled:
             raise cmd.BadArgument(f"No modules disabled. **{ctx.prefix}help disable**")

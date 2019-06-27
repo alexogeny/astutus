@@ -4,7 +4,7 @@ from .utils.converters import MemberID, ActionReason, BannedMember
 import arrow
 from math import floor
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Union
 from random import choice
 import discord
 
@@ -45,6 +45,40 @@ class LevelsModule(cmd.Cog):
         user = await self.bot.fetch_user(user)
         await self.bot.db.zadd("xp:gl", user.id, amount)
         await ctx.send(f":white_check_mark: Updated **{user}** xp to **{amount}**")
+
+    @checks.is_mod()
+    @cmd.command(name="xpignore", aliases=["xpig"])
+    async def xp_ignore(
+        self, ctx, *to_ignore: Union[cmd.TextChannelConverter, cmd.MemberConverter]
+    ):
+        if not to_ignore:
+            raise cmd.BadArgument("You need to specify a channel or user to ignore!")
+        ignored = await self.bot.db.lrange(f"{ctx.guild.id}:xp:ign")
+        i = 0
+        for ign in to_ignore:
+            if not str(ign.id) in ignored:
+                await self.bot.db.rpush(f"{ctx.guild.id}:xp:ign", str(ign.id))
+                i += 1
+        plural = "s" if i != 1 else ""
+        await ctx.send(f"Added **{i}** item{plural} to XP ignore!")
+
+    @checks.is_mod()
+    @cmd.command(name="xpunignore", aliases=["xpun"])
+    async def xp_unignore(
+        self, ctx, *to_unignore: Union[cmd.TextChannelConverter, cmd.MemberConverter]
+    ):
+        if not to_unignore:
+            raise cmd.BadArgument("You need to specify a channel or user to unignore!")
+        ignored = await self.bot.db.lrange(f"{ctx.guild.id}:xp:ign")
+        if ignored is None or not ignored:
+            raise cmd.BadArgument("Nothing in XP ignore list!")
+        i = 0
+        for ign in to_unignore:
+            if str(ign.id) in ignored:
+                await self.bot.db.lrem(f"{ctx.guild.id}:xp:ign", str(ign.id))
+                i += 1
+        plural = "s" if i != 1 else ""
+        await ctx.send(f"Remove **{i}** item{plural} from XP ignore!")
 
     @cmd.command()
     async def xp(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
@@ -110,8 +144,12 @@ class LevelsModule(cmd.Cog):
     @cmd.Cog.listener()
     async def on_message(self, message):
         author = message.author
-        if author.bot:
+        if author.bot or not hasattr(message, "guild"):
             return
+        ignored = await self.bot.db.lrange(f"{message.guild.id}:xp:ign")
+        if ignored is None:
+            ignored = []
+
         now = arrow.utcnow()
         last_xp = await self.bot.db.hget("lvl:cd", author.id)
         if last_xp is None:
@@ -127,7 +165,11 @@ class LevelsModule(cmd.Cog):
                 last_level = lvl
             last_level = int(last_level)
             await self.bot.db.zincrement("xp:gl", author.id)
-            await self.bot.db.zincrement(f"xp:{message.guild.id}", author.id)
+            if (
+                str(message.author.id) not in ignored
+                and str(message.channel.id) not in ignored
+            ):
+                await self.bot.db.zincrement(f"xp:{message.guild.id}", author.id)
             await self.bot.db.hset("lvl:cd", author.id, now.timestamp)
             nxt, _ = await self.get_user_level(uxp + 1)
             if last_level != nxt:
