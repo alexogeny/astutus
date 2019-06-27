@@ -1,4 +1,38 @@
 {
+    "disable": {
+        "desc": "Shows if there are any modules disabled in the server.",
+        "usage": [
+            "disable"
+        ]
+    },
+    "disable add": {
+        "desc": "Allows you to disable a module from being used in the server.\nThe bot will not even respond to commands from a module when it is disabled.\nYou cannot disable the disable module or the utility module.",
+        "usage": [
+            "disable add <modulename>",
+            "disable add info"
+        ]
+    },
+    "disable remove": {
+        "desc": "Removes a module from the list of disabled modules in the guild.",
+        "usage": [
+            "disable remove <modulename>",
+            "disable remove info"
+        ]
+    },
+    "xp": {
+        "desc": "Shows you your xp for the server or globally.",
+        "usage": [
+            "xp here",
+            "xp global"
+        ]
+    },
+    "xp ignore": {
+        "desc": "Allows you to disable a user or channel from receiving XP in the guild.",
+        "usage": [
+            "xpignore <user/channel>",
+            "xpignore @user1234"
+        ]
+    },
     "info bot": {
         "desc": "This is a test description.",
         "usage": [

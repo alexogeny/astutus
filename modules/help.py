@@ -68,7 +68,10 @@ class HelpModule(cmd.Cog):
                             commands.append(strsub.replace(module, ""))
                 aliases = ", ".join(getattr(cg, "aliases", []))
                 title = f"Help for **{module}** module"
-                description = cg.__doc__ or "No helpfile found."
+                obj = HELP.get(str(cg.qualified_name).replace("Module", "").lower(), {})
+                description = (
+                    obj.get("desc", None) or cg.__doc__ or "No helpfile found."
+                )
                 if aliases:
                     fields["Aliases"] = aliases
                 if groups:

@@ -9,7 +9,7 @@ from random import choice
 import discord
 
 
-class LevelsModule(cmd.Cog):
+class XPModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         # self.xp_tracker = {}
@@ -46,14 +46,20 @@ class LevelsModule(cmd.Cog):
         await self.bot.db.zadd("xp:gl", user.id, amount)
         await ctx.send(f":white_check_mark: Updated **{user}** xp to **{amount}**")
 
+    @cmd.group(invoke_without_command=True)
+    async def xp(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
+        to_get = "gl" if where == "global" else ctx.guild.id
+        user_xp, user = await self.get_user_xp(ctx, user, where=to_get)
+        where = f" in **{ctx.guild}**" if where == "here" else ""
+        await ctx.send(f"@**{user}** has **{user_xp}** xp{where}!")
+
     @checks.is_mod()
-    @cmd.command(name="xpshow", aliases=["xpsh"])
+    @xp.command(name="show", aliases=["sh"])
     async def xpshow(self, ctx):
         users, channels = [], []
         ignored = await self.bot.db.lrange(f"{ctx.guild.id}:xp:ign")
         if not ignored:
             raise cmd.BadArgument(f"Not ignoring any user/channel XP in {ctx.guild}")
-        print(ignored)
         for ign in ignored:
             chan = ctx.guild.get_channel(int(ign))
             if chan is not None:
@@ -62,8 +68,6 @@ class LevelsModule(cmd.Cog):
                 user = await self.bot.fetch_user(int(ign))
                 if user is not None:
                     users.append(user.mention)
-        print(users)
-        print(channels)
         embed = discord.Embed(title=f"Current XP filters for {ctx.guild}")
         if channels:
             embed.add_field(name="Channels", value=", ".join(channels))
@@ -72,7 +76,7 @@ class LevelsModule(cmd.Cog):
         await ctx.send(embed=embed)
 
     @checks.is_mod()
-    @cmd.command(name="xpignore", aliases=["xpig"])
+    @xp.command(name="ignore", aliases=["ig"])
     async def xp_ignore(
         self, ctx, *to_ignore: Union[cmd.TextChannelConverter, cmd.MemberConverter]
     ):
@@ -88,7 +92,7 @@ class LevelsModule(cmd.Cog):
         await ctx.send(f"Added **{i}** item{plural} to XP ignore!")
 
     @checks.is_mod()
-    @cmd.command(name="xpunignore", aliases=["xpun"])
+    @xp.command(name="unignore", aliases=["un"])
     async def xp_unignore(
         self, ctx, *to_unignore: Union[cmd.TextChannelConverter, cmd.MemberConverter]
     ):
@@ -104,13 +108,6 @@ class LevelsModule(cmd.Cog):
                 i += 1
         plural = "s" if i != 1 else ""
         await ctx.send(f"Remove **{i}** item{plural} from XP ignore!")
-
-    @cmd.command()
-    async def xp(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
-        to_get = "gl" if where == "global" else ctx.guild.id
-        user_xp, user = await self.get_user_xp(ctx, user, where=to_get)
-        where = f" in **{ctx.guild}**" if where == "here" else ""
-        await ctx.send(f"@**{user}** has **{user_xp}** xp{where}!")
 
     @cmd.command(name="leaderboard", aliases=["ldb", "lb"])
     async def ldb(self, ctx, where: str = "here"):
@@ -205,4 +202,4 @@ class LevelsModule(cmd.Cog):
 
 
 def setup(bot):
-    bot.add_cog(LevelsModule(bot))
+    bot.add_cog(XPModule(bot))
