@@ -4,6 +4,9 @@ from .utils.converters import MemberID, ActionReason, BannedMember
 import arrow
 from math import floor
 from datetime import timedelta
+from typing import Optional
+from random import choice
+import discord
 
 
 class LevelsModule(cmd.Cog):
@@ -24,10 +27,10 @@ class LevelsModule(cmd.Cog):
             uxp = 0
         return int(uxp)
 
-    async def get_user_xp(self, ctx, user):
+    async def get_user_xp(self, ctx, user, where="gl"):
         if user is None:
             user = ctx.author.id
-        uxp = await self.get_xp("xp:gl", user)
+        uxp = await self.get_xp(f"xp:{where}", user)
         user = await self.bot.fetch_user(user)
         return uxp, user
 
@@ -44,20 +47,53 @@ class LevelsModule(cmd.Cog):
         await ctx.send(f":white_check_mark: Updated **{user}** xp to **{amount}**")
 
     @cmd.command()
-    async def xp(self, ctx, user: MemberID = None):
-        user_xp, user = await self.get_user_xp(ctx, user)
-        await ctx.send(f"@**{user}** has **{user_xp}** xp!")
+    async def xp(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
+        to_get = "gl" if where == "global" else ctx.guild.id
+        user_xp, user = await self.get_user_xp(ctx, user, where=to_get)
+        where = f" in **{ctx.guild}**" if where == "here" else ""
+        await ctx.send(f"@**{user}** has **{user_xp}** xp{where}!")
 
-    @cmd.command()
-    async def rank(self, ctx, user: MemberID = None):
-        user_xp, user = await self.get_user_xp(ctx, user)
-        rank = await self.bot.db.zrank("xp:gl", user.id)
+    @cmd.command(name="leaderboard", aliases=["ldb", "lb"])
+    async def ldb(self, ctx, where: str = "here"):
+        to_get = "gl" if where == "global" else ctx.guild.id
+        top = await self.bot.db.ztop(f"xp:{to_get}", stop=9)
+        top = dict(zip(top[0::2], top[1::2]))
+        top_res = []
+        for i, top_user in enumerate(list(top.keys())):
+            user = self.bot.get_user(int(top_user))
+            if user is None:
+                user = await self.bot.fetch_user(int(top_user))
+            top_res.append(f"{i+1}. {user} - {top[top_user]}xp")
+        where = ctx.guild if where == "here" else "Global"
+        user_xp, user = await self.get_user_xp(ctx, ctx.author.id, where=to_get)
+        rank = await self.bot.db.zrank(f"xp:{to_get}", user.id)
         if not user_xp:
             user_xp = 0
             rank = "unknown"
         else:
             rank = rank + 1
-        await ctx.send(f"@**{user}** has **{user_xp}**xp. Rank **{rank}**!")
+        emoji = ":earth_{}:".format(choice("americas asia africa".split()))
+        embed = discord.Embed(title=f"{emoji} {where} leaderboard")
+        top_css = "```css\n{}\n```".format("\n".join(top_res))
+        embed.add_field(name="Top 10", value=top_css, inline=False)
+        embed.add_field(
+            name="My Rank",
+            value="```css\n{}. {} - {}xp\n```".format(rank, ctx.author, user_xp),
+        )
+        await ctx.send(embed=embed)
+
+    @cmd.command()
+    async def rank(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
+        to_get = "gl" if where == "global" else ctx.guild.id
+        user_xp, user = await self.get_user_xp(ctx, user, where=to_get)
+        rank = await self.bot.db.zrank(f"xp:{to_get}", user.id)
+        if not user_xp:
+            user_xp = 0
+            rank = "unknown"
+        else:
+            rank = rank + 1
+        where = ctx.guild if where == "here" else "Global"
+        await ctx.send(f"@**{user}** has **{user_xp}**xp. **{where}** rank **{rank}**!")
 
     @cmd.command(aliases=["lvl"])
     async def level(self, ctx, user: MemberID = None):
@@ -85,6 +121,7 @@ class LevelsModule(cmd.Cog):
                 last_level = lvl
             last_level = int(last_level)
             await self.bot.db.zincrement("xp:gl", author.id)
+            await self.bot.db.zincrement(f"xp:{message.guild.id}", author.id)
             await self.bot.db.hset("lvl:cd", author.id, now.timestamp)
             nxt, _ = await self.get_user_level(uxp + 1)
             if last_level != nxt:

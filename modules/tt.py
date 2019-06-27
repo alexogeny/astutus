@@ -610,7 +610,6 @@ class TapTitansModule(cmd.Cog):
         data = await postie.sql_query_db(
             f"SELECT * FROM raidgroup WHEREALL id = {ctx.guild.id}"
         )
-        print(data)
         if last == 1:
             dp = dict(data[-1])
             pprint(dp)

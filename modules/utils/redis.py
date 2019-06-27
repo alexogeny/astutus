@@ -64,6 +64,9 @@ class Redis:
     async def zrembyscore(self, key, min, max):
         return await self.execute("ZREMRANGEBYSCORE", key, min, max)
 
+    async def ztop(self, key, start=0, stop=10):
+        return await self.execute("ZREVRANGE", key, start, stop, "WITHSCORES")
+
     async def zscan(self, key, match=None, count=None, cursor=0):
         args = []
         if match is not None:

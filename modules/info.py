@@ -28,6 +28,26 @@ class InfoModule(cmd.Cog):
             cached = i["link"]
         return cached, user
 
+    async def get_or_upload_guildicon(self, guild):
+        cached = await self.bot.db.hget("guild_cache", guild.id)
+        log = self.bot.get_cog("LoggingModule")
+        if not cached:
+            i = await log.upload_to_imgur(
+                str(guild.icon_url_as(static_format="png", size=1024)), anon=True
+            )
+            await self.bot.db.hset("guild_cache", guild.id, i["link"])
+            cached = i["link"]
+        return cached
+
+    @cmd.command(name="guildicon", aliases=["servericon", "icon"])
+    @cmd.cooldown(1, 30, cmd.BucketType.user)
+    async def guildicon(self, ctx):
+        cached = await self.get_or_upload_guildicon(ctx.guild)
+        async with ctx.typing():
+            embed = discord.Embed(title=f"**{ctx.guild}** icon")
+            embed.set_image(url=cached)
+            await ctx.send(embed=embed)
+
     @cmd.command()
     @cmd.cooldown(1, 30, cmd.BucketType.user)
     async def avatar(self, ctx, user: MemberID = None):

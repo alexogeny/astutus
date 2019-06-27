@@ -78,8 +78,8 @@ class AstutusBot(cmds.AutoShardedBot):
         if isinstance(error, cmds.CommandOnCooldown):
             cooldown = round(error.retry_after)
             await ctx.send(
-                "Woah **{}**, please cool down. Try **{}** again in **{}**s.".format(
-                    ctx.author, ctx.command.name, cooldown
+                "Woah **{}**, please cool down. Try **{}{}** again in **{}**s.".format(
+                    ctx.author, ctx.prefix, ctx.invoked_with, cooldown
                 )
             )
         if isinstance(error, cmds.BadArgument):
