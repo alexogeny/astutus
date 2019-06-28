@@ -41,6 +41,7 @@ class AstutusBot(cmds.AutoShardedBot):
         self.link_admin = None
         self.link_normal = None
         self.db = None
+        self.cdn = None
         self.blacklists = dict(users=[], channels=[], servers=[])
         self.remove_command("help")
         self.load_extensions()

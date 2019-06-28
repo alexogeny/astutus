@@ -1,4 +1,4 @@
-from imgurpython import ImgurClient
+# from imgurpython import ImgurClient
 import discord
 from discord.ext import commands as cmd
 from .utils.etc import download_image
@@ -9,12 +9,12 @@ class LoggingModule(cmd.Cog):
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
-        self.imgur = ImgurClient(
-            self.bot.config["IMGUR"]["client"], self.bot.config["IMGUR"]["secret"]
-        )
+        # self.imgur = ImgurClient(
+        #     self.bot.config["IMGUR"]["client"], self.bot.config["IMGUR"]["secret"]
+        # )
 
-    async def upload_to_imgur(self, url, anon=False):
-        return self.imgur.upload_from_url(url, anon=anon)
+    # async def upload_to_imgur(self, url, anon=False):
+    #     return self.imgur.upload_from_url(url, anon=anon)
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
@@ -77,9 +77,10 @@ class LoggingModule(cmd.Cog):
         if message.attachments and not message.channel.nsfw:
             for attachment in message.attachments:
                 if any([x in attachment.url for x in [".gif", ".jpg", ".png"]]):
-                    print(attachment.url)
-                    i = await self.upload_to_imgur(attachment.url, anon=True)
-                    attch.append(i["link"])
+                    i = await self.bot.cdn.upload_file(
+                        "message", message.id, attachment
+                    )
+                    attch.append(i)
         if attch:
             await self.bot.db.hset("image_cache", message.id, " ".join(attch))
 

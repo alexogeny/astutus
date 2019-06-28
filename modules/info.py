@@ -19,24 +19,22 @@ class InfoModule(cmd.Cog):
             user = ctx.author.id
         user = await self.bot.fetch_user(user)
         cached = await self.bot.db.hget("avatar_cache", user.id)
-        log = self.bot.get_cog("LoggingModule")
         if not cached or cached is None:
-            i = await log.upload_to_imgur(
-                str(user.avatar_url_as(static_format="png", size=1024)), anon=True
+            i = await self.bot.cdn.upload_file(
+                "user", user.id, user.avatar_url_as(static_format="png", size=1024)
             )
-            await self.bot.db.hset("avatar_cache", user.id, i["link"])
-            cached = i["link"]
+            await self.bot.db.hset("avatar_cache", user.id, i)
+            cached = i
         return cached, user
 
     async def get_or_upload_guildicon(self, guild):
         cached = await self.bot.db.hget("guild_cache", guild.id)
-        log = self.bot.get_cog("LoggingModule")
         if not cached or cached is None:
-            i = await log.upload_to_imgur(
-                str(guild.icon_url_as(static_format="png", size=1024)), anon=True
+            i = await self.bot.cdn.upload_file(
+                "guild", guild.id, guild.icon_url_as(static_format="png", size=1024)
             )
-            await self.bot.db.hset("guild_cache", guild.id, i["link"])
-            cached = i["link"]
+            await self.bot.db.hset("guild_cache", guild.id, i)
+            cached = i
         return cached
 
     @cmd.command(name="guildicon", aliases=["servericon", "icon"])

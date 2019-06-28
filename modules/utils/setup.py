@@ -1,7 +1,8 @@
+import os
 import asyncio
 import discord
 from .redis import Redis
-import os
+from .cdn import CDN
 
 
 def setup_bot(bot):
@@ -23,7 +24,7 @@ def setup_bot(bot):
     pool = Redis()
     loop = asyncio.get_event_loop()
     rds = os.environ.get("REDISCLOUD_URL", None)
-    if rds != None and rds:
+    if rds is not None and rds:
         loop.run_until_complete(pool.connect_pool_url(rds))
 
     loop.run_until_complete(
@@ -34,3 +35,10 @@ def setup_bot(bot):
         )
     )
     bot.db = pool
+
+    bot.cdn = CDN(
+        bot.config["CDN"]["host"],
+        bot.config["CDN"]["space"],
+        bot.config["CDN"]["client"],
+        bot.config["CDN"]["secret"],
+    )
