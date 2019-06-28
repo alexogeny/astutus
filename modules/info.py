@@ -5,6 +5,7 @@ import discord
 from .utils.converters import MemberID
 from .utils.etc import download_image
 import humanfriendly
+import mimetypes
 
 
 class InfoModule(cmd.Cog):
@@ -20,9 +21,11 @@ class InfoModule(cmd.Cog):
         user = await self.bot.fetch_user(user)
         cached = await self.bot.db.hget("avatar_cache", user.id)
         if not cached or cached is None:
-            i = await self.bot.cdn.upload_file(
-                "user", user.id, user.avatar_url_as(static_format="png", size=1024)
-            )
+            url = user.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", user.id, url, ext, ctype)
             await self.bot.db.hset("avatar_cache", user.id, i)
             cached = i
         return cached, user
@@ -30,9 +33,9 @@ class InfoModule(cmd.Cog):
     async def get_or_upload_guildicon(self, guild):
         cached = await self.bot.db.hget("guild_cache", guild.id)
         if not cached or cached is None:
-            i = await self.bot.cdn.upload_file(
-                "guild", guild.id, guild.icon_url_as(static_format="png", size=1024)
-            )
+            url = guild.icon_url_as(static_format="png", size=1024)
+            ctype, ext = mimetypes.guess_type(str(url))
+            i = await self.bot.cdn.upload_file("g", guild.id, url, ext, ctype)
             await self.bot.db.hset("guild_cache", guild.id, i)
             cached = i
         return cached

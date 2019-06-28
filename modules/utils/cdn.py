@@ -16,17 +16,14 @@ class CDN(object):
             aws_secret_access_key=secret_key,
         )
 
-    async def upload_file(self, kind, objid, contents):
-        full_path = f"{kind}/{objid}/{contents.filename}"
-        data = await contents.read()
+    async def upload_file(self, kind, objid, url, ext, ctype):
+        full_path = f"{kind}/{objid}/{hash(url)}.{ext}"
+        data = await url.read()
         with io.BytesIO(data) as img:
             await self.client.upload_fileobj(
                 img,
                 self.space,
                 full_path,
-                ExtraArgs={
-                    "ACL": "public-read",
-                    "ContentType": mimetypes.guess_type(contents.filename)[0],
-                },
+                ExtraArgs={"ACL": "public-read", "ContentType": ctype},
             )
         return f"{self.host}{full_path}"

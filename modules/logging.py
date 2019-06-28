@@ -1,4 +1,5 @@
 # from imgurpython import ImgurClient
+import mimetypes
 import discord
 from discord.ext import commands as cmd
 from .utils.etc import download_image
@@ -77,8 +78,11 @@ class LoggingModule(cmd.Cog):
         if message.attachments and not message.channel.nsfw:
             for attachment in message.attachments:
                 if any([x in attachment.url for x in [".gif", ".jpg", ".png"]]):
+                    url = attachment.url
+                    ctype, _ = mimetypes.guess_type(str(url))
+                    ext = attachment.filename.split(".")[-1]
                     i = await self.bot.cdn.upload_file(
-                        "message", message.id, attachment
+                        "message", message.id, attachment, ext, ctype
                     )
                     attch.append(i)
         if attch:
