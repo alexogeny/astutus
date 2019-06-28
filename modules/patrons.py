@@ -66,7 +66,7 @@ class PatronModule(cmd.Cog):
             last_blame = now.shift(hours=-1)
         else:
             last_blame = arrow.get(last_blame)
-        if last_blame <= now.shift(hours=-1):
+        if last_blame.shift(hours=1) >= now and ctx.author.id != self.immo:
             raise cmd.BadArgument("Please wait an hour between casting blames.")
         if user.id != self.immo:
             await self.bot.db.hset("blame:last", ctx.author.id, now.timestamp)

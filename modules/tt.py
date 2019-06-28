@@ -116,6 +116,7 @@ TT_CSV_FILES = dict(
     arts="Artifact",
     equips="Equipment",
     skills="SkillTree",
+    passives='PassiveSkill'
 )
 TT_TITAN_LORDS = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
 
@@ -1245,6 +1246,33 @@ class TapTitansModule(cmd.Cog):
     # async def tt_enchant(self):
     #     return
 
+    async def get_passive_level(self, skill, amount):
+        skill = next((s for s in self.passives if s['Name'] == skill), {})
+        nxt = next((
+            int(skill[f"A{int(key[1:])}"])
+            for key in skill
+            if key.startswith("C") and int(skill[key]) > amount
+        ), 0)
+        return nxt
+
+    # async def intimidating_presence(self, skill_points):
+    #     itp = next((s for s in self.passives if s['Name'] == 'Intimidating Presence'), {})
+    #     nxt = next((
+    #         int(itp[f"A{int(key[1:])-1}"])
+    #         for key in itp
+    #         if key.startswith('C') and int(itp[key]) > skill_points
+    #     ), 0)
+    #     return nxt
+    
+    # async def arcane_bargain(self, tourney_points):
+    #     itp = next((s for s in self.passives if s['Name'] == 'Arcane Bargain'), {})
+    #     nxt = next((
+    #         int(itp[f"A{int(key[1:])-1}"])
+    #         for key in itp
+    #         if key.startswith('C') and int(itp[key]) > tourney_points
+    #     ), 0)
+    #     return nxt
+
     async def titancount(self, stage, ip_, ab_, snap):
         "calculate titancount at any given stage"
         return round(max((stage // 500 * 2 + 8 - (ip_ + ab_)) / max(2 * snap, 1), 1))
@@ -1283,6 +1311,17 @@ class TapTitansModule(cmd.Cog):
         anniversary_platinum: Optional[float] = 1.0,
     ):
         "Optimal ed calculator"
+        if stage == 1:
+            stage = int(await self.bot.db.hget(f"{ctx.author.id}:tt", 'ms') or 0)
+        if ip == 0:
+            sp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "sp") or 0)
+            ip = await self.get_passive_level('Intimidating Presence', sp)
+        if arcane_bargain == 0:
+            ds = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ds") or 0)
+            arcane_bargain = await self.get_passive_level('Arcane Bargain', ds)
+        if mystic_impact == 0:
+            tp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "tp") or 0)
+            mystic_impact = await self.get_passive_level('SorcererSplashSkip', tp)
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
         current_skip = mystic_impact + arcane_bargain
@@ -1320,9 +1359,11 @@ class TapTitansModule(cmd.Cog):
         icon = self.emoji("eternal_darkness")
         embed = discord.Embed(
             title=f'{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS',
-            description='**{}** Eternal Darkness Level\n**{}** titans per stage, **1** snap active'.format(
-                result, count)
         )
+        embed.add_field(name='**Optimal ED Level**', value=f"Level {result}", inline=False)
+        embed.add_field(name='Intimidating Presence', value=ip)
+        embed.add_field(name='Arcane Bargain', value=arcane_bargain)
+        embed.add_field(name='Mystic Impact', value=mystic_impact)
         embed.set_thumbnail(url=icon.url)
         await ctx.send(embed=embed)
 
@@ -1583,6 +1624,13 @@ class TapTitansModule(cmd.Cog):
     async def tt_my_ms(self, ctx, ms: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ms", insert=ms)
 
+    @tt_my.command(name='tournamentpoints', aliases=['tourneypoints', 'tp'])
+    async def tt_my_tp(self, ctx, tp: Optional[int] = None):
+        await self.get_or_set(ctx, f"{ctx.author.id}:tt", "tp", insert=tp)
+    
+    @tt_my.command(name='dustspent', aliases=['dust', 'ds'])
+    async def tt_my_ds(self, ctx, ds: Optional[int] = None):
+        await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ds", insert=ds)
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
