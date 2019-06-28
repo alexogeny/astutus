@@ -1246,12 +1246,12 @@ class TapTitansModule(cmd.Cog):
     # async def tt_enchant(self):
     #     return
 
-    async def get_passive_level(self, skill, amount):
+    async def get_passive_level(self, skill, amount, mult=1.00):
         skill = next((s for s in self.passives if s['Name'] == skill), {})
         nxt = next((
             int(skill[f"A{int(key[1:])}"])
             for key in skill
-            if key.startswith("C") and int(skill[key]) > amount
+            if key.startswith("C") and int(skill[key])*mult > amount
         ), 0)
         return nxt
 
@@ -1306,22 +1306,28 @@ class TapTitansModule(cmd.Cog):
         ctx,
         stage: int = 1,
         ip: Optional[int] = 0,
+        mechanized_sword: Optional[float] = 1.0,
+        angelic_guardian: Optional[bool] = False,
         mystic_impact: Optional[int] = 0,
         arcane_bargain: Optional[int] = 0,
         anniversary_platinum: Optional[float] = 1.0,
     ):
         "Optimal ed calculator"
+        if mechanized_sword == 1.0:
+            mechanized_sword = 0.75 if int(await self.bot.db.hget(f"{ctx.author.id}:tt:set", 'ms') or 0) else 1.0
+        if not angelic_guardian:
+            angelic_guardian = 8 if int(await self.bot.db.hget(f'{ctx.author.id}:tt:set', 'ag') or 0) else 0
         if stage == 1:
             stage = int(await self.bot.db.hget(f"{ctx.author.id}:tt", 'ms') or 0)
         if ip == 0:
             sp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "sp") or 0)
-            ip = await self.get_passive_level('Intimidating Presence', sp)
+            ip = await self.get_passive_level('Intimidating Presence', sp, mult=mechanized_sword)
         if arcane_bargain == 0:
             ds = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ds") or 0)
-            arcane_bargain = await self.get_passive_level('Arcane Bargain', ds)
+            arcane_bargain = await self.get_passive_level('Arcane Bargain', ds, mult=mechanized_sword)
         if mystic_impact == 0:
             tp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "tp") or 0)
-            mystic_impact = await self.get_passive_level('SorcererSplashSkip', tp)
+            mystic_impact = await self.get_passive_level('SorcererSplashSkip', tp, mult=mechanized_sword)
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
         current_skip = mystic_impact + arcane_bargain
@@ -1359,6 +1365,9 @@ class TapTitansModule(cmd.Cog):
         icon = self.emoji("eternal_darkness")
         embed = discord.Embed(
             title=f'{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS',
+            description='Since you **{}** have Angelic Guardian, you will splash up to **{}** full stages at a time with **1** Snap titan active.'.format(
+                "do" if angelic_guardian else "do not", int((4+angelic_guardian)/2)
+            )
         )
         embed.add_field(name='**Optimal ED Level**', value=f"Level {result}", inline=False)
         embed.add_field(name='Intimidating Presence', value=ip)
@@ -1631,6 +1640,14 @@ class TapTitansModule(cmd.Cog):
     @tt_my.command(name='dustspent', aliases=['dust', 'ds'])
     async def tt_my_ds(self, ctx, ds: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ds", insert=ds)
+    
+    @tt_my.command(name='equipset', aliases=['set'])
+    async def tt_my_set(self, ctx, itemset: str, unlocked: Optional[bool] = True):
+        if set.lower() in ['ms', 'ag', 'ap']:
+            await self.bot.db.hset(f"{ctx.author.id}:tt:set", set.lower(), int(unlocked))
+            await ctx.send(':white_check_mark: {} **{}** set for **{}**'.format(
+                "Unlocked" if unlocked == True else "locked", set.upper(), ctx.author
+            ))
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))
