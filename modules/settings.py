@@ -65,12 +65,12 @@ class SettingsModule(cmd.Cog):
         await self.bot.db.hset(f"{ctx.guild.id}:set", "autorole", role.id)
         await ctx.send(f"Set the autorole to @**{role}**!")
 
-    @settings.command(name="logging")
+    @settings.command(name="logging", aliases=["log"])
     @checks.is_mod()
     async def logging(
         self, ctx, logtype, channel: Optional[cmd.TextChannelConverter] = None
     ):
-        logtypes = "messages avatars channels roles pins".split()
+        logtypes = "edits deletes avatars channels roles pins".split()
         if logtype.lower() not in logtypes:
             raise cmd.BadArgument(
                 "**Log type** must be one of: {}".format(

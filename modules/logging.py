@@ -50,12 +50,12 @@ class LoggingModule(cmd.Cog):
         log_is_on = await self.bot.db.hget(f"{before.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
-        log_chan = await self.bot.db.hget(f"{before.guild.id}:set", "logmessages")
+        log_chan = await self.bot.db.hget(f"{before.guild.id}:set", "logedits")
         if not log_chan or log_chan is None:
             return
         chan = self.bot.get_channel(int(log_chan))
         if chan is None:
-            await self.bot.db.hdel(f"{before.guild.id}:set", "logmessages")
+            await self.bot.db.hdel(f"{before.guild.id}:set", "logedits")
             return
         embed = discord.Embed(
             title=f"Message by @**{before.author}** in #**{before.channel}** was edited",
@@ -96,12 +96,12 @@ class LoggingModule(cmd.Cog):
         log_is_on = await self.bot.db.hget(f"{message.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
-        log_chan = await self.bot.db.hget(f"{message.guild.id}:set", "logmessages")
+        log_chan = await self.bot.db.hget(f"{message.guild.id}:set", "logdeletes")
         if not log_chan or log_chan is None:
             return
         chan = self.bot.get_channel(int(log_chan))
         if chan is None:
-            await self.bot.db.hdel(f"{message.guild.id}:set", "logmessages")
+            await self.bot.db.hdel(f"{message.guild.id}:set", "logdeletes")
             return
         embed = discord.Embed(
             title=f"Message by @**{message.author}** in #**{message.channel}** was deleted",
@@ -123,10 +123,12 @@ class LoggingModule(cmd.Cog):
             return
         i = None
         if before.avatar != after.avatar:
-            i = await self.upload_to_imgur(
-                str(after.avatar_url_as(static_format="png", size=1024)), anon=True
-            )
-            await self.bot.db.hset("avatar_cache", after.id, i["link"])
+            url = after.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", after.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", after.id, i)
         chans_to_log_avatars = []
         for guild in self.bot.guilds:
             log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging")
@@ -142,7 +144,7 @@ class LoggingModule(cmd.Cog):
                 chans_to_log_avatars.append(chan)
         if chans_to_log_avatars and i is not None:
             embed = discord.Embed(title=f"**{after}**'s new avatar")
-            embed.set_image(url=i["link"])
+            embed.set_image(url=i)
             for chan in chans_to_log_avatars:
                 async with chan.typing():
                     await chan.send(embed=embed)

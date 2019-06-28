@@ -67,12 +67,14 @@ class Redis:
     async def ztop(self, key, start=0, stop=10):
         return await self.execute("ZREVRANGE", key, start, stop, "WITHSCORES")
 
-    async def zscan(self, key, match=None, count=None, cursor=0):
+    async def zscan(self, key, match=None, count=None, cursor=0, withscores=False):
         args = []
         if match is not None:
             args += ["MATCH", f"{match}*"]
         if count is not None:
             args += ["COUNT", count]
+        if withscores:
+            args += ["WITHSCORES"]
         return await self.execute("ZSCAN", key, cursor, *args)
 
     async def hscan(self, key, match=None, count=None, cursor=0):
