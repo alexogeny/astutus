@@ -1317,14 +1317,14 @@ class TapTitansModule(cmd.Cog):
         while current_skip * anniversary_platinum < count2 and result < 25:
             current_skip = mystic_impact + arcane_bargain + ed_boosts[result]
             result += 1
-        icon = self.emoji("edskip")
-        await ctx.send(
-            f"{icon} Optimal ED at stage **{stage}** ({count} titans) is: **{result}**."
+        icon = self.emoji("eternal_darkness")
+        embed = discord.Embed(
+            title=f'{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS',
+            description='**{}** Eternal Darkness Level\n**{}** titans per stage, **1** snap active'.format(
+                result, count)
         )
-
-    # @taptitans.group(name="titanlord", case_insensitive=True)
-    # async def tt_titanlord(self):
-    #     return
+        embed.set_thumbnail(url=icon.url)
+        await ctx.send(embed=embed)
 
     @taptitans.group(name="skill", case_insensitive=True, aliases=["skills", "s"])
     async def tt_skill(self, ctx, skill: Optional[tt2.TTSkill], lvl: Optional[int] = 0):
