@@ -204,6 +204,7 @@ class ModerationModule(cmd.Cog):
             for m in members:
                 mem = ctx.guild.get_member(m)
                 if mem:
+                    await checks.executable(ctx, mem)
                     await self.warn_func(ctx.guild.id, m, wid, duration.timestamp)
                     warned.append(mem)
             result = ", ".join([f"**{k}**" for k in warned])
@@ -220,6 +221,7 @@ class ModerationModule(cmd.Cog):
         if not members:
             return
         mem = ctx.guild.get_member(members[0])
+        await checks.executable(ctx, mem)
         zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", members[0])
         await self.bot.db.zadd(
             f"{ctx.guild.id}:wrn", f"{members[0]}.{wid}", duration.timestamp

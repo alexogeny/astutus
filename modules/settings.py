@@ -17,6 +17,7 @@ AVAILABLE_SETTINGS = [
     "goodbye",
     "prefix",
     "restrictions",
+    "pprefix",
 ]
 
 
@@ -181,6 +182,23 @@ class SettingsModule(cmd.Cog):
         await ctx.send(
             "**{}** is now **{}**".format(setting, int(value) and "on" or "off")
         )
+
+    @cmd.command(name="pprefix")
+    async def pprefix(self, ctx, pprefix: Optional[str] = None):
+        ppfx = await self.bot.db.hget("pprefix", ctx.author.id)
+        if pprefix is None and ppfx is None:
+            raise cmd.BadArgument("You do not have a personal prefix.")
+        if pprefix is None and ppfx is not None:
+            await ctx.send(f":information_source: Your personal prefix is **{ppfx}**")
+            return
+        if pprefix is None:
+            raise cmd.BadArgument("You should specify a prefix.")
+        if len(pprefix) > 5:
+            raise cmd.BadArgument("Personal prefix must be **1-5** characters.")
+        await self.bot.db.hset("pprefix", ctx.author.id, pprefix)
+        if pprefix == "":
+            pprefix = "nothing"
+        await ctx.send(f"Set **{ctx.author}**'s personal prefix to **{pprefix}**")
 
 
 def setup(bot):

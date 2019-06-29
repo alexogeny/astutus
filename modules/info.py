@@ -83,14 +83,14 @@ class InfoModule(cmd.Cog):
         member = ctx.guild.get_member(user.id)
         embed = None
         title = f"Information about {user}"
+        embed = await self.bot.embed()
+        embed.title = title
         if member is not None:
-            description = f"Member of {ctx.guild}"
-            embed = discord.Embed(
-                title=title, description=description, color=member.color
-            )
+            embed.description = f"Member of {ctx.guild}"
+            embed.color = member.color
         else:
-            description = f"Not a member of {ctx.guild}"
-            embed = discord.Embed(title=title, description=description)
+            embed.description = f"Not a member of {ctx.guild}"
+        embed.add_field(name="User ID", value=user.id)
         created = (ctx.message.created_at - user.created_at).days
         plural = "s" if created != 1 else ""
         embed.add_field(name="Born", value=f"**{created}** day{plural} ago")
@@ -122,11 +122,12 @@ class InfoModule(cmd.Cog):
     async def info_bot(self, ctx: cmd.Context):
         "Get information about the bot!"
         emoji = self.bot.get_cog("TapTitansModule").emoji("elixum")
-        embed = discord.Embed(
-            title=f"{emoji} {self.bot.user}",
-            description="Please insert coin to continue.",
-            color=0x473080,
-        )
+        embed = await self.bot.embed()
+        # embed = discord.Embed(
+        embed.title = f"{emoji} {self.bot.user}"
+        embed.description = "Please insert coin to continue."
+        embed.color = 0x473080
+        # )
         embed.set_thumbnail(url=emoji.url)
         embed.add_field(
             name="Author",

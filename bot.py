@@ -21,6 +21,9 @@ async def prefix_callable(bot, message) -> list:
         custom = await bot.db.hget(f"{message.guild.id}:set", "pfx")
         if custom or custom is not None:
             prefix_base.append(custom)
+    pprefix = await bot.db.hget("pprefix", message.author.id)
+    if pprefix is not None:
+        prefix_base.append(pprefix)
     return prefix_base
 
 

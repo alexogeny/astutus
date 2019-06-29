@@ -31,7 +31,7 @@ class TimerModule(cmd.Cog):
             if to_action:
                 clusters = dict(zip_longest(*[iter(to_action)] * 2, fillvalue=None))
                 for action, time in clusters.items():
-                    m, c = action.split(".")
+                    m, c, _ = action.split(".")
                     m, c = guild.get_member(int(m)), guild.get_channel(int(c))
                     if m != None and c != None:
                         t = arrow.get(time)
@@ -62,20 +62,27 @@ class TimerModule(cmd.Cog):
         self, ctx: cmd.Context, duration: Optional[Duration], *, reason: str = None
     ):
         arr = arrow.utcnow()
-        if duration == None or not duration:
+        if duration is None or not duration:
             duration = arr.shift(minutes=1)
         if duration < arr:
-            await ctx.send(
-                f"What are you, **{ctx.author}**, a time traveler? Set your timers for sometime in the future, please."
-            )
+            await ctx.send("Are you a time traveler? Set your timers for the future.")
             raise cmd.BadArgument
+        _, slots = await self.bot.db.zscan(
+            f"{ctx.guild.id}:timer", match=f"{ctx.author.id}."
+        )
+        slots = dict(zip(slots[0::2], slots[1::2]))
+        print(slots)
+        if len(slots) > 4:
+            raise cmd.BadArgument(f"You can 5 timers per server, **{ctx.author}**.")
         await self.bot.db.zadd(
             f"{ctx.guild.id}:timer",
-            f"{ctx.author.id}.{ctx.channel.id}",
+            f"{ctx.author.id}.{ctx.channel.id}.{ctx.message.id}",
             duration.timestamp,
         )
         await self.bot.db.zadd(
-            f"{ctx.guild.id}:timert", f"{ctx.author.id}.{ctx.channel.id}", arr.timestamp
+            f"{ctx.guild.id}:timert",
+            f"{ctx.author.id}.{ctx.channel.id}.{ctx.message.id}",
+            arr.timestamp,
         )
         duration = duration.humanize()
         if duration == "just now":
