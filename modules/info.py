@@ -34,7 +34,9 @@ class InfoModule(cmd.Cog):
         cached = await self.bot.db.hget("guild_cache", guild.id)
         if not cached or cached is None:
             url = guild.icon_url_as(static_format="png", size=1024)
-            ctype, ext = mimetypes.guess_type(str(url))
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
             i = await self.bot.cdn.upload_file("g", guild.id, url, ext, ctype)
             await self.bot.db.hset("guild_cache", guild.id, i)
             cached = i

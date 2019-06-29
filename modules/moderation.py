@@ -20,7 +20,8 @@ async def bulk_mod(ctx, kind: str, members: List[int], reason: str):
             await getattr(ctx.guild, kind)(member_object, reason=reason)
         except:
             pass
-        done.append(member_object)
+        else:
+            done.append(member_object)
     return done
 
 
@@ -79,17 +80,14 @@ class ModerationModule(cmd.Cog):
     async def mute_muted_role(self, role: discord.Role, guild: discord.Guild):
         for channel in guild.channels:
             perms = channel.overwrites_for(role)
-            if (
-                type(channel) is discord.TextChannel
-                and not perms.send_messages == False
-            ):
+            if type(channel) is discord.TextChannel and perms.send_messages:
                 try:
                     await channel.set_permissions(
                         role, send_messages=False, add_reactions=False
                     )
                 except:
                     pass
-            elif type(channel) is discord.VoiceChannel and not perms.speak == False:
+            elif type(channel) is discord.VoiceChannel and perms.speak:
                 try:
                     await channel.set_permissions(role, speak=False)
                 except:
@@ -137,6 +135,7 @@ class ModerationModule(cmd.Cog):
     @cmd.command()
     @cmd.guild_only()
     @checks.can_kick()
+    @checks.bot_has_perms(kick_members=True)
     async def kick(
         self,
         ctx: cmd.Context,
@@ -279,7 +278,7 @@ class ModerationModule(cmd.Cog):
         if duration == "just now":
             duration = "now"
         elif "years" in duration:
-            duration = "in a very, very long time"
+            duration = "in a few years"
         await ctx.send(
             f"**{ctx.author}** muted {result}. They will be unmuted **{duration}**."
         )
@@ -309,6 +308,7 @@ class ModerationModule(cmd.Cog):
     @cmd.command()
     @cmd.guild_only()
     @checks.can_ban()
+    @checks.bot_has_perms(ban_members=True)
     async def ban(
         self,
         ctx: cmd.Context,
@@ -317,22 +317,30 @@ class ModerationModule(cmd.Cog):
         *,
         reason: ActionReason = None,
     ):
-        if duration == None or not duration:
+        if duration is None or not duration:
             duration = arrow.get(7559466982)
         banned = await bulk_mod(ctx, "ban", members, reason)
+        if not banned:
+            raise cmd.BadArgument("No users to ban.")
         for b in banned:
             await self.bot.db.zadd(f"{ctx.guild.id}:bans", b.id, duration.timestamp)
         result = ", ".join([f"**{k}**" for k in banned])
         duration = duration.humanize()
         if duration == "just now":
             duration = "now"
+        if "years" in duration:
+            duration = "in a few years"
         await ctx.send(
             f"**{ctx.author}** banned {result}. They will be unbanned **{duration}**."
         )
+        log = self.bot.get_cog("LoggingModule")
+        for user in banned:
+            await log.on_member_ban(ctx.guild, ctx.author, user, reason, duration)
 
     @cmd.command()
     @cmd.guild_only()
     @checks.can_ban()
+    @checks.bot_has_perms(ban_members=True)
     async def unban(
         self,
         ctx: cmd.Context,
@@ -341,14 +349,20 @@ class ModerationModule(cmd.Cog):
         reason: ActionReason = None,
     ):
         unbanned = await bulk_mod(ctx, "unban", members, reason)
+        if not unbanned:
+            raise cmd.BadArgument("Nobody to unban.")
         for b in unbanned:
             await self.bot.db.zrem(f"{ctx.guild.id}:bans", b.id)
-        unbanned = ", ".join([f"**{k}**" for k in unbanned])
-        await ctx.send(f"**{ctx.author}** unbanned {unbanned}.")
+        result = ", ".join([f"**{k}**" for k in unbanned])
+        await ctx.send(f"**{ctx.author}** unbanned {result}.")
+        log = self.bot.get_cog("LoggingModule")
+        for user in unbanned:
+            await log.on_member_unban(ctx.guild, ctx.author, user, reason)
 
     @cmd.command(aliases=["nick"])
     @cmd.guild_only()
     @checks.can_manage_nicknames()
+    @checks.bot_has_perms(manage_nicknames=True)
     async def nickname(self, ctx, member: MemberID, *nickname):
         member = discord.utils.get(ctx.guild.members, id=member)
         if member.top_role > ctx.author.top_role:
@@ -364,14 +378,38 @@ class ModerationModule(cmd.Cog):
             await member.edit(
                 reason=f"{ctx.author} (ID: {ctx.author.id})", nick=nickname
             )
-        except discord.errors.Forbidden:
-            await ctx.send(
-                "Oops, I do not have permission. A server admin should fix this."
-            )
+        except:
+            pass
         else:
             await ctx.send(
                 f"Changed **{member}**'s nick from **{old_nick}** to **{nickname}**."
             )
+
+    @cmd.command(name="reason")
+    @cmd.guild_only()
+    @checks.is_mod()
+    async def reason(self, ctx, case: int, *reason):
+        if not reason:
+            raise cmd.BadArgument("You must supply a valid reason.")
+        cases = await self.bot.db.zscore("cases", ctx.guild.id)
+        if int(case) > int(cases):
+            plural = "s" if int(cases) != 1 else ""
+            plural2 = "" if plural == "s" else "s"
+            raise cmd.BadArgument(
+                f"**{case}** is not a valid case number. **{cases}** case{plural} exist{plural2}."
+            )
+        case_file = await self.bot.db.hget(f"{ctx.guild.id}:case", case)
+        chan = await self.bot.db.hget(f"{ctx.guild.id}:set", "logmod")
+        chan = ctx.guild.get_channel(int(chan))
+        if chan is None:
+            raise cmd.BadArgument("Moderation channel is missing.")
+        message = await chan.fetch_message(int(case_file))
+        embed = message.embeds[0]
+        embed.remove_field(0)
+        embed.insert_field_at(0, name="Reason", value=" ".join(reason))
+        print(embed.to_dict())
+        await message.edit(embed=embed)
+        await ctx.send(f":white_check_mark: Set case #**{case}** reason.")
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):

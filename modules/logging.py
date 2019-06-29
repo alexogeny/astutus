@@ -1,8 +1,8 @@
 # from imgurpython import ImgurClient
 import mimetypes
 import discord
+import arrow
 from discord.ext import commands as cmd
-from .utils.etc import download_image
 
 
 class LoggingModule(cmd.Cog):
@@ -221,20 +221,55 @@ class LoggingModule(cmd.Cog):
     async def on_guild_role_delete(self, role):
         return
 
-    async def on_member_ban(self, g, u):
-        return
+    async def mod_log(self, action, guild, author, user, reason, duration=None):
+        log_mod = await self.bot.db.hget(f"{guild.id}:set", "logmod")
+        if log_mod is not None:
+            log_mod = guild.get_channel(int(log_mod))
+        if log_mod is None:
+            await self.bot.db.hdel(f"{guild.id}:set", "logmod")
+            raise cmd.BadArgument("Modlog channel is missing.")
+        await self.bot.db.zincrement("cases", guild.id)
+        case_number = await self.bot.db.zscore("cases", guild.id)
+        pfx = await self.bot.db.hget(f"{guild.id}:set", "pfx")
+        embed = discord.Embed(
+            title=f"@**{user}** {action} by @**{author}**",
+            type="rich",
+            description=f"{user.mention} (ID: {user.id})",
+            timestamp=arrow.utcnow().datetime,
+        )
+        embed.set_footer(text=str(guild.me), icon_url=guild.me.avatar_url)
+        if reason is None:
+            reason = "Responsible moderator, do **{}reason {}** to set a moderation reason.".format(
+                self.bot.config["DEFAULT"]["prefix"] if pfx is None else pfx,
+                case_number,
+            )
+        embed.add_field(name="Reason", value=reason)
+        if duration is not None:
+            embed.add_field(name="Duration", value=duration)
+        print(embed.to_dict())
+        case = await log_mod.send(embed=embed)
+        await self.bot.db.hset(f"{guild.id}:case", case_number, case.id)
 
-    async def on_member_unban(self, g, u):
-        return
+    async def on_member_ban(self, guild, author, user, reason, duration):
+        await self.mod_log("banned", guild, author, user, reason, duration=duration)
 
-    async def on_member_mute(self, g, u):
-        return
+    async def on_member_unban(self, guild, author, user, reason):
+        await self.mod_log("unbanned", guild, author, user, reason)
 
-    async def on_member_unmute(self, g, u):
-        return
+    async def on_member_warn(self, guild, author, user, reason, duration):
+        await self.mod_log("warned", guild, author, user, reason, duration=duration)
 
-    async def on_member_kick(self, g, u):
-        return
+    async def on_member_pardon(self, guild, author, user, reason):
+        await self.mod_log("pardoned", guild, author, user, reason)
+
+    async def on_member_mute(self, guild, author, user, reason, duration):
+        await self.mod_log("muted", guild, author, user, reason, duration=duration)
+
+    async def on_member_unmute(self, guild, author, user, reason):
+        await self.mod_log("unmuted", guild, author, user, reason)
+
+    async def on_member_kick(self, guild, author, user, reason):
+        await self.mod_log("kicked", guild, author, user, reason)
 
 
 def setup(bot):

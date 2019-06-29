@@ -68,9 +68,8 @@ class SettingsModule(cmd.Cog):
 
     @settings.command(name="role")
     @checks.is_mod()
+    @checks.bot_has_perms(manage_roles=True)
     async def role(self, ctx, roletype, role: Optional[cmd.RoleConverter] = None):
-        if not ctx.guild.me.guild_permissions.manage_roles:
-            raise cmd.BotMissingPermissions(("Manage Roles",))
         roletypes = "auto muted jailed curator".split()
         if roletype.lower() not in roletypes:
             raise cmd.BadArgument(
@@ -88,7 +87,7 @@ class SettingsModule(cmd.Cog):
     async def logging(
         self, ctx, logtype, channel: Optional[cmd.TextChannelConverter] = None
     ):
-        logtypes = "joins leaves edits deletes avatars channels roles pins".split()
+        logtypes = "mod joins leaves edits deletes avatars channels roles pins".split()
         if logtype.lower() not in logtypes:
             raise cmd.BadArgument(
                 "**Log type** must be one of: {}".format(

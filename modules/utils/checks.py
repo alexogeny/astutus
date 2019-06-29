@@ -86,6 +86,17 @@ def is_mod():
     return cmd.check(predicate)
 
 
+def bot_has_perms(**perms):
+    async def predicate(ctx):
+        missing = [p for p in perms if not getattr(ctx.guild.me.guild_permissions, p)]
+        if missing:
+            missing = [perm.replace("_", " ").title() for perm in missing]
+            raise cmd.BotMissingPermissions(missing)
+        return True
+
+    return cmd.check(predicate)
+
+
 async def check_for_premium_user(ctx):
     lxmcord = ctx.bot.get_guild(440785686438871040)
     booster = lxmcord.get_role(585600912559439874)
