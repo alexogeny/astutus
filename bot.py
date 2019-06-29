@@ -5,6 +5,7 @@ import os
 from os import listdir
 from os.path import isfile, join
 from itertools import chain
+import arrow
 import discord
 from discord.ext import commands as cmds
 from discord.utils import get
@@ -62,6 +63,11 @@ class AstutusBot(cmds.AutoShardedBot):
             except (discord.ClientException, ModuleNotFoundError):
                 print(f"Failed to load extension {extension}.", file=sys.stderr)
 
+    async def embed(self):
+        embed = discord.Embed(timestamp=arrow.utcnow().datetime)
+        embed.set_footer(text=str(self.user), icon_url=self.user.avatar_url)
+        return embed
+
     async def on_ready(self):
         """Do these things when the bot is connected to discord's api."""
         if not hasattr(self, "booted_at"):
@@ -90,6 +96,9 @@ class AstutusBot(cmds.AutoShardedBot):
             await ctx.send(
                 f":negative_squred_cross_mark: You didn't supply any valid items! {ctx.prefix}help {ctx.command.qualified_name}"
             )
+        elif isinstance(error, cmds.MissingPermissions):
+            perms = ", ".join(error.missing_perms)
+            await ctx.send(f":no_entry: {perms}.")
 
         elif isinstance(error, cmds.BotMissingPermissions):
             perms = ", ".join([f"**{perm}**" for perm in error.missing_perms])

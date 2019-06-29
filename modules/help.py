@@ -18,7 +18,11 @@ class HelpModule(cmd.Cog):
         if not command:
             title = f"Available modules for {self.bot.user}"
             description = ", ".join(
-                [f"{c.replace('Module', '')}" for c in self.bot.cogs]
+                [
+                    f"{c.replace('Module', '')}"
+                    for c in self.bot.cogs
+                    if str(c) != "PostgreModule"
+                ]
             )
         else:
             command = list(command)

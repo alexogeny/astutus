@@ -1,21 +1,25 @@
-import discord
-import arrow
+import re
+import asyncio
 from typing import List, Optional
+import arrow
+import discord
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 from discord.utils import get
 from .utils import checks
-from .utils.converters import MemberID, ActionReason, BannedMember
+from .utils.converters import MemberID, ActionReason
 from .utils.time import Duration
-from uuid import uuid4
-from copy import deepcopy
-from itertools import chain
+
+PERMANENT = re.compile(r"(in \d{2,3} years)")
 
 
 async def bulk_mod(ctx, kind: str, members: List[int], reason: str):
     done = []
     for member in members:
         member_object = await ctx.bot.fetch_user(member)
+        guild_member = ctx.guild.get_member(member_object.id)
+        if guild_member is not None:
+            await checks.executable(ctx, guild_member)
         try:
             await getattr(ctx.guild, kind)(member_object, reason=reason)
         except:
@@ -32,14 +36,17 @@ class ModerationModule(cmd.Cog):
         self.bot = bot
         self.unmute_timer.start()
         self.unban_timer.start()
+        self.unwarn_timer.start()
 
     def cog_unload(self):
         self.unmute_timer.cancel()
         self.unban_timer.cancel()
+        self.unwarn_timer.cancel()
 
     @tsk.loop(seconds=10)
     async def unmute_timer(self):
         now = arrow.utcnow()
+        log = self.bot.get_cog('LoggingModule')
         for guild in self.bot.guilds:
             to_action = await self.bot.db.zbyscore(
                 f"{guild.id}:mutes", now.shift(seconds=-11).timestamp, now.timestamp
@@ -50,6 +57,7 @@ class ModerationModule(cmd.Cog):
                     yes = guild.get_member(int(action))
                     if yes:
                         await yes.remove_roles(role, reason="Mute expired")
+                        await log.on_member_unmute(guild, guild.me, yes, 'Mute expired.')
                 await self.bot.db.zrembyscore(
                     f"{guild.id}:mutes", now.shift(seconds=-11).timestamp, now.timestamp
                 )
@@ -57,17 +65,35 @@ class ModerationModule(cmd.Cog):
     @tsk.loop(seconds=10)
     async def unban_timer(self):
         now = arrow.utcnow()
+        log = self.bot.get_cog('LoggingModule')
         for guild in self.bot.guilds:
             to_action = await self.bot.db.zbyscore(
                 f"{guild.id}:bans", now.shift(seconds=-11).timestamp, now.timestamp
             )
             if to_action:
                 for action in to_action:
-                    usr = await self.bot.fetch_user(action)
+                    usr = await self.bot.fetch_user(int(action))
                     await guild.unban(usr, reason="ban expired")
+                    await log.on_member_unban(guild, guild.me, usr, 'Ban expired.')
                 await self.bot.db.zrembyscore(
                     f"{guild.id}:bans", now.shift(seconds=-11).timestamp, now.timestamp
                 )
+    
+    @tsk.loop(seconds=10)
+    async def unwarn_timer(self):
+        now = arrow.utcnow()
+        log = self.bot.get_cog('LoggingModule')
+        for guild in self.bot.guilds:
+            to_action = await self.bot.db.zbyscore(
+                f"{guild.id}:wrn", now.shift(seconds=-11).timestamp, now.timestamp
+            )
+            if to_action:
+                for action in to_action:
+                    mem, _ = action.split('.')
+                    usr = await self.bot.fetch_user(int(mem))
+                    await self.bot.db.zincrement(f"{guild.id}:wrncnt", usr.id, score=-1)
+                    await log.on_member_pardon(guild, guild.me, usr, 'Warning expired.')
+                await self.bot.db.zrembyscore(f"{guild.id}:wrn", now.shift(seconds=-11).timestamp, now.timestamp)
 
     @unban_timer.before_loop
     async def before_unban_timer(self):
@@ -75,6 +101,10 @@ class ModerationModule(cmd.Cog):
 
     @unmute_timer.before_loop
     async def before_unmute_timer(self):
+        await self.bot.wait_until_ready()
+    
+    @unwarn_timer.before_loop
+    async def before_unwarn_timer(self):
         await self.bot.wait_until_ready()
 
     async def mute_muted_role(self, role: discord.Role, guild: discord.Guild):
@@ -144,8 +174,11 @@ class ModerationModule(cmd.Cog):
         reason: ActionReason = None,
     ):
         kicked = await bulk_mod(ctx, "kick", members, reason)
-        kicked = ", ".join([f"**{k}**" for k in kicked])
-        await ctx.send(f"**{ctx.author}** kicked {kicked}.")
+        result = ", ".join([f"**{k}**" for k in kicked])
+        await ctx.send(f"**{ctx.author}** kicked {result}.")
+        log = self.bot.get_cog("LoggingModule")
+        for member in kicked:
+            await log.on_member_kick(ctx.guild, ctx.author, member, reason)
 
     async def warn_func(self, guild_id, member_id, warning_id, expiry):
         zs = await self.bot.db.zincrement(f"{guild_id}:wrncnt", member_id)
@@ -167,17 +200,22 @@ class ModerationModule(cmd.Cog):
         if duration is None or not duration:
             duration = arrow.get(9999999999)
         if len(members) > 1:
-            result = []
+            warned = []
             for m in members:
                 mem = ctx.guild.get_member(m)
                 if mem:
                     await self.warn_func(ctx.guild.id, m, wid, duration.timestamp)
-                    result.append(mem)
-            result = ", ".join([f"**{k}**" for k in result])
+                    warned.append(mem)
+            result = ", ".join([f"**{k}**" for k in warned])
             duration = duration.humanize()
             if duration == "just now":
                 duration = "shortly"
+            elif PERMANENT.match(duration):
+                duration = "permanent"
             await ctx.send(f"**{ctx.author}** warned {result}.")
+            log = self.bot.get_cog("LoggingModule")
+            for user in warned:
+                await log.on_member_warn(ctx.guild, ctx.author, user, reason)
             return
         if not members:
             return
@@ -191,6 +229,13 @@ class ModerationModule(cmd.Cog):
                 ctx.author, mem, zs, int(zs) > 1 and "s" or ""
             )
         )
+        log = self.bot.get_cog("LoggingModule")
+        duration = duration.humanize()
+        if duration == "just now":
+            duration = "shortly"
+        elif PERMANENT.match(duration):
+            duration = "permanent"
+        await log.on_member_warn(ctx.guild, ctx.author, mem, reason, duration=duration)
 
     @cmd.command(name="warnings")
     async def warnings(self, ctx, member: Optional[cmd.MemberConverter]):
@@ -231,7 +276,10 @@ class ModerationModule(cmd.Cog):
                     pardoned.append(ctx.guild.get_member(m))
             result = ", ".join([f"**{k}**" for k in pardoned])
             await ctx.send(f"**{ctx.author}** pardoned {result}.")
-        elif len(members) == 0:
+            log = self.bot.get_cog("LoggingModule")
+            for user in pardoned:
+                await log.on_member_pardon(ctx.guild, ctx.author, user, reason)
+        elif not members:
             return
         m = members[0]
         mem = ctx.guild.get_member(m)
@@ -250,10 +298,19 @@ class ModerationModule(cmd.Cog):
                     ctx.author, mem, zs, int(zs) != 1 and "s" or ""
                 )
             )
+            log = self.bot.get_cog("LoggingModule")
+            await log.on_member_pardon(ctx.guild, ctx.author, mem, reason)
+
+    async def mute_action(self, guild, member, duration, reason):
+        role = await self.get_or_create_muted_role(guild)
+        await self.mute_muted_role(role, guild)
+        await member.add_roles(role, reason=reason)
+        await self.bot.db.zadd(f"{guild.id}:mutes", member.id, duration.timestamp)
 
     @cmd.command()
     @cmd.guild_only()
     @checks.can_kick()
+    @checks.bot_has_perms(manage_roles=True)
     async def mute(
         self,
         ctx: cmd.Context,
@@ -266,26 +323,29 @@ class ModerationModule(cmd.Cog):
             duration = arrow.get(7559466982)
         role = await self.get_or_create_muted_role(ctx.guild)
         await self.mute_muted_role(role, ctx.guild)
-        result = []
+        muted = []
         for m in members:
             mem = ctx.guild.get_member(m)
             if mem:
+                await checks.executable(ctx, mem)
                 await mem.add_roles(role, reason=reason)
                 await self.bot.db.zadd(f"{ctx.guild.id}:mutes", m, duration.timestamp)
-                result.append(mem)
-        result = ", ".join([f"**{k}**" for k in result])
+                muted.append(mem)
+        result = ", ".join([f"**{k}**" for k in muted])
         duration = duration.humanize()
         if duration == "just now":
             duration = "now"
-        elif "years" in duration:
-            duration = "in a few years"
-        await ctx.send(
-            f"**{ctx.author}** muted {result}. They will be unmuted **{duration}**."
-        )
+        elif PERMANENT.match(duration):
+            duration = "permanent"
+        await ctx.send(f"**{ctx.author}** muted {result}.")
+        log = self.bot.get_cog("LoggingModule")
+        for user in muted:
+            await log.on_member_mute(ctx.guild, ctx.author, user, reason, duration)
 
     @cmd.command()
     @cmd.guild_only()
     @checks.can_kick()
+    @checks.bot_has_perms(manage_roles=True)
     async def unmute(
         self,
         ctx: cmd.Context,
@@ -295,15 +355,19 @@ class ModerationModule(cmd.Cog):
     ):
         role = await self.get_or_create_muted_role(ctx.guild)
         await self.mute_muted_role(role, ctx.guild)
-        result = []
+        unmuted = []
         for m in members:
             mem = ctx.guild.get_member(m)
             if mem:
+                await checks.executable(ctx, mem)
                 await mem.remove_roles(role)
                 await self.bot.db.zrem(f"{ctx.guild.id}:mutes", m)
-                result.append(mem)
-        result = ", ".join([f"**{k}**" for k in result])
+                unmuted.append(mem)
+        result = ", ".join([f"**{k}**" for k in unmuted])
         await ctx.send(f"**{ctx.author}** unmuted {result}.")
+        log = self.bot.get_cog("LoggingModule")
+        for user in unmuted:
+            await log.on_member_unmute(ctx.guild, ctx.author, user, reason)
 
     @cmd.command()
     @cmd.guild_only()
@@ -358,32 +422,80 @@ class ModerationModule(cmd.Cog):
         log = self.bot.get_cog("LoggingModule")
         for user in unbanned:
             await log.on_member_unban(ctx.guild, ctx.author, user, reason)
+    
+    @cmd.command(aliases=['addroles', 'roleadd'])
+    @cmd.guild_only()
+    @checks.can_ban()
+    @checks.bot_has_perms(manage_roles=True)
+    async def addrole(
+        self,
+        ctx: cmd.Context,
+        members: cmd.Greedy[cmd.MemberConverter],
+        roles: cmd.Greedy[cmd.RoleConverter],
+        *,
+        reason: ActionReason = None,
+    ):
+        if not roles:
+            raise cmd.BadArgument(
+                "You need to specify at least one valid role to add."
+            )
+        plural = "s" if len(roles) != 1 else ""
+        this = "these" if plural == "s" else "this"
+        if [r for r in roles if r >= ctx.author.top_role]:
+            raise cmd.MissingPermissions([f"You do not have permission to assign {this} role{plural}"])
+        log = self.bot.get_cog('LoggingModule')
+        for member in members:
+            await member.add_roles(*roles)
+            await log.on_member_role_add(ctx.guild, ctx.author, member, reason, roles)
+
+        await ctx.send(':white_check_mark: Roles updated successfully!')
+    
+    @cmd.command(aliases=['removeroles', 'roleremove'])
+    @cmd.guild_only()
+    @checks.can_ban()
+    @checks.bot_has_perms(manage_roles=True)
+    async def removerole(
+        self,
+        ctx: cmd.Context,
+        members: cmd.Greedy[cmd.MemberConverter],
+        roles: cmd.Greedy[cmd.RoleConverter],
+        *,
+        reason: ActionReason = None,
+    ):
+        if not roles:
+            raise cmd.BadArgument(
+                "You need to specify at least one valid role to remove."
+            )
+        plural = "s" if len(roles) != 1 else ""
+        this = "these" if plural == "s" else "this"
+        if [r for r in roles if r >= ctx.author.top_role]:
+            raise cmd.MissingPermissions([f"You do not have permission to remove {this} role{plural}"])
+        log = self.bot.get_cog('LoggingModule')
+        for member in members:
+            await member.remove_roles(*roles)
+            await log.on_member_role_remove(ctx.guild, ctx.author, member, reason, roles)
+
+        await ctx.send(':white_check_mark: Roles updated successfully!')
 
     @cmd.command(aliases=["nick"])
     @cmd.guild_only()
     @checks.can_manage_nicknames()
     @checks.bot_has_perms(manage_nicknames=True)
-    async def nickname(self, ctx, member: MemberID, *nickname):
+    async def nickname(
+        self, ctx, member: MemberID, nickname, *, reason: ActionReason = None
+    ):
         member = discord.utils.get(ctx.guild.members, id=member)
-        if member.top_role > ctx.author.top_role:
-            await ctx.send(
-                f"Sorry **{ctx.author}** - you must be higher in the rolelist to do that."
-            )
-            return
+        await checks.executable(ctx, member)
         old_nick = str(member.display_name)
-        nickname = " ".join(nickname)[0:32]
+        nickname = (" ".join(nickname.split()))[:32]
         if not nickname:
             nickname = member.name
-        try:
-            await member.edit(
-                reason=f"{ctx.author} (ID: {ctx.author.id})", nick=nickname
-            )
-        except:
-            pass
-        else:
-            await ctx.send(
-                f"Changed **{member}**'s nick from **{old_nick}** to **{nickname}**."
-            )
+        await member.edit(reason=reason, nick=nickname)
+        await ctx.send(
+            f"Changed **{member}**'s nick from **{old_nick}** to **{nickname}**."
+        )
+        log = self.bot.get_cog("LoggingModule")
+        await log.on_member_nickname_update(ctx.guild, ctx.author, member, reason)
 
     @cmd.command(name="reason")
     @cmd.guild_only()
@@ -407,7 +519,6 @@ class ModerationModule(cmd.Cog):
         embed = message.embeds[0]
         embed.remove_field(0)
         embed.insert_field_at(0, name="Reason", value=" ".join(reason))
-        print(embed.to_dict())
         await message.edit(embed=embed)
         await ctx.send(f":white_check_mark: Set case #**{case}** reason.")
 

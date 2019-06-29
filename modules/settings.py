@@ -11,8 +11,7 @@ AVAILABLE_SETTINGS = [
     "censor",
     "logging",
     "modlog",
-    "autokick",
-    "autoban",
+    "automod",
     "autorole",
     "greet",
     "goodbye",
@@ -81,6 +80,26 @@ class SettingsModule(cmd.Cog):
             raise cmd.BadArgument("Could not find a role with that name.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", f"role{roletype}", role.id)
         await ctx.send(f":white_check_mark: Set **{roletype} role** to @**{role}**")
+
+    @settings.command(name="automod")
+    @checks.is_mod()
+    @checks.bot_has_perms(manage_roles=True)
+    async def automod(self, ctx, modtype, count: int):
+        modtypes = "mute kick ban".split()
+        if modtype.lower() not in modtypes:
+            raise cmd.BadArgument(
+                "**Action type** must be one of: {}".format(
+                    ", ".join([f"**{l}**" for l in modtypes])
+                )
+            )
+        if count is None or not count:
+            raise cmd.BadArgument("Offense count must be greater than 0.")
+        if count > 30:
+            raise cmd.BadArgument("Offense count must be less than or equal to 30.")
+        await self.bot.db.hset(f"{ctx.guild.id}:set", f"automod{modtype}", count)
+        await ctx.send(
+            f":white_check_mark: Set automod **{modtype}** to **{count}** offenses."
+        )
 
     @settings.command(name="logging", aliases=["log"])
     @checks.is_mod()

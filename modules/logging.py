@@ -221,7 +221,9 @@ class LoggingModule(cmd.Cog):
     async def on_guild_role_delete(self, role):
         return
 
-    async def mod_log(self, action, guild, author, user, reason, duration=None):
+    async def mod_log(
+        self, action, guild, author, user, reason, duration=None, roles=None
+    ):
         log_mod = await self.bot.db.hget(f"{guild.id}:set", "logmod")
         if log_mod is not None:
             log_mod = guild.get_channel(int(log_mod))
@@ -231,22 +233,42 @@ class LoggingModule(cmd.Cog):
         await self.bot.db.zincrement("cases", guild.id)
         case_number = await self.bot.db.zscore("cases", guild.id)
         pfx = await self.bot.db.hget(f"{guild.id}:set", "pfx")
-        embed = discord.Embed(
-            title=f"@**{user}** {action} by @**{author}**",
-            type="rich",
-            description=f"{user.mention} (ID: {user.id})",
-            timestamp=arrow.utcnow().datetime,
-        )
-        embed.set_footer(text=str(guild.me), icon_url=guild.me.avatar_url)
+        embed = await self.bot.embed()
+        embed.description = f"{user.mention} {action} by {author.mention}"
+        embed.add_field(name="Case", value=case_number)
+        embed.add_field(name="User ID", value=user.id)
         if reason is None:
             reason = "Responsible moderator, do **{}reason {}** to set a moderation reason.".format(
                 self.bot.config["DEFAULT"]["prefix"] if pfx is None else pfx,
                 case_number,
             )
+        else:
+            reason = reason.split("]")[-1]
         embed.add_field(name="Reason", value=reason)
         if duration is not None:
             embed.add_field(name="Duration", value=duration)
-        print(embed.to_dict())
+        if roles is not None:
+            embed.add_field(
+                name=action.title(), value=", ".join([r.mention for r in roles])
+            )
+        i = await self.bot.db.hget("avatar_cache", user.id)
+        if not i or i is None:
+            url = user.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", user.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", user.id, i)
+        embed.set_thumbnail(url=i)
+        i = await self.bot.db.hget("avatar_cache", author.id)
+        if not i or i is None:
+            url = author.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", author.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", author.id, i)
+        embed.set_author(name=f"{author} ({author.id})", icon_url=i)
         case = await log_mod.send(embed=embed)
         await self.bot.db.hset(f"{guild.id}:case", case_number, case.id)
 
@@ -258,6 +280,33 @@ class LoggingModule(cmd.Cog):
 
     async def on_member_warn(self, guild, author, user, reason, duration):
         await self.mod_log("warned", guild, author, user, reason, duration=duration)
+        automod = await self.bot.db.hget(f"{guild.id}:toggle", "automod")
+        if automod is None or not int(automod):
+            return
+        print("automod is on")
+        offenses = int(await self.bot.db.zscore(f"{guild.id}:wrncnt", user.id) or 0)
+        print(offenses)
+        if not offenses:
+            return
+        for action in "mute kick ban".split():
+            value = int(await self.bot.db.hget(f"{guild.id}:set", "automodmute") or 100)
+            mod = self.bot.get_cog("ModerationModule")
+            if offenses >= value:
+                if action == "mute":
+                    duration = arrow.utcnow().shift(hours=24)
+                    await mod.mute_action(
+                        guild,
+                        user,
+                        arrow.utcnow().shift(hours=24),
+                        f"Auto mute at {offenses} offenses.",
+                    )
+                    await self.on_member_mute(
+                        guild,
+                        guild.me,
+                        user,
+                        "Exceeded auto mute warning limit.",
+                        duration=duration.humanize().replace("in ", ""),
+                    )
 
     async def on_member_pardon(self, guild, author, user, reason):
         await self.mod_log("pardoned", guild, author, user, reason)
@@ -270,6 +319,15 @@ class LoggingModule(cmd.Cog):
 
     async def on_member_kick(self, guild, author, user, reason):
         await self.mod_log("kicked", guild, author, user, reason)
+
+    async def on_member_nickname_update(self, guild, author, user, reason):
+        await self.mod_log("renamed", guild, author, user, reason)
+
+    async def on_member_role_add(self, guild, author, user, reason, roles):
+        await self.mod_log("roles added", guild, author, user, reason, roles=roles)
+
+    async def on_member_role_remove(self, guild, author, user, reason, roles):
+        await self.mod_log("roles removed", guild, author, user, reason, roles=roles)
 
 
 def setup(bot):

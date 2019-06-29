@@ -15,6 +15,13 @@ async def can_execute(ctx, member: discord.Member):
         )
 
 
+async def executable(ctx, member):
+    if not ctx.author.top_role > member.top_role:
+        raise cmd.MissingPermissions(["You must be higher in the rolelist"])
+    if not ctx.guild.me.top_role > member.top_role:
+        raise cmd.MissingPermissions(["The bot must be higher in the role list"])
+
+
 async def user_has_role(user_roles: List[int], *roles):
     return bool(next((role for role in roles if role in user_roles), None))
 
