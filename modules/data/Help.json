@@ -193,10 +193,10 @@
         ]
     },
     "taptitans edskip": {
-        "desc": "Shows you the optimal level of ED that you need, given the information available.\nNote here that optimal means a full SC splash with 1 snap active.\n**mi** = mystic impact\n**ab** = arcane bargain\n**anno_plat** = anniversary platinum set multiplier e.g. 1.23",
+        "desc": "Shows you the optimal level of ED that you need, given the information available.\nNote here that optimal means a full SC splash with 1 snap active.\n**mi** = mystic impact\n**ab** = arcane bargain\n**mech_sw** = mechanized sword multiplier e.g. 0.75\n**angelic_gu** - angelic guardian unlocked (true/false)\n**anno_pl** = anniversary platinum set multiplier e.g. 1.23\n\nNote: using **tt my set <itemset> yes** you can set these to unlocked, and same for ms/ip/ab with **tt my <stat> <amount>**",
         "usage": [
             "tt ed",
-            "tt ed <stage> <ip> <mi> <ab> <anno_plat>"
+            "tt ed <stage> <ip> <mi> <ab> <mech_sw> <angelic_gu> <anno_pl>"
         ]
     },
     "taptitans skill": {
@@ -222,6 +222,28 @@
             "tt gold",
             "tt gold <type>",
             "tt gold chesterson"
+        ]
+    },
+    "taptitans build": {
+        "desc": "Allows you to automagically generate a skill tree for the given build + gold type.\nThis will pull off your ms stat if you have set it with **tt my ms <stage>**.\n\nDisclaimer: this command is still very early alpha and so builds are not that great. They're not terrible either, though.",
+        "usage": [
+            "tt build <damage> <gold> <sp>",
+            "tt build sc fairy 2200"
+        ]
+    },
+    "taptitans my": {
+        "desc": "A suite of commands to help you manage your TT2 stats that you have stored with the bot.",
+        "usage": [
+            "tt my code <supportcode>",
+            "tt my <stat> <count>",
+            "tt my <itemset> <yes/no>"
+        ]
+    },
+    "taptitans my profile": {
+        "desc": "Shows your tap titans stats that you recorded with the bot.",
+        "usage": [
+            "tt my profile",
+            "tt my profile <user>"
         ]
     },
     "seen": {

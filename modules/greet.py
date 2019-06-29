@@ -26,7 +26,7 @@ class GreetModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_member_remove(self, member):
-        greet_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "greet")
+        greet_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "goodbye")
         if greet_is_on in (None, "0"):
             return
         greet_msg = await self.bot.db.hget(f"{member.guild.id}:set", "dpt")
@@ -35,7 +35,7 @@ class GreetModule(cmd.Cog):
             return
         chan = self.bot.get_channel(int(greet_chan))
         if not chan:
-            await self.bot.db.hset(f"{member.guild.id}:toggle", "greet", "0")
+            await self.bot.db.hset(f"{member.guild.id}:toggle", "goodbye", "0")
             return
         await chan.send(
             greet_msg.format(

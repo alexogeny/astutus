@@ -77,11 +77,11 @@ class MemberID(cmd.Converter):
 class ActionReason(cmd.Converter):
     async def convert(self, ctx: cmd.Context, argument):
         if argument is not None:
-            result = f"{ctx.author.id}_:_{argument}"
+            result = f"[{ctx.author.id}]{argument}"
         elif len(result) > 140:
-            result = f"{ctx.author.id}_:_{argument[0:137]}..."
+            result = f"[{ctx.author.id}]{argument[0:137]}..."
         elif argument is None or argument == "":
-            result = f"{ctx.author.id}_:_"
+            result = f"[{ctx.author.id}] No reason given."
         return result
 
 

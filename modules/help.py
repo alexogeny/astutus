@@ -83,7 +83,12 @@ class HelpModule(cmd.Cog):
         if fields:
             for field in fields:
                 embed.add_field(name=field, value=fields[field])
-
+        if not command:
+            cstm = await self.bot.db.hget(f"{ctx.guild.id}:set", "pfx")
+            if not cstm or cstm is None:
+                cstm = ""
+            pfx = str(cstm) if cstm else self.bot.config["DEFAULT"]["prefix"]
+            embed.add_field(name="Current Prefix", value=pfx)
         embed.set_thumbnail(url=icon.url)
         await ctx.send("", embed=embed)
 

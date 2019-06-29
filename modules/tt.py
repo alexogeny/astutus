@@ -880,8 +880,8 @@ class TapTitansModule(cmd.Cog):
 
         if result:
             await ctx.send(
-                "**Queue** for **{}**:\n```css\n{}```\nUse **;tt unqueue** to cancel.".format(
-                    resets, result and "\n".join(result) or " "
+                "**Queue** for **{}**:\n```css\n{}```\nUse **{}tt unqueue** to cancel.".format(
+                    resets, result and "\n".join(result) or " ", ctx.prefix
                 )
             )
             return
@@ -1255,24 +1255,6 @@ class TapTitansModule(cmd.Cog):
         ), 0)
         return nxt
 
-    # async def intimidating_presence(self, skill_points):
-    #     itp = next((s for s in self.passives if s['Name'] == 'Intimidating Presence'), {})
-    #     nxt = next((
-    #         int(itp[f"A{int(key[1:])-1}"])
-    #         for key in itp
-    #         if key.startswith('C') and int(itp[key]) > skill_points
-    #     ), 0)
-    #     return nxt
-    
-    # async def arcane_bargain(self, tourney_points):
-    #     itp = next((s for s in self.passives if s['Name'] == 'Arcane Bargain'), {})
-    #     nxt = next((
-    #         int(itp[f"A{int(key[1:])-1}"])
-    #         for key in itp
-    #         if key.startswith('C') and int(itp[key]) > tourney_points
-    #     ), 0)
-    #     return nxt
-
     async def titancount(self, stage, ip_, ab_, snap):
         "calculate titancount at any given stage"
         return round(max((stage // 500 * 2 + 8 - (ip_ + ab_)) / max(2 * snap, 1), 1))
@@ -1306,10 +1288,10 @@ class TapTitansModule(cmd.Cog):
         ctx,
         stage: int = 1,
         ip: Optional[int] = 0,
-        mechanized_sword: Optional[float] = 1.0,
-        angelic_guardian: Optional[bool] = False,
         mystic_impact: Optional[int] = 0,
         arcane_bargain: Optional[int] = 0,
+        angelic_guardian: Optional[bool] = False,
+        mechanized_sword: Optional[float] = 1.0,
         anniversary_platinum: Optional[float] = 1.0,
     ):
         "Optimal ed calculator"
@@ -1365,8 +1347,10 @@ class TapTitansModule(cmd.Cog):
         icon = self.emoji("eternal_darkness")
         embed = discord.Embed(
             title=f'{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS',
-            description='Since you **{}** have Angelic Guardian, you will splash up to **{}** full stages at a time with **1** Snap titan active.'.format(
-                "do" if angelic_guardian else "do not", int((4+angelic_guardian)/2)
+            description='Since you **{}** have Angelic Guardian, you will splash up to **{}** full stages at a time with **1** Snap titan active.\nSince you **{}** have Mechanized Sword, your level up costs are {}, and thus you have {} levels of IP etc.'.format(
+                "do" if angelic_guardian else "do not", int((4 + angelic_guardian) / 2), "do" if mechanized_sword != 1.0 else "do not",
+                "less" if mechanized_sword != 1.0 else "more",
+                "higher" if mechanized_sword != 1.0 else "lower",
             )
         )
         embed.add_field(name='**Optimal ED Level**', value=f"Level {result}", inline=False)
@@ -1449,11 +1433,7 @@ class TapTitansModule(cmd.Cog):
         name="tournament", aliases=["tournaments", "tourneys", "tourney"], usage="next"
     )
     async def tt_tournaments(self, ctx, last: Optional[int] = 3):
-        (
-            "Displays a forecast of upcoming Tap Titans 2 tournaments.\n"
-            "Icon colour will indicate tournament status. Live = blue. Not live = red.\n"
-            "You can extend the forecast up to 10 future tournaments with the <next> parameter."
-        )
+        "Display upcoming TT2 tournaments."
         if last not in range(1, 11):
             raise cmd.BadArgument("Prediction is too far into the future.")
         if ctx.invoked_with[-1] != "s":
@@ -1551,10 +1531,14 @@ class TapTitansModule(cmd.Cog):
             ebizu = self.emoji("coins of ebizu")
             embed = discord.Embed(
                 title=f"{ebizu} TT2 gold sources",
-                description="\n".join(
-                    [f"{self.emoji(val[2])} {k}" for k, val in GOLD_SOURCES.items()]
-                ),
+                description=f'Do **{ctx.prefix}tt gold <source>** to show one of the listed gold sources.',
                 color=0xE2BB39,
+            )
+            embed.add_field(
+                name='Available Gold Sources',
+                value="\n".join(
+                    [f"{self.emoji(val[2])} {k}" for k, val in GOLD_SOURCES.items()]
+                )
             )
             embed.set_thumbnail(url=str(ebizu.url).replace(".gif", ".png"))
         else:
@@ -1642,11 +1626,16 @@ class TapTitansModule(cmd.Cog):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ds", insert=ds)
     
     @tt_my.command(name='equipset', aliases=['set'])
-    async def tt_my_set(self, ctx, itemset: str, unlocked: Optional[bool] = True):
-        if set.lower() in ['ms', 'ag', 'ap']:
-            await self.bot.db.hset(f"{ctx.author.id}:tt:set", set.lower(), int(unlocked))
+    async def tt_my_set(self, ctx, itemset: str, unlocked: Optional[str] = 'yes'):
+        print(unlocked)
+        unlocked = 1 if unlocked == 'yes' else 0
+        print(unlocked)
+        if itemset.lower() in ['ms', 'ag', 'ap']:
+            print('hello')
+            test = await self.bot.db.hset(f"{ctx.author.id}:tt:set", itemset.lower(), unlocked)
+            print(test)
             await ctx.send(':white_check_mark: {} **{}** set for **{}**'.format(
-                "Unlocked" if unlocked == True else "locked", set.upper(), ctx.author
+                "Unlocked" if unlocked else "locked", itemset.upper(), ctx.author
             ))
 
 def setup(bot):

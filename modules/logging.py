@@ -19,29 +19,57 @@ class LoggingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
-        log_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "log")
+        log_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
-        log_chan = await self.bot.db.hget(f"{member.guild.id}:set", "l_usr")
+        log_chan = await self.bot.db.hget(f"{member.guild.id}:set", "logjoins")
         if not log_chan:
             return
         chan = self.bot.get_channel(int(log_chan))
         if not chan:
             return
-        await chan.send(":inbox_tray: **{member}** joined the server")
+        embed = discord.Embed(
+            title=f"**{member}** joined **{member.guild}**",
+            description=f"{member.mention} (ID: {member.id})",
+            color=0x36CE31,
+        )
+        i = await self.bot.db.hget("avatar_cache", member.id)
+        if not i or i is None:
+            url = member.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", member.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", member.id, i)
+        embed.set_thumbnail(url=i)
+        await chan.send(embed=embed)
 
     @cmd.Cog.listener()
     async def on_member_remove(self, member):
-        log_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "log")
+        log_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
-        log_chan = await self.bot.db.hget(f"{member.guild.id}:set", "l_usr")
+        log_chan = await self.bot.db.hget(f"{member.guild.id}:set", "logleaves")
         if not log_chan:
             return
         chan = self.bot.get_channel(int(log_chan))
         if not chan:
             return
-        await chan.send(":outbox_tray: **{member}** left the server")
+        embed = discord.Embed(
+            title=f"**{member}** left **{member.guild}**",
+            description=f"{member.mention} (ID: {member.id})",
+            color=0xFF0000,
+        )
+        i = await self.bot.db.hget("avatar_cache", member.id)
+        if not i or i is None:
+            url = member.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", member.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", member.id, i)
+        embed.set_thumbnail(url=i)
+        await chan.send(embed=embed)
 
     @cmd.Cog.listener()
     async def on_message_edit(self, before, after):

@@ -15,6 +15,7 @@ AVAILABLE_SETTINGS = [
     "autoban",
     "autorole",
     "greet",
+    "goodbye",
     "prefix",
     "restrictions",
 ]
@@ -65,12 +66,29 @@ class SettingsModule(cmd.Cog):
         await self.bot.db.hset(f"{ctx.guild.id}:set", "autorole", role.id)
         await ctx.send(f"Set the autorole to @**{role}**!")
 
+    @settings.command(name="role")
+    @checks.is_mod()
+    async def role(self, ctx, roletype, role: Optional[cmd.RoleConverter] = None):
+        if not ctx.guild.me.guild_permissions.manage_roles:
+            raise cmd.BotMissingPermissions(("Manage Roles",))
+        roletypes = "auto muted jailed curator".split()
+        if roletype.lower() not in roletypes:
+            raise cmd.BadArgument(
+                "**Role type** must be one of: {}".format(
+                    ", ".join([f"**{l}**" for l in roletypes])
+                )
+            )
+        if role is None:
+            raise cmd.BadArgument("Could not find a role with that name.")
+        await self.bot.db.hset(f"{ctx.guild.id}:set", f"role{roletype}", role.id)
+        await ctx.send(f":white_check_mark: Set **{roletype} role** to @**{role}**")
+
     @settings.command(name="logging", aliases=["log"])
     @checks.is_mod()
     async def logging(
         self, ctx, logtype, channel: Optional[cmd.TextChannelConverter] = None
     ):
-        logtypes = "edits deletes avatars channels roles pins".split()
+        logtypes = "joins leaves edits deletes avatars channels roles pins".split()
         if logtype.lower() not in logtypes:
             raise cmd.BadArgument(
                 "**Log type** must be one of: {}".format(
@@ -83,38 +101,54 @@ class SettingsModule(cmd.Cog):
         await ctx.send(
             f":white_check_mark: Set **log{logtype}** channel to #**{channel}**!"
         )
+        print(ctx.bot.permissions)
 
     @settings.command(name="greet", aliases=["welcome"])
     @checks.is_mod()
-    async def greet(self, ctx, *message):
-        msg = " ".join(message)
-        if len(msg) > 140:
-            raise cmd.BadArgument(
-                "Greets are limited to 140 characters. Please choose a smaller message."
+    async def greet(self, ctx, key: str = "message", *message):
+        if key.lower().startswith("m"):
+            msg = " ".join(message)
+            if len(msg) > 140:
+                raise cmd.BadArgument(
+                    "Greets are limited to 140 characters. Please choose a smaller message."
+                )
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", msg)
+            await ctx.send(
+                msg.format(
+                    user=str(ctx.author),
+                    server=str(ctx.guild),
+                    mention=ctx.author.mention,
+                )
             )
-        await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", msg)
-        await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", ctx.channel.id)
-        await ctx.send(
-            msg.format(
-                user=str(ctx.author), server=str(ctx.guild), mention=ctx.author.mention
-            )
-        )
+        elif key.lower().startswith("c"):
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", ctx.channel.id)
+            await ctx.send(f"Set greet channel to #**{ctx.channel}**")
 
     @settings.command(name="goodbye", aliases=["depart", "fairwell"])
     @checks.is_mod()
-    async def goodbye(self, ctx, *message):
-        msg = " ".join(message)
-        if len(msg) > 140:
-            raise cmd.BadArgument(
-                "Goodbyes are limited to 140 characters. Please choose a smaller message."
+    async def goodbye(self, ctx, key: str = "message", *message):
+        if key.lower().startswith("m"):
+            msg = " ".join(message)
+            if len(msg) > 140:
+                raise cmd.BadArgument(
+                    "Goodbyes are limited to 140 characters. Please choose a smaller message."
+                )
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "dpt", msg)
+            await ctx.send(
+                msg.format(
+                    user=str(ctx.author),
+                    server=str(ctx.guild),
+                    mention=ctx.author.mention,
+                )
             )
-        await self.bot.db.hset(f"{ctx.guild.id}:set", "dpt", msg)
-        await self.bot.db.hset(f"{ctx.guild.id}:set", "dptc", ctx.channel.id)
-        await ctx.send(
-            msg.format(
-                user=str(ctx.author), server=str(ctx.guild), mention=ctx.author.mention
-            )
-        )
+        elif key.lower().startswith("c"):
+            channel = await cmd.TextChannelConverter().convert(ctx, " ".join(message))
+            if not channel:
+                raise cmd.BadArgument(
+                    f"Could not find channel: #**{' '.join(message)}**"
+                )
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "dptc", channel.id)
+            await ctx.send(f"Set goodbye channel to #**{channel}**")
 
     @cmd.command(name="toggle")
     @checks.is_mod()

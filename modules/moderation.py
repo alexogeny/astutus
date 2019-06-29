@@ -3,6 +3,7 @@ import arrow
 from typing import List, Optional
 from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
+from discord.utils import get
 from .utils import checks
 from .utils.converters import MemberID, ActionReason, BannedMember
 from .utils.time import Duration
@@ -120,10 +121,12 @@ class ModerationModule(cmd.Cog):
     async def get_muted_role(self, guild):
         r = await self.bot.db.hget(f"{guild.id}:role", "muted")
         if r:
-            found = guild.get_role(int(r))
-            if found:
-                return found
-        return
+            r = guild.get_role(int(r))
+        if r is None:
+            r = get(guild.roles, name="Muted")
+        if r is None:
+            r = get(guild.roles, name="muted")
+        return r
 
     async def get_or_create_muted_role(self, guild):
         r = await self.get_muted_role(guild)
@@ -162,17 +165,13 @@ class ModerationModule(cmd.Cog):
         reason: ActionReason = None,
     ):
         wid = arrow.utcnow().timestamp
-        if duration == None or not duration:
+        if duration is None or not duration:
             duration = arrow.get(9999999999)
         if len(members) > 1:
             result = []
             for m in members:
                 mem = ctx.guild.get_member(m)
                 if mem:
-                    # zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", m)
-                    # await self.bot.db.zadd(
-                    #     f"{ctx.guild.id}:wrn", f"{m}.{wid}", duration.timestamp
-                    # )
                     await self.warn_func(ctx.guild.id, m, wid, duration.timestamp)
                     result.append(mem)
             result = ", ".join([f"**{k}**" for k in result])
@@ -181,7 +180,7 @@ class ModerationModule(cmd.Cog):
                 duration = "shortly"
             await ctx.send(f"**{ctx.author}** warned {result}.")
             return
-        elif len(members) == 0:
+        if not members:
             return
         mem = ctx.guild.get_member(members[0])
         zs = await self.bot.db.zincrement(f"{ctx.guild.id}:wrncnt", members[0])
@@ -264,7 +263,7 @@ class ModerationModule(cmd.Cog):
         *,
         reason: ActionReason = None,
     ):
-        if duration == None or not duration:
+        if duration is None or not duration:
             duration = arrow.get(7559466982)
         role = await self.get_or_create_muted_role(ctx.guild)
         await self.mute_muted_role(role, ctx.guild)
@@ -272,13 +271,15 @@ class ModerationModule(cmd.Cog):
         for m in members:
             mem = ctx.guild.get_member(m)
             if mem:
-                await mem.add_roles(role)
+                await mem.add_roles(role, reason=reason)
                 await self.bot.db.zadd(f"{ctx.guild.id}:mutes", m, duration.timestamp)
                 result.append(mem)
         result = ", ".join([f"**{k}**" for k in result])
         duration = duration.humanize()
         if duration == "just now":
             duration = "now"
+        elif "years" in duration:
+            duration = "in a very, very long time"
         await ctx.send(
             f"**{ctx.author}** muted {result}. They will be unmuted **{duration}**."
         )

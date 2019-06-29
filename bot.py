@@ -83,13 +83,17 @@ class AstutusBot(cmds.AutoShardedBot):
                     ctx.author, ctx.prefix, ctx.invoked_with, cooldown
                 )
             )
-        if isinstance(error, cmds.BadArgument):
+        elif isinstance(error, cmds.BadArgument):
             await ctx.send(f":negative_squared_cross_mark: {error}")
 
-        if isinstance(error, cmds.BadUnionArgument):
+        elif isinstance(error, cmds.BadUnionArgument):
             await ctx.send(
                 f":negative_squred_cross_mark: You didn't supply any valid items! {ctx.prefix}help {ctx.command.qualified_name}"
             )
+
+        elif isinstance(error, cmds.BotMissingPermissions):
+            perms = ", ".join([f"**{perm}**" for perm in error.missing_perms])
+            await ctx.send(f":warning: I need permission to {perms} for this to work.")
 
     async def process_commands(self, message: discord.Message):
         ctx = await self.get_context(message)
