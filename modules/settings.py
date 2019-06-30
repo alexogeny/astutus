@@ -18,6 +18,7 @@ AVAILABLE_SETTINGS = [
     "prefix",
     "restrictions",
     "pprefix",
+    "starboard",
 ]
 
 
@@ -58,13 +59,13 @@ class SettingsModule(cmd.Cog):
         await self.bot.db.hset(f"{ctx.guild.id}:set", "pfx", prefix)
         await ctx.send(f"Set the custom server prefix to **{prefix}**")
 
-    @settings.command(name="autorole")
+    @settings.command(name="starboard")
     @checks.is_mod()
-    async def autorole(self, ctx, role: Optional[cmd.RoleConverter] = None):
-        if not role:
-            raise cmd.BadArgument("You need to supply a role.")
-        await self.bot.db.hset(f"{ctx.guild.id}:set", "autorole", role.id)
-        await ctx.send(f"Set the autorole to @**{role}**!")
+    async def starboard(self, ctx, channel: Optional[cmd.TextChannelConverter] = None):
+        if not channel:
+            raise cmd.BadArgument("You need to supply a channel.")
+        await self.bot.db.hset(f"{ctx.guild.id}:set", "starboard", channel.id)
+        await ctx.send(f"Set the starboard channel to #**{channel}**!")
 
     @settings.command(name="role")
     @checks.is_mod()
