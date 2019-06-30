@@ -76,12 +76,15 @@ class StarboardModule(cmd.Cog):
             i = await self.bot.cdn.upload_file("u", member.id, url, ext, ctype)
             await self.bot.db.hset("avatar_cache", member.id, i)
 
-        embed.set_author(name=f"⭐ added by @{member} (ID: {member.id})", icon_url=i)
-        embed.description = f"Quote #**{quote_number}** in {channel.mention} by {message.author.mention}"
+        embed.set_author(name=f"⭐ added by @{member}", icon_url=i)
+        embed.description = "Quote #**{}** in {} by {}\n[Message Link]({})".format(
+            quote_number, channel.mention, message.author.mention, message.jump_url
+        )
+        embed.colour = 0xE2B031
 
         if message.content:
-            embed.add_field(
-                name=f"{message.author} said:", value=message.content[0:1500]
+            embed.description = "{}\n\n{}".format(
+                embed.description, message.content[0:1500]
             )
 
         attch = await self.bot.db.hget("image_cache", message.id)
