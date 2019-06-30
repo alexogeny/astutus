@@ -32,14 +32,13 @@ class TodoModule(cmd.Cog):
     @todo.command(name="add", aliases=["a"])
     async def todo_add(self, ctx, *todo):
         """Add a new todo."""
-        todo = " ".join(todo)
-        if len(todo) > 140:
+        new_todo = " ".join(todo)
+        if len(new_todo) > 140:
             raise cmd.BadArgument("Please specify a todo in less than 140 characters.")
         my_todos = await self.bot.db.lrange(f"{ctx.author.id}:todo")
         if len(my_todos) == 10:
             raise cmd.BadArgument("You cannot have more than 10 todos at a time.")
-
-        await self.bot.db.rpush(f"{ctx.author.id}:todo", todo)
+        await self.bot.db.rpush(f"{ctx.author.id}:todo", new_todo)
         await ctx.send(f"Successfully added #**{len(my_todos)+1}** to your todo list.")
 
     @todo.command(name="remove", aliases=["rem", "r", "done"])

@@ -19,28 +19,29 @@ class RestrictionsModule(cmd.Cog):
         self.bot = bot
 
     async def find_command(self, command):
-        done = 0
-        found = find(
-            lambda cmx: cmx.name == command[0] or command[0] in cmx.aliases,
-            self.bot.walk_commands(),
-        )
-        if not found:
-            raise cmd.BadArgument(
-                f"Couldn't find any command starting with {command[0]}"
-            )
-        done += 1
-        while done < len(command):
-            found = find(
-                lambda cmx: (cmx.name == command[done] or command[done] in cmx.aliases)
-                and cmx.parent == found,
-                self.bot.walk_commands(),
-            )
-            if not found:
-                raise cmd.BadArgument(
-                    f"Couldn't find any command starting with {command[done]}"
-                )
-            done += 1
-        return found
+        return self.bot.get_command(" ".join(command))
+        # done = 0
+        # found = find(
+        #     lambda cmx: cmx.name == command[0] or command[0] in cmx.aliases,
+        #     self.bot.walk_commands(),
+        # )
+        # if not found:
+        #     raise cmd.BadArgument(
+        #         f"Couldn't find any command starting with {command[0]}"
+        #     )
+        # done += 1
+        # while done < len(command):
+        #     found = find(
+        #         lambda cmx: (cmx.name == command[done] or command[done] in cmx.aliases)
+        #         and cmx.parent == found,
+        #         self.bot.walk_commands(),
+        #     )
+        #     if not found:
+        #         raise cmd.BadArgument(
+        #             f"Couldn't find any command starting with {command[done]}"
+        #         )
+        #     done += 1
+        # return found
 
     async def get_restrictions(self, guild, command):
         r_chan = await self.bot.db.lrange(f"{guild.id}:rst:c:{command}")

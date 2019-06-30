@@ -75,15 +75,17 @@ class PatronModule(cmd.Cog):
             )
 
         now = arrow.utcnow()
-        last_blame = await self.bot.db.hget("blame:last", ctx.author.id)
-        if last_blame is None:
-            last_blame = now.shift(hours=-1)
+        next_blame = await self.bot.db.hget("blame:last", ctx.author.id)
+        if next_blame is None:
+            next_blame = now
         else:
-            last_blame = arrow.get(last_blame)
-        if last_blame.shift(hours=1) >= now and ctx.author.id != self.immo:
+            next_blame = arrow.get(next_blame)
+        if now < next_blame and ctx.author.id != self.immo:
             raise cmd.BadArgument("Please wait an hour between casting blames.")
-        if user.id != self.immo:
-            await self.bot.db.hset("blame:last", ctx.author.id, now.timestamp)
+        if ctx.author.id != self.immo:
+            await self.bot.db.hset(
+                "blame:last", ctx.author.id, now.shift(hours=1).timestamp
+            )
         await self.bot.db.zincrement("blames", user.id)
         await self.bot.db.zincrement("blames", self.immo)
         await self.bot.db.zincrement("immo", now.format("YYYYMMDD"))
