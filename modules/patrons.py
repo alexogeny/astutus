@@ -14,16 +14,30 @@ class PatronModule(cmd.Cog):
         self.immo = 259451392630980610
         self.pleb = 254710997225308181
         self.bae = 514905469094068253
+        self.bunnybot = 575101399747133443
+        self.dream = 426087355250638859
+        self.teto = 435221942807691266
 
-    @cmd.command()
-    async def bae(self, ctx):
+    @cmd.command(name="dreamzxe", aliases=["dream", "xze", "bunnybot", "dreamxze"])
+    async def _dream(self, ctx):
+        s_bunnybot = ctx.guild.get_member(self.bunnybot)
+        s_dream = ctx.guild.get_member(self.dream)
+        if s_dream is not None and s_bunnybot is not None:
+            await ctx.send(":rabbit: The whole rabbit squad is here!")
+        elif s_dream is not None and s_bunnybot is None:
+            await ctx.send(":rabbit: The master rabbit has lost the robot rabbit.")
+        elif s_dream is None and s_bunnybot is not None:
+            await ctx.send(":rabbit: The robbot rabbit is trying to find the master.")
+
+    @cmd.command(name="bae")
+    async def _bae(self, ctx):
         if ctx.message.author.id != self.bae:
             await ctx.send("Oh, you are not bae ...")
             return
         await ctx.send("OMG, HI BAE!!")
 
-    @cmd.command()
-    async def pleb(self, ctx):
+    @cmd.command(name="pleb")
+    async def _pleb(self, ctx):
         if ctx.author.id != self.pleb:
             await ctx.send("You are not enough of a pleb to use this command :<")
             return

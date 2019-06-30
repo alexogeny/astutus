@@ -30,7 +30,7 @@ class SetupModule(cmd.Cog):
         await ctx.send("Let's set up a clan {}. Please type it in now.".format(kind))
 
         def check(msg):
-            if msg.author != ctx.author:
+            if msg.author != ctx.author and ctx.guild != msg.guild:
                 return 0
             if msg.content.lower().strip() in ["exit", "cancel"]:
                 raise cmd.BadArgument("Exiting setup.")

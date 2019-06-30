@@ -193,122 +193,101 @@ class TapTitansModule(cmd.Cog):
         if not is_mod and not is_admin:
             raise cmd.BadArgument("You need admin or mod permissions.")
 
-    @tsk.loop(seconds=10)
+    @tsk.loop(seconds=3)
     async def raid_timer(self):
         "Task for updating raid timers."
         now = arrow.utcnow()
-        future = now.shift(hours=50)
         await asyncio.gather(
-            *(self.update_raid_timer(guild, now, future) for guild in self.bot.guilds)
+            *(self.update_raid_timer(guild, now) for guild in self.bot.guilds)
         )
 
-    async def update_raid_timer(self, guild, now, future):
+    async def update_raid_timer(self, guild, now):
         "Updates all raid timers for a guild."
         await asyncio.gather(
-            *(self.update_timer_group(guild, now, future, g) for g in [1, 2, 3]),
+            *(self.update_timer_group(guild, now, g) for g in [1, 2, 3]),
             return_exceptions=True,
         )
 
-    async def update_timer_group(self, guild, now, future, group):
+    async def update_timer_group(self, guild, now, group):
         "Updates raid timer for a group."
         g = await self.bot.db.hgetall(f"{guild.id}:tt:{group}")
         if not g:
             raise asyncio.CancelledError
-        spawn = g.get("spawn", 0)
-        cd = g.get("cd", 0)
-        if not any([spawn, cd]):
-            raise asyncio.CancelledError
-        if (
-            spawn
-            and not now < arrow.get(spawn or future.timestamp)
-            or cd
-            and not now < arrow.get(cd or future.timestamp)
-        ):
-            await self.update_timer_queue(guild, now, group, g)
-            raise asyncio.CancelledError
-        chan = guild.get_channel(int(g.get("announce", 0)))
+        spawn = g.get("spawn", None)
+        cooldown = g.get("cd", None)
+        reset = int(g.get('reset', 0))
+        chan = guild.get_channel(int(g.get('announce', 0)))
         if chan is None:
             raise asyncio.CancelledError
-        reset = g.get("reset", 0)
-        if not reset and not cd:
-            reset = "starts in"
-        elif cd:
-            reset = "cooldown ends in"
-            dt = arrow.get(cd) - now
-        else:
-            reset = f"reset #**{reset}** starts in"
-        if spawn:
-            dt = arrow.get(spawn) - now
-        hms = await get_hms(dt)
-        content = TIMER_TEXT.format(reset, hms[0], hms[1], hms[2])
-        message = int(g.get("edit", 0))
-        if message:
-            await self.update_timer_message(chan, message, content)
-        else:
-            await chan.send(content)
-
-    async def update_timer_queue(self, guild, now, group, g):
-        fmt_group = f"{guild.id}:tt:{group}"
-        q = await self.bot.db.lrange(f"{fmt_group}:q")
-        spawn = g.get("spawn", 0)
-        cd = g.get("cd", 0)
-        c = int(g.get("announce", 0))
-        chan = guild.get_channel(c)
-        current = g.get("current", "").strip().split()
-        qmode = int(g.get("mode", 1))
-        upnext = q[0:qmode]
-        depl = int(g.get("depl", 0))
-        reset = int(g.get("reset", 0))
-        if (not current and not q and spawn) or depl:
-            arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
-            hms = await get_hms(arr)
-            if any([x < 0 for x in hms]):
-                reset = reset + 1
-                await self.bot.db.hset(fmt_group, "depl", 0)
-                await self.bot.db.hset(fmt_group, "reset", reset)
+        msg = await chan.fetch_message(int(g.get('edit', 0)))
+        if msg is None:
+            msg = await chan.send('Respawning timer ...')
+        if cooldown is not None:
+            cdn = arrow.get(cooldown)
+            if now > cdn:
+                arr = now - cdn
                 hms = await get_hms(arr)
-                arr = arrow.get(spawn).shift(hours=12 * (reset + 1)) - now
-            content = TIMER_TEXT.format(
-                f"reset #**{reset+1}** starts in", hms[0], hms[1], hms[2]
+                await self.update_timer_message(
+                   msg, TIMER_TEXT.format('cooldown ended', hms[0], hms[1], hms[2])
+                )
+            else:
+                arr = cdn - now
+                hms = await get_hms(arr)
+                await self.update_timer_message(
+                    msg, TIMER_TEXT.format('cooldown ends in', hms[0], hms[1], hms[2])
+                )
+        elif spawn is not None:
+            next_spawn = arrow.get(spawn).shift(hours=12 * reset)
+            hms = await get_hms(next_spawn - now)
+            if not reset and next_spawn >= now:
+                text = 'starts in'
+            elif now > next_spawn:
+                text = f'reset #{reset} ends in'
+                if reset > 0:
+                    hms = await get_hms(next_spawn.shift(hours=12 * reset) - now)
+                else:
+                    hms = await get_hms(next_spawn.shift(hours=12) - now)
+                if int(g.get('depl', 0)):
+                    await self.bot.db.hset(f"{guild.id}:tt:{group}", 'depl', 0)
+            else:
+                text = f'reset #{reset} starts in'
+            await self.update_timer_message(
+                msg, TIMER_TEXT.format(text, hms[0], hms[1], hms[2])
             )
-            message = int(g.get("edit", 0))
-            await self.update_timer_message(chan, message, content)
-        elif not current and not q and cd:
-            arr = now - arrow.get(cd)
-            hms = await get_hms(arr)
-            content = TIMER_TEXT.format("cooldown ended", hms[0], hms[1], hms[2])
-            message = int(g.get("edit", 0))
-            await self.update_timer_message(chan, message, content)
+            if now > next_spawn:
+                queue = await self.bot.db.lrange(f"{guild.id}:tt:{group}:q")
+                current = g.get('current', '').strip().split()
+                mode, depl = int(g.get('mode', 1)), int(g.get('depl', 0))
+                if not current and not queue:
+                    if depl:
+                        pass
+                    else:
+                        await chan.send(f'Queue complete! Ready for reset #{reset + 1}.')
+                        edit = await chan.send("Preparing next reset timer...")
+                        for hset, val in dict(edit=edit.id, depl=1, reset=reset + 1).items():
+                            await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)
+                        await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
+                elif current and not queue:
+                    pass
+                elif not current and queue and not depl:
+                    upnext = queue[0:mode]
+                    members = [guild.get_member(int(m)) for m in upnext]
+                    cnt = 0
+                    while cnt < len(upnext):
+                        await self.bot.db.lrem(f"{guild.id}:tt:{group}:q", upnext[cnt])
+                        cnt += 1
+                    await self.bot.db.hset(
+                        f"{guild.id}:tt:{group}", "current", " ".join([str(m.id) for m in members])
+                    )
+                    await chan.send(
+                        "It's {}'s turn to attack the raid!".format(
+                            ", ".join([f"{m.mention}" for m in members])
+                        )
+                    )
 
-        if current or depl:
-            return
-
-        if not q and not current and not depl:
-            await chan.send(f"Queue done! You may queue for reset #**{reset+1}**.")
-            edit = await chan.send("Preparing next reset timer...")
-            await self.bot.db.hset(fmt_group, "edit", edit.id)
-            await self.bot.db.hset(fmt_group, "depl", 1)
-            await self.bot.db.delete(f"{fmt_group}:q")
-            return
-
-        members = [guild.get_member(int(m)) for m in upnext]
-        cnt = 0
-        while cnt < len(upnext):
-            await self.bot.db.lrem(f"{fmt_group}:q", upnext[cnt])
-            cnt += 1
-        await self.bot.db.hset(
-            fmt_group, "current", " ".join([str(m.id) for m in members])
-        )
-        await chan.send(
-            "It's {}'s turn to attack the raid!".format(
-                ", ".join([f"{m.mention}" for m in members])
-            )
-        )
-
-    async def update_timer_message(self, channel, message, content):
+    async def update_timer_message(self, message, content):
         """Update raid timer message."""
-        msg = await channel.fetch_message(message)
-        await msg.edit(content=content)
+        await message.edit(content=content)
 
     @raid_timer.before_loop
     async def before_raid_timer(self):
@@ -477,79 +456,49 @@ class TapTitansModule(cmd.Cog):
             await self.bot.db.hset(group, key, val)
         await ctx.send(f"Set the TT2 **{key}** key to **{val}**")
 
-    @taptitans.group(
-        name="raid",
-        aliases=["boss", "rd"],
-        case_insensitive=True,
-        invoke_without_command=True,
-        usage="0h0m0s",
-    )
-    async def tt_raid(
-        self,
-        ctx,
-        group: Optional[tt2.TTRaidGroup],
-        level: cmd.Greedy[int],
-        time: Optional[Duration],
-    ):
-        "Sets a raid to spawn after the given time."
+    @taptitans.group(name='raid', aliases=['r', 'rd', 'boss'], invoke_without_command=True)
+    async def tt_raid(self, ctx, group: Optional[tt2.TTRaidGroup], time: Optional[Duration] = None):
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
+        now = arrow.utcnow()
+        if time is None:
+            time = now.shift(hours=24)
+        text = 'starts in'
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
         await self.has_timer_permissions(ctx, groupdict)
-        is_live = groupdict.get("spawn", 0)
-        cd = groupdict.get("cd", 0)
+        spawn = groupdict.get("spawn", None)
+        cooldown = groupdict.get("cd", None)
         reset = int(groupdict.get("reset", 0))
-        if not reset and not cd:
-            rs_txt = "starts"
-        elif cd:
-            rs_txt = "cooldown ends"
+        announce = int(groupdict.get('announce', 0))
+        announce = ctx.guild.get_channel(announce)
+        if announce is None:
+            raise cmd.BadArgument("No announce channel detected.")
+        if cooldown is not None:
+            cdn = arrow.get(cooldown)
+            if cdn > now:
+                text = 'cooldown ends in'
+                hms = await get_hms(cdn - now)
+            else:
+                await self.bot.db.hdel(group, "reset")
+                await self.bot.db.hdel(group, "current")
+                await self.bot.db.hset(group, "depl", 0)
+                await self.bot.db.hset(group, 'spawn', time.timestamp)
+                await self.bot.db.hdel(group, "cd")
+                hms = await get_hms(time - now)
+                edit = await announce.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
+                await self.bot.db.hset(group, 'edit', edit.id)
+        elif spawn is not None:
+            spwn = arrow.get(spawn).shift(hours=12*reset)
+            hms = await get_hms(spwn - now)
+            if reset:
+                text = f'reset #{reset} starts in'
         else:
-            rs_txt = f"reset #**{reset}** is"
-        if is_live or cd:
-            arr_x = arrow.get(is_live or cd)
-            arr_n = arrow.utcnow()
-            if arr_n > arr_x and is_live and not cd:
-                arr_x = arr_x.shift(hours=12 * (reset + 1))
-                dt = arr_x - arr_n
-                rs_txt = f"reset #**{reset+1}** is"
-            elif arr_x >= arr_n:
-                dt = arr_x - arr_n
-            _h, _m, _s = await get_hms(dt)
-            await ctx.send(f"Raid {rs_txt} in **{_h}**h **{_m}**m **{_s}**s.")
-            return
-        if not level or len(level) == 0 or level is None:
-            tier = groupdict.get("tier", 1)
-            zone = groupdict.get("zone", 1)
-        elif not all(1 <= x <= 10 for x in level):
-            raise cmd.BadArgument("Tier/zone must be between **1** and **10**.")
-        elif len(level) == 2:
-            tier, zone = level
-        elif len(level) == 1:
-            tier, zone = level, 1
-        await self.bot.db.hset(group, "depl", 0)
-        if not time or time is None:
-            time = await Duration().convert(ctx, "24h")
-        await self.bot.db.hset(group, "spawn", time.timestamp)
-        time = time.humanize()
-        if time == "just now":
-            time = "now"
-        edit = await ctx.send(
-            f"Tier **{tier}**, zone **{zone}** raid starts **{time}**."
-        )
-        announce = int(groupdict.get("announce", 0))
-        if announce and announce != ctx.channel.id:
-            chan = self.bot.get_channel(announce)
-            if chan:
-                edit = await chan.send(
-                    f"Tier **{tier}**, zone **{zone}** raid starts **{time}**."
-                )
-                await self.bot.db.hset(group, "edit", edit.id)
-        elif announce:
-            await self.bot.db.hset(group, "edit", edit.id)
-        elif not announce:
-            announce = await self.bot.db.hset(group, "announce", ctx.channel.id)
-            await self.bot.db.hset(group, "edit", edit.id)
+            await self.bot.db.hset(group, 'spawn', time.timestamp)
+            hms = await get_hms(time - now)
+            edit = await announce.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
+            await self.bot.db.hset(group, 'edit', edit.id)
+        await ctx.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
 
     @tt_raid.command(name="upload", aliases=["u"])
     async def tt_raid_upload(self, ctx, group: int, date, level, *, data):
@@ -682,7 +631,7 @@ class TapTitansModule(cmd.Cog):
         spawn = groupdict.get("spawn", 0)
         if not spawn and not groupdict.get("cd", 0):
             raise cmd.BadArgument("No raid to clear.")
-        elif groupdict.get("cd", 0):
+        if groupdict.get("cd", 0):
             raise cmd.BadArgument(f"Raid on cooldown. Use **{ctx.prefix}cancel**.")
         await self.has_timer_permissions(ctx, groupdict)
 
@@ -693,7 +642,8 @@ class TapTitansModule(cmd.Cog):
                 f"Can't clear unspawned raid. Use **{ctx.prefix}cancel**."
             )
         if cd is None:
-            cd = now.shift(minutes=59, seconds=59)
+            # cd = now.shift(minutes=59, seconds=59)
+            cd = now.shift(minutes=1)
         delta = cd - now
         _h, _m, _s = await get_hms(delta)
         shifter = {}
@@ -701,11 +651,11 @@ class TapTitansModule(cmd.Cog):
             shifter["minutes"] = 60 - _m
         if _s not in [0, 59]:
             shifter["seconds"] = 60 - _s
-        if cd < spwn_arrow.shift(minutes=60):
-            await ctx.send(
-                "You cannot timetravel. Cooldown end must be 60 minutes after raid."
-            )
-            raise cmd.BadArgument
+        # if cd < spwn_arrow.shift(minutes=60):
+        #     await ctx.send(
+        #         "You cannot timetravel. Cooldown end must be 60 minutes after raid."
+        #     )
+        #     raise cmd.BadArgument
 
         total_time = now.shift(**shifter) - spwn_arrow
         g = groupdict
@@ -737,9 +687,8 @@ class TapTitansModule(cmd.Cog):
         if not any([spawn, cd]):
             await ctx.send("No raid to cancel.")
             return
-        else:
-            for k in "edit spawn cd current depl reset".split():
-                await self.bot.db.hdel(group, k)
+        for k in "edit spawn cd current depl reset".split():
+            await self.bot.db.hdel(group, k)
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
 
@@ -837,10 +786,10 @@ class TapTitansModule(cmd.Cog):
         depl = int(groupdict.get("depl", 0))
         if not resets and not depl:
             resets = "first spawn"
-        elif resets and not depl:
+        elif resets and not depl or resets and depl:
             resets = f"reset #{resets}"
-        elif depl:
-            resets = f"reset #{resets+1}"
+        # elif resets and depl:
+            # resets = f"reset #{resets}"
         q = f"{group}:q"
         users = await self.bot.db.lrange(q)
         current = groupdict.get("current", "").split()
@@ -1456,7 +1405,7 @@ class TapTitansModule(cmd.Cog):
             icon = "tourney"
             nxt = "closes"
             clr = 0x1C7CA1
-            tourneys = tourneys - 1
+            # tourneys = tourneys - 1
         elif current in [4]:
             shifter = 3
         desc = ""

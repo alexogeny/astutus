@@ -28,11 +28,13 @@ class LoggingModule(cmd.Cog):
         chan = self.bot.get_channel(int(log_chan))
         if not chan:
             return
-        embed = discord.Embed(
-            title=f"**{member}** joined **{member.guild}**",
-            description=f"{member.mention} (ID: {member.id})",
-            color=0x36CE31,
-        )
+
+        embed = await self.bot.embed()
+        # embed = discord.Embed(
+        embed.title = f"**{member}** joined **{member.guild}**"
+        embed.description = f"{member.mention} (ID: {member.id})"
+        embed.color = 0x36CE31
+        # )
         i = await self.bot.db.hget("avatar_cache", member.id)
         if not i or i is None:
             url = member.avatar_url_as(static_format="png", size=1024)
