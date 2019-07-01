@@ -33,16 +33,11 @@ class WorldChatModule(cmd.Cog):
     async def on_message(self, message):
         if not await self.wc_enabled(message):
             return
-        await asyncio.sleep(2)
-        attch = await self.bot.db.hget("image_cache", message.id)
         embed = await self.bot.embed()
         embed.title = str(message.author)
         if message.content:
             embed.description = message.content[0:300]
-        if attch:
-            attch = attch.split()
-            embed.add_field(name="Images", value="\n".join([a for a in attch]))
-            embed.set_image(url=attch[0])
+
         chats = await self.bot.db.hgetall("worldchat")
         censored = self.bot.profanity.censor(embed.description, "\\*")
         for guild, chat in chats.items():

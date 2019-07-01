@@ -1,4 +1,7 @@
 {
+    "autorole": {
+        "desc": "Allows you to automagically give users a role when they join the server. You can access this setting with the **{ctx.prefix}settings** menu. Use **{ctx.prefix}help set role** for more info."
+    },
     "disable": {
         "desc": "Shows if there are any modules disabled in the server.",
         "usage": [
@@ -96,8 +99,8 @@
             "tt raid",
             "tt raid <timer>",
             "tt raid 23h22m02s",
-            "tt raid <group:option> <tier:option> <zone:option> <timer:option>",
-            "tt raid g1 2 7 23h22m02s"
+            "tt raid <group:option> <timer>",
+            "tt raid g1 23h22m02s"
         ]
     },
     "taptitans raid cancel": {
@@ -250,6 +253,130 @@
         "desc": "Displays information about when the bot last saw a person.",
         "usage": [
             "seen <user>"
+        ]
+    },
+    "settings prefix": {
+        "desc": "Allows you to set a guild-wide custom prefix.\nMust be 2 characters in length and can only be non-alphanumerals.",
+        "usage": [
+            "set prefix <prefix>",
+            "set prefix $"
+        ]
+    },
+    "settings starboard": {
+        "desc": "Lets you set up a starboard in the server. Specify the channel that the starboard will appear in.",
+        "usage": [
+            "set starboard <channel>"
+        ]
+    },
+    "settings worldchat": {
+        "desc": "Allows your guild to participate in a world chat!\nMessages will be censored by default.",
+        "usage": [
+            "set worldchat <channel>"
+        ]
+    },
+    "settings wccensor": {
+        "desc": "Enable or disable the censor for the world chat.\nKeep in mind the censor is not perfect.",
+        "usage": [
+            "set wccensor <toggle>",
+            "set wccensor False"
+        ]
+    },
+    "settings role": {
+        "desc": "Allows you to set a specified role setting to a given role.\nRunning the command without any roles will show you what is available to set.",
+        "usage": [
+            "settings role <type> <role>",
+            "settings role auto @test-role"
+        ]
+    },
+    "settings automod": {
+        "desc": "Allows you to specify automatic moderator actions based off warning count (offenses).\nCan trigger a mute, kick, or ban.",
+        "usage": [
+            "settings automod <kind> <offense-count>",
+            "settings automod kick 5"
+        ]
+    },
+    "settings logging": {
+        "desc": "Allows you to choose which channel a certain kind of log goes into.\nSeparate from mod logs.",
+        "usage": [
+            "set logging <kind> <channel>",
+            "set logging avatars #user-avatars"
+        ]
+    },
+    "settings greet": {
+        "desc": "Allows you to set a custom greet message for the server.\nYou can also use this to set the greet channel.",
+        "usage": [
+            "set greet <key> <value>",
+            "set greet message 'Hey there {user}!",
+            "set greet channel #welcome-channel"
+        ]
+    },
+    "settings goodbye": {
+        "desc": "Allows you to set a custom goodbye message for the server.\nYou can also use this to set a goodbye channel.",
+        "usage": [
+            "set goodbye <key> <value>",
+            "set goodbye message 'Thanks for the fish, {user}!'",
+            "set greet channel #goodbye-channel"
+        ]
+    },
+    "toggle": {
+        "desc": "Allows you to toggle a feature of the bot on or off.\nAll features default to off to protect the sanctity of the Christian Minecraft servers we know and love.\nDoes not fully disable a module. To do that, use **{ctx.prefix}help disable**",
+        "usage": [
+            "toggle <setting> <on/off>",
+            "toggle worldchat off"
+        ]
+    },
+    "pprefix": {
+        "desc": "Allows you to specify your very own custom, personal prefix.\nOnly works when the server you're on has toggled this feature on.",
+        "usage": [
+            "pprefix <prefix>",
+            "pprefix silly"
+        ]
+    },
+    "help": {
+        "desc": "Well isn't this helpful?"
+    },
+    "worldchat": {
+        "desc": "Allows the server to participate in a world chat!\nBad words are censored by default, and images are not sent.\nDisable the censor to see bad words.\nDisclaimer: I will not be held accountable for any bad content. Disable the censor at your own discretion."
+    },
+    "sar": {
+        "desc": "Self-assigned roles are a fun way to allow users to flare their usernames without you having to manage roles."
+    },
+    "sar group": {
+        "desc": "Shows you what self-assignable role groups are in the server (if there are any).",
+        "usage": [
+            "sar groups"
+        ]
+    },
+    "sar group create": {
+        "desc": "Creates a self-assignable role group, of which each guild can have up to 5.\nNot to be confused with **{ctx.prefix}sar group add**.",
+        "usage": [
+            "sar group create <name>",
+            "sar group create Animals"
+        ]
+    },
+    "sar group delete": {
+        "desc": "Deletes a self-assignable role group from the guild.\nNot to be confused with **{ctx.prefix}sar group remove**.",
+        "usage": [
+            "sar group delete <name>",
+            "sar group delete Animals"
+        ]
+    },
+    "timer": {
+        "desc": "Sets a timer for the given time from now. Pings you in the channel that you set it.\nYou can have up to 5 timers per guild.",
+        "usage": [
+            "timer 20s"
+        ]
+    },
+    "music": {
+        "desc": "For the musical ones. Support the bot and get access to this module! Plays Youtube and allows you to queue up tracks!"
+    },
+    "utility": {
+        "desc": "A bunch of random stuff that I couldn't quite find a home for."
+    },
+    "ping": {
+        "desc": "Tells you the ping. Duh!",
+        "usage": [
+            "ping"
         ]
     }
 }

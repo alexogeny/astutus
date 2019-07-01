@@ -32,7 +32,7 @@ class HelpModule(cmd.Cog):
                 if str(c).lower().startswith(command[0].lower())
                 or command[0].lower() in getattr(v, "aliases", [])
             ]
-            if not cog:
+            if not cog and not self.bot.get_command(command[1:]):
                 raise cmd.BadArgument(f"No module with name: **{command[0].lower()}**")
             if len(cog) > 1:
                 raise cmd.BadArgument(
@@ -43,17 +43,21 @@ class HelpModule(cmd.Cog):
                     )
                 )
             command = [cog[0].replace("Module", "").lower()] + command[1:]
-            cx = self.bot.get_command(" ".join(command))
+            cmx = self.bot.get_command(" ".join(command))
+            cmg = self.bot.get_cog(" ".join(command).title() + "Module")
+            if cmx is None and cmg is None and len(command) > 1:
+                cmx = self.bot.get_command(" ".join(command[1:]))
+                # cmg = self.bot.get_cog(command[0].title() + "Module")
 
-            if cx is not None and len(command) > 1:
-                title = f"Help for command **{ctx.prefix}{cx}**"
-                obj = HELP.get(str(cx), {})
-                description = obj.get("desc", "Not found.")
+            if cmx is not None and cmg is None and len(command) > 1:
+                title = f"Help for command **{ctx.prefix}{cmx}**"
+                obj = HELP.get(str(cmx), {})
+                description = obj.get("desc", "Not found.").format(ctx=ctx)
                 fields["Usage"] = (
                     "\n".join([f"{ctx.prefix}{u}" for u in obj.get("usage", [])])
                     or "Not found."
                 )
-                aliases = ", ".join(getattr(cx, "aliases", []))
+                aliases = ", ".join(getattr(cmx, "aliases", []))
                 if aliases:
                     fields["Aliases"] = aliases
             else:
@@ -76,6 +80,7 @@ class HelpModule(cmd.Cog):
                 description = (
                     obj.get("desc", None) or cg.__doc__ or "No helpfile found."
                 )
+                description = description.format(ctx=ctx)
                 if aliases:
                     fields["Aliases"] = aliases
                 if groups:

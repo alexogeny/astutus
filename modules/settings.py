@@ -189,7 +189,7 @@ class SettingsModule(cmd.Cog):
     @checks.is_mod()
     async def toggle(self, ctx, setting: SettingsKey, value: Optional[Truthy]):
         "Toggle a function of the bot on or off. Everything defaults to off."
-        if value == None:
+        if value is None:
             value = await self.bot.db.hget(f"{ctx.guild.id}:toggle", setting)
             value = value is None and "off" or value == "0" and "off" or "on"
             await ctx.send("**{}** is currently **{}**.".format(setting, value))

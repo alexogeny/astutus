@@ -10,12 +10,6 @@ class LoggingModule(cmd.Cog):
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
-        # self.imgur = ImgurClient(
-        #     self.bot.config["IMGUR"]["client"], self.bot.config["IMGUR"]["secret"]
-        # )
-
-    # async def upload_to_imgur(self, url, anon=False):
-    #     return self.imgur.upload_from_url(url, anon=anon)
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
@@ -30,20 +24,24 @@ class LoggingModule(cmd.Cog):
             return
 
         embed = await self.bot.embed()
-        # embed = discord.Embed(
         embed.title = f"**{member}** joined **{member.guild}**"
         embed.description = f"{member.mention} (ID: {member.id})"
         embed.color = 0x36CE31
-        # )
-        i = await self.bot.db.hget("avatar_cache", member.id)
-        if not i or i is None:
+        cached = await self.bot.db.hget("avatar_cache", member.id)
+        if not cached or cached is None:
             url = member.avatar_url_as(static_format="png", size=1024)
             urls = str(url).split("/")[-1].split("?")[0]
             ctype, _ = mimetypes.guess_type(urls)
             ext = ctype.split("/")[-1]
             i = await self.bot.cdn.upload_file("u", member.id, url, ext, ctype)
             await self.bot.db.hset("avatar_cache", member.id, i)
-        embed.set_thumbnail(url=i)
+            cached = i
+        embed.set_thumbnail(url=cached)
+
+        created = (member.joined_at - member.created_at).days
+        plural = "s" if created != 1 else ""
+        embed.add_field(name="Born", value=f"**{created}** day{plural} ago")
+
         await chan.send(embed=embed)
 
     @cmd.Cog.listener()
@@ -327,7 +325,7 @@ class LoggingModule(cmd.Cog):
         if mod:
             await self.mod_log("roles added", guild, author, user, reason, roles=roles)
         else:
-            await self.log_role('roles added', guild, user, reason, roles)
+            await self.log_role("roles added", guild, user, reason, roles)
 
     async def on_member_role_remove(self, guild, author, user, reason, roles, mod=True):
         if mod:
@@ -335,11 +333,9 @@ class LoggingModule(cmd.Cog):
                 "roles removed", guild, author, user, reason, roles=roles
             )
         else:
-            await self.log_role('roles removed', guild, user, reason, roles)
+            await self.log_role("roles removed", guild, user, reason, roles)
 
-    async def log_role(
-        self, action, guild, user, reason, roles=None
-    ):
+    async def log_role(self, action, guild, user, reason, roles=None):
         log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging")
         if log_is_on in (None, "0"):
             return
@@ -367,7 +363,6 @@ class LoggingModule(cmd.Cog):
             await self.bot.db.hset("avatar_cache", user.id, i)
         embed.set_thumbnail(url=i)
         await chan.send(embed=embed)
-
 
 
 def setup(bot):

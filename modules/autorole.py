@@ -2,8 +2,6 @@ from discord.ext import commands as cmd
 
 
 class AutoroleModule(cmd.Cog):
-    """Allows you to automagically give a user a role when they join the server. You can access this setting in the ;settings menu - use ;help set autorole for more info"""
-
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
 
