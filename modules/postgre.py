@@ -39,7 +39,6 @@ class PostgreModule(cmd.Cog):
 
     async def sql_update(self, table, update_id, data_dict):
         keys = list(f'"{m}"' for m in data_dict.keys())
-        # values = list(f"${i+1}" for i, x in enumerate(data_dict.values()))
         stmt = ", ".join([f"{k} = ${i+1}" for i, k in enumerate(keys)])
         res = await self.sql_query_db(
             f"UPDATE public.{table} SET {stmt} WHERE id = {update_id}",

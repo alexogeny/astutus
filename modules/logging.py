@@ -285,9 +285,7 @@ class LoggingModule(cmd.Cog):
         automod = await self.bot.db.hget(f"{guild.id}:toggle", "automod")
         if automod is None or not int(automod):
             return
-        print("automod is on")
         offenses = int(await self.bot.db.zscore(f"{guild.id}:wrncnt", user.id) or 0)
-        print(offenses)
         if not offenses:
             return
         for action in "mute kick ban".split():
@@ -325,11 +323,51 @@ class LoggingModule(cmd.Cog):
     async def on_member_nickname_update(self, guild, author, user, reason):
         await self.mod_log("renamed", guild, author, user, reason)
 
-    async def on_member_role_add(self, guild, author, user, reason, roles):
-        await self.mod_log("roles added", guild, author, user, reason, roles=roles)
+    async def on_member_role_add(self, guild, author, user, reason, roles, mod=True):
+        if mod:
+            await self.mod_log("roles added", guild, author, user, reason, roles=roles)
+        else:
+            await self.log_role('roles added', guild, user, reason, roles)
 
-    async def on_member_role_remove(self, guild, author, user, reason, roles):
-        await self.mod_log("roles removed", guild, author, user, reason, roles=roles)
+    async def on_member_role_remove(self, guild, author, user, reason, roles, mod=True):
+        if mod:
+            await self.mod_log(
+                "roles removed", guild, author, user, reason, roles=roles
+            )
+        else:
+            await self.log_role('roles removed', guild, user, reason, roles)
+
+    async def log_role(
+        self, action, guild, user, reason, roles=None
+    ):
+        log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging")
+        if log_is_on in (None, "0"):
+            return
+        log_chan = await self.bot.db.hget(f"{guild.id}:set", "logroles")
+        if not log_chan:
+            return
+        chan = self.bot.get_channel(int(log_chan))
+        if not chan:
+            return
+        embed = await self.bot.embed()
+        embed.description = f"{user.mention} {action} by self-assignment."
+        embed.add_field(name="User ID", value=user.id)
+        embed.add_field(name="Reason", value=reason)
+        if roles is not None:
+            embed.add_field(
+                name=action.title(), value=", ".join([r.mention for r in roles])
+            )
+        i = await self.bot.db.hget("avatar_cache", user.id)
+        if not i or i is None:
+            url = user.avatar_url_as(static_format="png", size=1024)
+            urls = str(url).split("/")[-1].split("?")[0]
+            ctype, _ = mimetypes.guess_type(urls)
+            ext = ctype.split("/")[-1]
+            i = await self.bot.cdn.upload_file("u", user.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", user.id, i)
+        embed.set_thumbnail(url=i)
+        await chan.send(embed=embed)
+
 
 
 def setup(bot):

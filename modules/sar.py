@@ -118,11 +118,21 @@ class SarModule(cmd.Cog):
                 to_remove = [r for r in roles if r in ctx.author.roles]
                 await ctx.author.remove_roles(*to_remove)
                 await log.on_member_role_remove(
-                    ctx.guild, ctx.guild.me, ctx.author, "Self-assigned", to_remove
+                    ctx.guild,
+                    ctx.guild.me,
+                    ctx.author,
+                    "Self-assigned",
+                    to_remove,
+                    mod=False,
                 )
             await ctx.author.add_roles(to_add)
             await log.on_member_role_add(
-                ctx.guild, ctx.guild.me, ctx.author, "Self-assigned.", [to_add]
+                ctx.guild,
+                ctx.guild.me,
+                ctx.author,
+                "Self-assigned.",
+                [to_add],
+                mod=False,
             )
 
         await ctx.send(f"Congrats {ctx.author.mention}, you got the **{to_add}** role!")
