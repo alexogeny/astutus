@@ -1,7 +1,7 @@
 import aiohttp
+from urllib.parse import quote_plus
 import discord
 from discord.ext import commands as cmd
-from urllib.parse import quote_plus
 
 NEWTON_API_CALL = "https://newton.now.sh/{}/{}"
 
@@ -11,17 +11,16 @@ class MathModule(cmd.Cog):
         self.bot = bot
 
     async def newton(self, ctx, operation, *, expression=None):
-
-        # Check if expression is None
         if expression is None:
             raise cmd.BadArgument("You need to specify an expression.")
-
         expression = quote_plus(expression.replace("/", "(over)").replace(" ", ""))
         async with aiohttp.ClientSession() as client:
             async with client.get(
                 NEWTON_API_CALL.format(operation, expression)
             ) as resp:
                 res = await resp.json()
+        if res["result"].startswith("Stop: "):
+            raise cmd.BadArgument(f"Error: {res['result'][6:]}")
         await ctx.send(
             ":1234: Your expression evaluates to `{}`, @**{}**.".format(
                 res["result"], ctx.author
@@ -29,9 +28,7 @@ class MathModule(cmd.Cog):
         )
 
     @cmd.cooldown(1, 10, cmd.BucketType.user)
-    @cmd.group(
-        name="math", invoke_without_command=True, aliases=["=", "==", "= ", "== "]
-    )
+    @cmd.group(name="math", invoke_without_command=True, aliases=["=", "=="])
     async def math(self, ctx, *, expression=None):
         await self.newton(ctx, "simplify", expression=expression)
 
