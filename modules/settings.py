@@ -19,6 +19,7 @@ AVAILABLE_SETTINGS = [
     "restrictions",
     "pprefix",
     "starboard",
+    "worldchat",
 ]
 
 
@@ -66,6 +67,20 @@ class SettingsModule(cmd.Cog):
             raise cmd.BadArgument("You need to supply a channel.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", "starboard", channel.id)
         await ctx.send(f"Set the starboard channel to #**{channel}**!")
+
+    @settings.command(name="worldchat", aliases=["wc"])
+    @checks.is_mod()
+    async def worldchat(self, ctx, channel: Optional[cmd.TextChannelConverter] = None):
+        if not channel:
+            raise cmd.BadArgument("You need to supply a channel.")
+        await self.bot.db.hset("worldchat", ctx.guild.id, channel.id)
+        await ctx.send(f"Set the world-chat channel to #**{channel}**!")
+
+    @settings.command(name="wccensor", aliases=["worldchatcensor"])
+    @checks.is_mod()
+    async def worldchatc(self, ctx, enabled: Optional[bool] = False):
+        await self.bot.db.hset("worldchatc", ctx.guild.id, int(not enabled))
+        await ctx.send(f"Set the world-chat censor to **{enabled}**!")
 
     @settings.command(name="role")
     @checks.is_mod()

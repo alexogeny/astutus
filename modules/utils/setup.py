@@ -1,5 +1,6 @@
 import os
 import asyncio
+from better_profanity import profanity
 import discord
 from .redis import Redis
 from .cdn import CDN
@@ -42,3 +43,5 @@ def setup_bot(bot):
         bot.config["CDN"]["client"],
         bot.config["CDN"]["secret"],
     )
+    profanity.load_censor_words()
+    setattr(bot, "profanity", profanity)
