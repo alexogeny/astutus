@@ -512,7 +512,6 @@ class TapTitansModule(cmd.Cog):
         res_dict = {}
         for r in result:
             res_dict[r["ID"]] = {"attacks": r["Attacks"], "damage": r["Damage"]}
-        print(res_dict)
         data = dict(
             id=ctx.guild.id, date=date, gid=group, export_data=res_dict, level=level
         )

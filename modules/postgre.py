@@ -30,16 +30,21 @@ class PostgreModule(cmd.Cog):
 
     async def sql_insert(self, table, data_dict):
         keys = ", ".join(f'"{m}"' for m in data_dict.keys())
-        print(keys)
         values = ", ".join(f"${i+1}" for i, x in enumerate(data_dict.values()))
-        print(values)
-        print(f'INSERT INTO "{table}" ({keys}) VALUES ({values})')
         res = await self.sql_query_db(
             f'INSERT INTO "{table}" ({keys}) VALUES ({values})',
             parameters=tuple(data_dict.values()),
         )
-        print(res)
-        return
+        return 1
+    
+    async def sql_update(self, table, updae_id, data_dict):
+        keys = ", ".join(f'"{m}"' for m in data_dict.keys())
+        values = ", ".join(f"${i+1}" for i, x in enumerate(data_dict.values()))
+        res = await self.sql_query_db(
+            f'UPDATE INTO "{table}" ({keys}) VALUES ({values})',
+            parameters=tuple(data_dict.values()),
+        )
+        return 1
 
 
 def setup(bot):
