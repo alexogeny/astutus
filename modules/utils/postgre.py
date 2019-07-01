@@ -11,8 +11,8 @@ async def init_connection(conn):
     )
 
 
-async def get_db():
-    path = os.environ.get("DATABASE_URL", "postgres://postgres:root@localhost/postgres")
+async def get_db(uri):
+    path = os.environ.get("DATABASE_URL", uri)
     pool = await asyncpg.create_pool(
         dsn=path, command_timeout=60, max_size=5, min_size=1, init=init_connection
     )

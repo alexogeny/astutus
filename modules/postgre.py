@@ -9,7 +9,17 @@ class PostgreModule(cmd.Cog):
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
         loop = asyncio.get_event_loop()
-        pool = loop.run_until_complete(get_db())
+        uri = "{}://{}:{}@{}/{}".format(
+            bot.config["POSTGRESQL"]["protocol"] or "postgres",
+            bot.config["POSTGRESQL"]["username"],
+            bot.config["POSTGRESQL"]["password"],
+            bot.config["POSTGRESQL"]["host"],
+            bot.config["POSTGRESQL"]["database"],
+        )
+        ssl_mode = bot.config["POSTGRESQL"].get("sslmode", None)
+        if ssl_mode is not None:
+            uri = f"{uri}?sslmode={ssl_mode}"
+        pool = loop.run_until_complete(get_db(uri))
         self.pool = pool
 
     async def sql_query_db(self, statement, parameters=None):
