@@ -27,7 +27,14 @@ class SetupModule(cmd.Cog):
         return
 
     async def setup_tt2_key(self, ctx, group, kind, phase=None):
-        await ctx.send("Let's set up a clan {}. Please type it in now.".format(kind))
+        await ctx.send(
+            "Let's set up a clan {}. Please type it in now.{}".format(
+                kind,
+                ""
+                if kind != "raid queue size"
+                else "\nNOTE: if you do not plan on using queues, **enter 6 for this step**. You can change this later.",
+            )
+        )
 
         def check(msg):
             if msg.author != ctx.author and ctx.guild != msg.guild:
@@ -69,7 +76,7 @@ class SetupModule(cmd.Cog):
                 asyncio.ensure_future(ctx.send(f"Unrecognised role: {msg.content}"))
                 return 0
             if kind == "raid queue size":
-                if msg.content not in "1 2 3 4 5".split():
+                if msg.content not in "1 2 3 4 5 6".split():
                     asyncio.ensure_future(
                         ctx.send(f"{kind.title()} must be between 1 and 5")
                     )

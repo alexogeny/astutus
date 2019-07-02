@@ -258,11 +258,18 @@ class TapTitansModule(cmd.Cog):
                 queue = await self.bot.db.lrange(f"{guild.id}:tt:{group}:q")
                 current = g.get('current', '').strip().split()
                 mode, depl = int(g.get('mode', 1)), int(g.get('depl', 0))
+                if mode == 6 and not depl:
+                    await chan.send('Raid spawned, @everyone!')
+                    edit = await chan.send('Preparing next raid timer...')
+                    for hset, val in dict(edit=edit.id, depl=1, reset=reset + 1).items():
+                            await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)
+
+                    depl = 1
                 if not current and not queue:
                     if depl:
                         pass
                     else:
-                        await chan.send(f'Queue complete! Ready for reset #{reset + 1}.')
+                        await chan.send(f'Queue over! Ready for reset #{reset + 1}.')
                         edit = await chan.send("Preparing next reset timer...")
                         for hset, val in dict(edit=edit.id, depl=1, reset=reset + 1).items():
                             await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)
@@ -448,9 +455,9 @@ class TapTitansModule(cmd.Cog):
             try:
                 val = int(val)
             except:
-                raise cmd.BadArgument("You must supply a number between 1 and 5.")
-            if not 1 <= val <= 5:
-                raise cmd.BadArgument("Queue mode must be between 1 and 5.")
+                raise cmd.BadArgument("You must supply a number between 1 and 6. NOTE: 6 means no queuing.")
+            if not 1 <= val <= 6:
+                raise cmd.BadArgument("Queue mode must be between 1 and 6. NOTE: 6 means no queuing.")
             await self.bot.db.hset(group, key, val)
         else:
             await self.bot.db.hset(group, key, val)
@@ -777,6 +784,8 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
+        if int(groupdict.get('mode', 1)) > 5:
+            return
         await self.has_clan_permissions(ctx, groupdict)
         result = groupdict.get("spawn", 0)
         if not result:
@@ -844,6 +853,8 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
+        if int(g.get('mode', 1)) > 5:
+            return
         await self.has_clan_permissions(ctx, g)
         result = g.get("spawn", 0)
         depl = g.get("depl", 0)
@@ -873,6 +884,8 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
+        if int(g.get('mode', 1)) > 5:
+            return
         await self.has_clan_permissions(ctx, g)
         if not g.get("spawn", 0):
             raise cmd.BadArgument("No raid/reset rn.")
