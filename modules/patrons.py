@@ -88,6 +88,8 @@ class PatronModule(cmd.Cog):
             )
         await self.bot.db.zincrement("blames", user.id)
         await self.bot.db.zincrement("blames", self.immo)
+        if self.immo == user.id:
+            await self.bot.db.zincrement("immo", now.format("YYYYMMDD"))
         await self.bot.db.zincrement("immo", now.format("YYYYMMDD"))
 
         blames = await self.bot.db.zscore("blames", user.id)

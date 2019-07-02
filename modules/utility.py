@@ -7,6 +7,7 @@ import arrow
 import discord
 import importlib
 import os
+import json
 import glob
 from urllib.parse import quote_plus
 import aiohttp
@@ -138,6 +139,15 @@ class UtilityModule(cmd.Cog):
     async def redisclear(self, ctx, key):
         result = await self.bot.db.delete(key.format(ctx))
         await ctx.send(str(result))
+
+    @cmd.command(hidden=True)
+    @checks.is_bot_owner()
+    async def importblames(self, ctx):
+        with open("blames.json", "r") as fh:
+            data = json.loads(fh.read())
+        for user, val in data.items():
+            await self.bot.db.zadd("blames", user, val)
+        await ctx.send("Success!")
 
     @cmd.command(hidden=True)
     @checks.is_bot_owner()
