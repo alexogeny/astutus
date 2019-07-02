@@ -40,7 +40,7 @@ class WorldChatModule(cmd.Cog):
             last_send = now.shift(hours=-1)
         else:
             last_send = arrow.get(last_send)
-        if now > last_send.shift(seconds=5):
+        if now > last_send.shift(seconds=60):
             await self.bot.db.hset("worldchats", message.author.id, now.timestamp)
             return True
         return False
