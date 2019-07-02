@@ -142,6 +142,144 @@ class SetupModule(cmd.Cog):
         return phase
 
     @checks.is_mod()
+    @setup.command(name="greet")
+    async def setup_greet(self, ctx):
+        done = await self.bot.db.hget(f"{ctx.guild.id}:setup", "greet")
+        if done is not None and done == "1":
+            raise cmd.BadArgument(
+                f"Already set up greet! **{ctx.prefix}help settings greet**"
+            )
+        await ctx.send("Greet setup initiated.")
+
+        if done is None:
+            chans = list(enumerate(ctx.guild.text_channels))[0:30]
+            embed = await self.bot.embed()
+            embed.description = "\n".join([f"{x+1}. {y.mention}" for x, y in chans])
+            ms1 = await ctx.send(
+                "Set the **greet channel** by choosing a number below:", embed=embed
+            )
+
+            def check(msg):
+                return (
+                    msg.author == ctx.author
+                    and msg.guild == ctx.guild
+                    and msg.content in map(str, [x + 1 for x, y in chans])
+                )
+
+            try:
+                msg = await self.bot.wait_for("message", check=check, timeout=60.0)
+            except asyncio.TimeoutError:
+                raise cmd.BadArgument(
+                    f"Query timed out. Type **{ctx.prefix}setup greet** to return."
+                )
+
+            await ms1.delete()
+            chosen = chans[int(msg.content) - 1][1]
+            if not chosen.permissions_for(ctx.guild.me).send_messages:
+                raise cmd.BadArgument(
+                    f"No send permissions. Type **{ctx.prefix}setup greet** to return."
+                )
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", chosen.id)
+            await ctx.send(f"Set the greet channel to {chosen.mention}!")
+            await self.bot.db.hset(f"{ctx.guild.id}:setup", "greet", "0")
+
+        ms2 = await ctx.send(
+            "Choose a **greet message** (limit 140 chars):\nFormat tags: {user} {server} {user.mention}"
+        )
+
+        def check2(msg):
+            return (
+                msg.author == ctx.author
+                and msg.guild == ctx.guild
+                and msg.content[0:140]
+            )
+
+        try:
+            msg = await self.bot.wait_for("message", check=check2, timeout=60.0)
+        except asyncio.TimeoutError:
+            raise cmd.BadArgument(
+                f"Query timed out. Type **{ctx.prefix}setup greet** to return."
+            )
+
+        await ms2.delete()
+
+        await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", msg.content[0:140])
+        await self.bot.db.hset(f"{ctx.guild.id}:setup", "greet", "1")
+        await self.bot.db.hset(f"{ctx.guild.id}:toggle", "greet", "1")
+        embed = await self.bot.embed()
+        embed.description = msg.content[0:140].format(user=ctx.author, server=ctx.guild)
+        await ctx.send("Set the greet message:", embed=embed)
+
+    @checks.is_mod()
+    @setup.command(name="goodbye")
+    async def setup_goodbye(self, ctx):
+        done = await self.bot.db.hget(f"{ctx.guild.id}:setup", "goodbye")
+        if done is not None and done == "1":
+            raise cmd.BadArgument(
+                f"Already set up greet! **{ctx.prefix}help settings goodbye**"
+            )
+        await ctx.send("Goodbye setup initiated.")
+
+        if done is None:
+            chans = list(enumerate(ctx.guild.text_channels))[0:30]
+            embed = await self.bot.embed()
+            embed.description = "\n".join([f"{x+1}. {y.mention}" for x, y in chans])
+            ms1 = await ctx.send(
+                "Set the **goodbye channel** by choosing a number below:", embed=embed
+            )
+
+            def check(msg):
+                return (
+                    msg.author == ctx.author
+                    and msg.guild == ctx.guild
+                    and msg.content in map(str, [x + 1 for x, y in chans])
+                )
+
+            try:
+                msg = await self.bot.wait_for("message", check=check, timeout=60.0)
+            except asyncio.TimeoutError:
+                raise cmd.BadArgument(
+                    f"Query timed out. Type **{ctx.prefix}setup goodbye** to return."
+                )
+
+            await ms1.delete()
+            chosen = chans[int(msg.content) - 1][1]
+            if not chosen.permissions_for(ctx.guild.me).send_messages:
+                raise cmd.BadArgument(
+                    f"No send permissions. Type **{ctx.prefix}setup goodbye** to return."
+                )
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "dptc", chosen.id)
+            await ctx.send(f"Set the greet channel to {chosen.mention}!")
+            await self.bot.db.hset(f"{ctx.guild.id}:setup", "goodbye", "0")
+
+        ms2 = await ctx.send(
+            "Choose a **goodbye message** (limit 140 chars):\nFormat tags: {user} {server} {user.mention}"
+        )
+
+        def check2(msg):
+            return (
+                msg.author == ctx.author
+                and msg.guild == ctx.guild
+                and msg.content[0:140]
+            )
+
+        try:
+            msg = await self.bot.wait_for("message", check=check2, timeout=60.0)
+        except asyncio.TimeoutError:
+            raise cmd.BadArgument(
+                f"Query timed out. Type **{ctx.prefix}setup goodbye** to return."
+            )
+
+        await ms2.delete()
+
+        await self.bot.db.hset(f"{ctx.guild.id}:set", "dpt", msg.content[0:140])
+        await self.bot.db.hset(f"{ctx.guild.id}:setup", "goodbye", "1")
+        await self.bot.db.hset(f"{ctx.guild.id}:toggle", "goodbye", "1")
+        embed = await self.bot.embed()
+        embed.description = msg.content[0:140].format(user=ctx.author, server=ctx.guild)
+        await ctx.send("Set the goodbye message:", embed=embed)
+
+    @checks.is_mod()
     @setup.command(name="tt2", aliases=["tt"])
     async def setup_tt2(self, ctx, group: Optional[int] = 1):
         """Setup the TT2 module for raiding."""

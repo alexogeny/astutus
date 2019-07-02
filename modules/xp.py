@@ -7,6 +7,9 @@ from datetime import timedelta
 from typing import Optional, Union
 from random import choice
 import discord
+import re
+
+CMD = re.compile(r"^(\W+\w+|\w[\W]+\w+)")
 
 
 class XPModule(cmd.Cog):
@@ -166,7 +169,9 @@ class XPModule(cmd.Cog):
     @cmd.Cog.listener()
     async def on_message(self, message):
         author = message.author
-        if author.bot or not hasattr(message, "guild"):
+        if author.bot or not hasattr(message, "guild") or not message.content:
+            return
+        if CMD.match(message.content):
             return
         ignored = await self.bot.db.lrange(f"{message.guild.id}:xp:ign")
         if ignored is None:
