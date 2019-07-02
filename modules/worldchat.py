@@ -31,12 +31,15 @@ class WorldChatModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_message(self, message):
+        if not message.content or message.content is None:
+            return
         if not await self.wc_enabled(message):
             return
+
         embed = await self.bot.embed()
         embed.title = str(message.author)
-        if message.content:
-            embed.description = message.content[0:300]
+
+        embed.description = message.content[0:300]
 
         chats = await self.bot.db.hgetall("worldchat")
         censored = self.bot.profanity.censor(embed.description, "\\*")
