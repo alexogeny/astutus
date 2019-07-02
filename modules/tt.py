@@ -269,7 +269,7 @@ class TapTitansModule(cmd.Cog):
                     if depl:
                         pass
                     else:
-                        await chan.send(f'Queue over! Ready for reset #{reset + 1}.')
+                        await chan.send(f'Queue over @everyone! Ready for reset #{reset + 1}.')
                         edit = await chan.send("Preparing next reset timer...")
                         for hset, val in dict(edit=edit.id, depl=1, reset=reset + 1).items():
                             await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)

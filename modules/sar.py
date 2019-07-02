@@ -81,8 +81,9 @@ class SarModule(cmd.Cog):
         print(get_group)
         embed = await self.bot.embed()
         embed.title = f"Avaliable roles for {get_group}"
-        embed.description = "\n".join(
-            [f"{i+1}. {r}" for i, r in enumerate(groups[get_group]["roles"])]
+        embed.description = (
+            "\n".join([f"{i+1}. {r}" for i, r in enumerate(groups[get_group]["roles"])])
+            + "\n\n0. unassign"
         )
         m2 = await ctx.send(
             f"Here are the roles for {get_group}. Please choose a number.", embed=embed
@@ -93,7 +94,7 @@ class SarModule(cmd.Cog):
                 ctx.author == message.author
                 and ctx.guild == message.guild
                 and message.content
-                in list(map(str, range(1, len(groups[get_group]["roles"]) + 1)))
+                in list(map(str, range(0, len(groups[get_group]["roles"]) + 1)))
             )
 
         try:
@@ -109,33 +110,41 @@ class SarModule(cmd.Cog):
 
         excl = groups[get_group]["excl"]
         roles = groups[get_group]["roles"]
-        to_add = roles[int(msg.content) - 1]
+        to_add = None if not int(msg.content) else roles[int(msg.content) - 1]
         log = self.bot.get_cog("LoggingModule")
         if to_add in ctx.author.roles:
             raise cmd.BadArgument("You already have this role!")
         if to_add not in ctx.author.roles:
             if excl:
                 to_remove = [r for r in roles if r in ctx.author.roles]
-                await ctx.author.remove_roles(*to_remove)
-                await log.on_member_role_remove(
+                if to_remove:
+                    await ctx.author.remove_roles(*to_remove)
+                    await log.on_member_role_remove(
+                        ctx.guild,
+                        ctx.guild.me,
+                        ctx.author,
+                        "Self-assigned",
+                        to_remove,
+                        mod=False,
+                    )
+            if to_add is not None:
+                await ctx.author.add_roles(to_add)
+                await log.on_member_role_add(
                     ctx.guild,
                     ctx.guild.me,
                     ctx.author,
-                    "Self-assigned",
-                    to_remove,
+                    "Self-assigned.",
+                    [to_add],
                     mod=False,
                 )
-            await ctx.author.add_roles(to_add)
-            await log.on_member_role_add(
-                ctx.guild,
-                ctx.guild.me,
-                ctx.author,
-                "Self-assigned.",
-                [to_add],
-                mod=False,
-            )
 
-        await ctx.send(f"Congrats {ctx.author.mention}, you got the **{to_add}** role!")
+                await ctx.send(
+                    f"Congrats {ctx.author.mention}, you got the **{to_add}** role!"
+                )
+            else:
+                await ctx.send(
+                    f"Ok {ctx.author.mention}, you no longer have a role from this group."
+                )
 
     @sar.group(name="group", aliases=["groups"], invoke_without_command=True)
     async def sar_group(self, ctx):
