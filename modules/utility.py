@@ -3,6 +3,7 @@ from .utils import checks, chat_formatting
 import time
 
 # import psutil
+import arrow
 import discord
 import importlib
 import os
@@ -63,11 +64,8 @@ class UtilityModule(cmd.Cog):
 
     @cmd.command(aliases=["ud"])
     @cmd.guild_only()
-    async def urban(self, ctx, *, search_terms: str, definition_number: int = 1):
+    async def urban(self, ctx, *, search_terms: str):
         """Search Urban Dictionary"""
-
-        # if not ctx.channel.is_nsfw():
-        #     return await ctx.send("Please use this in an NSFW channel.", delete_after=5)
 
         def encode(s):
             return quote_plus(s, encoding="utf-8", errors="replace")
@@ -91,15 +89,40 @@ class UtilityModule(cmd.Cog):
                 async with cs.get(url) as r:
                     result = await r.json()
             if result["list"]:
-                definition = result["list"][pos]["definition"]
-                example = result["list"][pos]["example"]
-                defs = len(result["list"])
-                msg = "**Definition #{} out of {}:\n**{}\n\n" "**Example:\n**{}".format(
-                    pos + 1, defs, definition, example
+
+                embed = await self.bot.embed()
+                embed.timestamp = arrow.get(result["list"][pos]["written_on"]).datetime
+                embed.colour = 0x134FE6
+                embed.title = (
+                    "**"
+                    + result["list"][pos]["word"]
+                    + "** by "
+                    + result["list"][pos]["author"]
                 )
-                msg = chat_formatting.pagify(msg, ["\n"])
-                for page in msg:
-                    await ctx.send(page)
+                embed.description = result["list"][pos]["definition"]
+                embed.add_field(
+                    name="Examples", value=result["list"][pos]["example"], inline=False
+                )
+                embed.add_field(
+                    name="Upvotes",
+                    value=f":arrow_up: {result['list'][pos]['thumbs_up']}",
+                )
+                embed.add_field(
+                    name="Downvotes",
+                    value=f":arrow_down: {result['list'][pos]['thumbs_down']}",
+                )
+                embed.add_field(
+                    name="Definitions",
+                    value=f"{pos+1} of {len(result['list'])}",
+                    inline=False,
+                )
+                embed.add_field(
+                    name="Link",
+                    value="[{}]({})".format(
+                        result["list"][pos]["word"], result["list"][pos]["permalink"]
+                    ),
+                )
+                await ctx.send(embed=embed)
             else:
                 await ctx.send("Your search terms gave no results.")
         except IndexError:

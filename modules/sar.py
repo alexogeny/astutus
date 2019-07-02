@@ -78,7 +78,6 @@ class SarModule(cmd.Cog):
         get_group = next(
             (g for g in groups if str(groups[g]["id"]) == msg.content), None
         )
-        print(get_group)
         embed = await self.bot.embed()
         embed.title = f"Avaliable roles for {get_group}"
         embed.description = (
