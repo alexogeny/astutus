@@ -144,9 +144,7 @@ class SettingsModule(cmd.Cog):
         if key.lower().startswith("m"):
             msg = " ".join(message)
             if len(msg) > 140:
-                raise cmd.BadArgument(
-                    "Greets are limited to 140 characters. Please choose a smaller message."
-                )
+                raise cmd.BadArgument("Greets are limited to 140 characters.")
             await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", msg)
             await ctx.send(
                 msg.format(
@@ -156,8 +154,11 @@ class SettingsModule(cmd.Cog):
                 )
             )
         elif key.lower().startswith("c"):
-            await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", ctx.channel.id)
-            await ctx.send(f"Set greet channel to #**{ctx.channel}**")
+            chan = await cmd.TextChannelConverter().convert(ctx, " ".join(message))
+            if chan is None:
+                raise cmd.BadArgument(f"Could not find channel: {message}")
+            await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", chan.id)
+            await ctx.send(f"Set greet channel to #**{chan}**")
 
     @settings.command(name="goodbye", aliases=["depart", "fairwell"])
     @checks.is_mod()
