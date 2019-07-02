@@ -48,7 +48,7 @@ class XPModule(cmd.Cog):
 
     @cmd.group(invoke_without_command=True)
     async def xp(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
-        to_get = "gl" if where == "global" else ctx.guild.id
+        to_get = "gl" if where in ["global", "world"] else ctx.guild.id
         user_xp, user = await self.get_user_xp(ctx, user, where=to_get)
         where = f" in **{ctx.guild}**" if where == "here" else ""
         await ctx.send(f"@**{user}** has **{user_xp}** xp{where}!")
@@ -111,7 +111,7 @@ class XPModule(cmd.Cog):
 
     @cmd.command(name="leaderboard", aliases=["ldb", "lb"])
     async def ldb(self, ctx, where: str = "here"):
-        to_get = "gl" if where == "global" else ctx.guild.id
+        to_get = "gl" if where in ["global", "world"] else ctx.guild.id
         top = await self.bot.db.ztop(f"xp:{to_get}", stop=9)
         top = dict(zip(top[0::2], top[1::2]))
         top_res = []
@@ -146,7 +146,7 @@ class XPModule(cmd.Cog):
 
     @cmd.command()
     async def rank(self, ctx, user: Optional[MemberID] = None, where: str = "here"):
-        to_get = "gl" if where == "global" else ctx.guild.id
+        to_get = "gl" if where in ["global", "world"] else ctx.guild.id
         user_xp, user = await self.get_user_xp(ctx, user, where=to_get)
         rank = await self.bot.db.zrank(f"xp:{to_get}", user.id)
         if not user_xp:
