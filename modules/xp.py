@@ -173,6 +173,9 @@ class XPModule(cmd.Cog):
             return
         if CMD.match(message.content):
             return
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            return
         ignored = await self.bot.db.lrange(f"{message.guild.id}:xp:ign")
         if ignored is None:
             ignored = []
