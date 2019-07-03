@@ -20,6 +20,7 @@ AVAILABLE_SETTINGS = [
     "pprefix",
     "starboard",
     "worldchat",
+    "xpbroadcast"
 ]
 
 

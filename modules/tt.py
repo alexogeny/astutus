@@ -393,11 +393,12 @@ class TapTitansModule(cmd.Cog):
                 for n, m in TT_ROLES.items()
             ]
         )
+        queue = "is disabled" if r.get('mode') == '6' else f"size is **{r.get('mode', 1)}**"
         await ctx.send(
             f"**{r.get('name', '<clanname>')}** [{r.get('code', '00000')}] "
             f"T{r.get('tier', 1)}Z{r.get('zone', 1)}\n"
             f"{roles}\n"
-            f"Messages are broadcast in #**{discord.utils.get(ctx.guild.channels, id=int(r.get('announce', 0)))}** and queue size is **{r.get('mode', 1)}**."
+            f"Messages are broadcast in #**{discord.utils.get(ctx.guild.channels, id=int(r.get('announce', 0)))}** and queue {queue}."
         )
 
     @taptitans.group(name="set", usage="key val")

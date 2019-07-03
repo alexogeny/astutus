@@ -203,9 +203,11 @@ class XPModule(cmd.Cog):
             await self.bot.db.hset("lvl:cd", author.id, now.timestamp)
             nxt, _ = await self.get_user_level(uxp + 1)
             if last_level != nxt:
-                await message.channel.send(
-                    f"GG @**{author}**, you just leveled up to **{nxt}**!"
-                )
+                broadcast = await self.bot.db.hget(f"{message.guild.id}:toggle", "xpbroadcast")
+                if broadcast is None or broadcast == "0":
+                    await message.channel.send(
+                        f"GG @**{author}**, you just leveled up to **{nxt}**!"
+                    )
                 await self.bot.db.hset("lvl:ls", author.id, nxt)
 
 
