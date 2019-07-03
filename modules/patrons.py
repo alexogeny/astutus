@@ -1,6 +1,7 @@
 from discord.ext import commands as cmd
 from .utils import checks
 from .utils.converters import MemberID, ActionReason, BannedMember
+from .utils.discord_search import choose_item
 import arrow
 from math import floor
 from datetime import timedelta
@@ -60,12 +61,11 @@ class PatronModule(cmd.Cog):
         await ctx.send(f"**{u}** has spoken. Your affinity is: **{choice}**!")
 
     @cmd.command(name="blame")
-    async def blame(self, ctx, user: MemberID = None):
-        if not user:
-            user = ctx.author.id
-        user = self.bot.get_user(user)
-        if user is None:
-            user = await self.bot.fetch_user(user)
+    async def blame(self, ctx, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
         if not user:
             raise cmd.BadArgument("You must specify a user to blame!")
 
@@ -97,12 +97,11 @@ class PatronModule(cmd.Cog):
         await ctx.send(f"{user} has been blamed {blames} time{plural}!")
 
     @cmd.command(name="blames")
-    async def blames(self, ctx, user: MemberID = None):
-        if not user:
-            user = ctx.author.id
-        user = self.bot.get_user(user)
-        if user is None:
-            user = await self.bot.fetch_user(user)
+    async def blames(self, ctx, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
 
         blames = await self.bot.db.zscore("blames", user.id)
 

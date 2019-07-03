@@ -4,6 +4,7 @@ import arrow
 import discord
 from .utils.converters import MemberID
 from .utils.etc import download_image
+from .utils.discord_search import choose_item
 import humanfriendly
 import mimetypes
 
@@ -53,8 +54,12 @@ class InfoModule(cmd.Cog):
 
     @cmd.command()
     @cmd.cooldown(1, 30, cmd.BucketType.user)
-    async def avatar(self, ctx, user: MemberID = None):
-        cached, user = await self.get_or_upload_avatar(ctx, user)
+    async def avatar(self, ctx, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
+        cached, user = await self.get_or_upload_avatar(ctx, user.id)
         async with ctx.typing():
             embed = discord.Embed(title=f"**{user}**'s avatar")
             embed.set_image(url=cached)
@@ -78,8 +83,12 @@ class InfoModule(cmd.Cog):
 
     @info.command(name="user", aliases=["member"])
     @cmd.guild_only()
-    async def info_user(self, ctx, user: MemberID = None):
-        cached, user = await self.get_or_upload_avatar(ctx, user)
+    async def info_user(self, ctx, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
+        cached, user = await self.get_or_upload_avatar(ctx, user.id)
         member = ctx.guild.get_member(user.id)
         embed = None
         title = f"Information about {user}"
@@ -123,7 +132,6 @@ class InfoModule(cmd.Cog):
         "Get information about the bot!"
         emoji = self.bot.get_cog("TapTitansModule").emoji("elixum")
         embed = await self.bot.embed()
-        # embed = discord.Embed(
         embed.title = f"{emoji} {self.bot.user}"
         embed.description = "Please insert coin to continue."
         embed.color = 0x473080
