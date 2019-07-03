@@ -1,6 +1,7 @@
 from discord.ext import commands as cmd
 from .utils import checks
 from .utils.converters import MemberID, ActionReason, BannedMember
+from .utils.discord_search import choose_item
 import arrow
 from math import floor
 from datetime import timedelta
@@ -14,28 +15,25 @@ class FunModule(cmd.Cog):
         self.bot = bot
 
     @cmd.command(name="cookie", aliases=["kookie", "cookies"])
-    async def cookie(self, ctx, user: Optional[MemberID] = None):
+    async def cookie(self, ctx, *user: str):
         """Give people cookies."""
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
         if ctx.invoked_with.endswith("s"):
-            if user is not None:
-                user = await self.bot.fetch_user(user)
-            have = "have" if user is None else "has"
-            addr = "You" if user is None else f"@**{user}**"
-            user = ctx.author if user is None else user
+            have = "have" if user == ctx.author else "has"
+            addr = "You" if user == ctx.author else f"@**{user}**"
+            user = ctx.author if user == ctx.author else user
 
             count = int(await self.bot.db.zscore("cookies", user.id) or 0)
             plural = "s" if count != 1 else ""
             await ctx.send(f":cookie: {addr} {have} **{count}** cookie{plural}.")
             return
-        if user == ctx.author.id:
+        if user.id == ctx.author.id:
             raise cmd.BadArgument(
                 f"You cannot give yourself a cookie, **{ctx.author}**"
             )
-        mem = self.bot.get_user(user)
-        if mem is None:
-            mem = await self.bot.fetch_user(user)
-        if mem is None:
-            return
         now = arrow.utcnow()
         next_cookie = await self.bot.db.hget("cookie", ctx.author.id)
         if next_cookie is None:
@@ -46,12 +44,12 @@ class FunModule(cmd.Cog):
             raise cmd.BadArgument(
                 f"You can only give away 1 cookie a day, **{ctx.author}**"
             )
-        await self.bot.db.zincrement("cookies", mem.id, score=1)
+        await self.bot.db.zincrement("cookies", user.id, score=1)
         await self.bot.db.hset(
             "cookie", ctx.author.id, now.shift(days=1).strftime("%Y%m%d")
         )
         await ctx.send(
-            f":cookie: @**{ctx.author}** has given @**{mem}** a cookie! Om nom nom!"
+            f":cookie: @**{ctx.author}** has given @**{user}** a cookie! Om nom nom!"
         )
 
     @cmd.command(name="ayy", aliases=["ayylmao"])
