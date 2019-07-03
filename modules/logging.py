@@ -171,7 +171,8 @@ class LoggingModule(cmd.Cog):
             else:
                 chans_to_log_avatars.append(chan)
         if chans_to_log_avatars and i is not None:
-            embed = discord.Embed(title=f"**{after}**'s new avatar")
+            embed = await self.bot.embed()
+            embed.title = f"**{after}**'s new avatar"
             embed.set_image(url=i)
             for chan in chans_to_log_avatars:
                 async with chan.typing():

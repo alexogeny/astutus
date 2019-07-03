@@ -1,4 +1,6 @@
+import aiohttp
 from discord.ext import commands as cmd
+from discord.utils import get
 import psutil
 import arrow
 import discord
@@ -7,6 +9,9 @@ from .utils.etc import download_image
 from .utils.discord_search import choose_item
 import humanfriendly
 import mimetypes
+import re
+
+EMOJI = re.compile(r"^<a?:\w+:\d+>$")
 
 
 class InfoModule(cmd.Cog):
@@ -43,6 +48,34 @@ class InfoModule(cmd.Cog):
             cached = i
         return cached
 
+    @cmd.command(name="emoji", aliases=["e"])
+    async def emoji(self, ctx, emoji):
+        if not EMOJI.match(emoji):
+            raise cmd.BadArgument("Invalid emoji!")
+        split = emoji.replace(">", "").replace("<", "").split(":")
+        animate, name, id = split
+        url = f"https://cdn.discordapp.com/emojis/{id}"
+        cached = await self.bot.db.hget("emoji_cache", f"{name}_{id}")
+        if not cached or cached is None:
+            mimetype = "image/gif" if animate else "image/png"
+            ext = "gif" if animate else "png"
+            url = f"{url}.{ext}"
+            async with aiohttp.ClientSession() as cs:
+                async with cs.get(url) as r:
+                    i = await self.bot.cdn.upload_file("e", id, r, ext, mimetype)
+            cached = i
+            await self.bot.db.hset("emoji_cache", f"{name}_{id}", i)
+
+        embed = await self.bot.embed()
+        embed.title = f"{name} emoji"
+        embed.set_image(url=cached)
+        embed.image.width = 384
+        embed.image.height = 384
+        edict = embed.to_dict()
+        del edict["timestamp"]
+        embed = discord.Embed().from_dict(edict)
+        await ctx.send(embed=embed)
+
     @cmd.command(name="guildicon", aliases=["servericon", "icon"])
     @cmd.cooldown(1, 30, cmd.BucketType.user)
     async def guildicon(self, ctx):
@@ -76,6 +109,32 @@ class InfoModule(cmd.Cog):
                 self.bot.config["DEFAULT"]["prefix"], cstm and f" or **{cstm}**" or ""
             )
         )
+
+    @cmd.command(name="support")
+    async def support(self, ctx):
+        embed = await self.bot.embed()
+        guild = self.bot.get_guild(440785686438871040)
+        cached = await self.get_or_upload_guildicon(guild)
+        embed.set_thumbnail(url=cached)
+        embed.title = f"{ctx.guild.me} Support Server"
+        embed.description = (
+            "[Click here to go to the support server](https://discord.gg/WvcryZW)"
+        )
+        embed.color = 0x473080
+        await ctx.send(embed=embed)
+
+    @cmd.command(name="patreon", aliases=["donate", "fund", "gofundme"])
+    async def patreon(self, ctx):
+        embed = await self.bot.embed()
+        # guild = self.bot.get_guild(440785686438871040)
+        cached, _ = await self.get_or_upload_avatar(ctx, 216303189073461248)
+        embed.set_thumbnail(url=cached)
+        embed.title = f"{ctx.guild.me} Patreon"
+        embed.description = (
+            "[Click here to support the bot!](https://patreon.com/lxmcneill)"
+        )
+        embed.color = 0xF86754
+        await ctx.send(embed=embed)
 
     @cmd.group(name="info", invoke_without_command=True, aliases=["i"])
     async def info(self, ctx):
