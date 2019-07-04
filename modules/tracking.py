@@ -3,6 +3,7 @@ import arrow
 import discord
 from discord.ext import commands as cmd
 from .utils.converters import MemberID
+from .utils.discord_search import choose_item
 
 
 class TrackingModule(cmd.Cog):
@@ -13,11 +14,13 @@ class TrackingModule(cmd.Cog):
         self.cap = int(self.bot.config["TRACKING"]["history"])
 
     @cmd.command()
-    async def seen(self, ctx: cmd.Context, user: MemberID = None):
-        if user is None:
-            user = ctx.author.id
-        obj = await self.bot.db.hget("tr:ls", user)
-        user = ctx.guild.get_member(user)
+    async def seen(self, ctx: cmd.Context, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
+        obj = await self.bot.db.hget("tr:ls", user.id)
+        # user = ctx.guild.get_member(user)
         if not obj:
             raise cmd.BadArgument(f"I have not seen **{user}** before.")
         platform = await self.bot.db.hget("tr:lp", user.id) or ""
@@ -40,12 +43,13 @@ class TrackingModule(cmd.Cog):
         )
 
     @cmd.command()
-    async def nicknames(self, ctx: cmd.Context, user: MemberID = None):
-        "Show the previous nicknames for the given user, up to a maximum of 5."
-        if user is None:
-            user = ctx.author.id
-        obj = f"tr:nn:{ctx.guild.id}:{user}"
-        user = await self.bot.fetch_user(user)
+    async def nicknames(self, ctx: cmd.Context, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
+        obj = f"tr:nn:{ctx.guild.id}:{user.id}"
+        # user = await self.bot.fetch_user(user)
         previous_nicks = await self.bot.db.lrange(obj, 0, -1)
         if not previous_nicks:
             raise cmd.BadArgument(f"Looks like **{user}** has no previous nicknames.")
@@ -55,12 +59,13 @@ class TrackingModule(cmd.Cog):
         )
 
     @cmd.command()
-    async def usernames(self, ctx: cmd.Context, user: MemberID = None):
-        "Show the previous usernames for the given user, up to a maximum of 5."
-        if user is None:
-            user = ctx.author.id
-        obj = f"tr:un:{ctx.guild.id}:{user}"
-        user = await self.bot.fetch_user(user)
+    async def usernames(self, ctx: cmd.Context, *user):
+        if user:
+            user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        else:
+            user = ctx.author
+        obj = f"tr:nn:{ctx.guild.id}:{user.id}"
+        # user = await self.bot.fetch_user(user)
         previous_nicks = await self.bot.db.lrange(obj, 0, -1)
         if not previous_nicks:
             raise cmd.BadArgument(f"Looks like **{user}** has no previous usernames.")

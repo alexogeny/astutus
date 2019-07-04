@@ -5,6 +5,7 @@ from discord.ext import commands as cmd
 from discord.ext import tasks as tsk
 from .utils import checks
 from .utils.converters import Truthy
+from .utils.discord_search import choose_item
 from string import ascii_letters, digits
 
 AVAILABLE_SETTINGS = [
@@ -15,12 +16,11 @@ AVAILABLE_SETTINGS = [
     "autorole",
     "greet",
     "goodbye",
-    "prefix",
     "restrictions",
     "pprefix",
     "starboard",
     "worldchat",
-    "xpbroadcast"
+    "xpbroadcast",
 ]
 
 
@@ -40,8 +40,44 @@ class SettingsModule(cmd.Cog):
         self.bot = bot
 
     @cmd.group(name="settings", aliases=["set", "setting"], invoke_without_command=True)
-    async def settings(self, ctx, setting: SettingsKey, value: Optional):
-        return
+    async def settings(self, ctx):
+        toggles = await self.bot.db.hgetall(f"{ctx.guild.id}:toggle")
+        _settings = await self.bot.db.hgetall(f"{ctx.guild.id}:set")
+        embed = await self.bot.embed()
+        embed.title = f"Settings for {ctx.guild}"
+
+        embed.add_field(
+            name=f"Settings toggles",
+            value="\n".join(
+                [
+                    f"{'🔲' if toggles.get(k, None) not in (None, '0') else '⬛'} - {k}"
+                    for k in AVAILABLE_SETTINGS
+                ]
+            ),
+        )
+
+        for kind in "role log channel".split():
+            _list = [s for s in _settings if s.startswith(kind)]
+            if kind == "log":
+                _ids = {s: ctx.guild.get_channel(int(_settings[s] or 0)) for s in _list}
+            elif kind == "role":
+                _ids = {s: ctx.guild.get_role(int(_settings[s] or 0)) for s in _list}
+            elif kind == "channel":
+                _ids = {s: ctx.guild.get_channel(int(_settings[s] or 0)) for s in _list}
+
+            if _ids:
+                embed.add_field(
+                    name=f"{kind.title()} settings",
+                    value="\n".join(
+                        [
+                            f"{k.replace(kind, '')} - {v.mention}"
+                            for k, v in _ids.items()
+                            if v is not None
+                        ]
+                    ),
+                )
+
+        await ctx.send(embed=embed)
 
     @settings.command(name="prefix")
     @checks.is_mod()
@@ -86,7 +122,7 @@ class SettingsModule(cmd.Cog):
     @settings.command(name="role")
     @checks.is_mod()
     @checks.bot_has_perms(manage_roles=True)
-    async def role(self, ctx, roletype, role: Optional[cmd.RoleConverter] = None):
+    async def role(self, ctx, roletype, *role):
         roletypes = "auto muted jailed curator".split()
         if roletype.lower() not in roletypes:
             raise cmd.BadArgument(
@@ -94,10 +130,34 @@ class SettingsModule(cmd.Cog):
                     ", ".join([f"**{l}**" for l in roletypes])
                 )
             )
-        if role is None:
+        if role:
+            role = await choose_item(ctx, "role", ctx.guild, " ".join(role).lower())
+        if role is None or not role:
             raise cmd.BadArgument("Could not find a role with that name.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", f"role{roletype}", role.id)
         await ctx.send(f":white_check_mark: Set **{roletype} role** to @**{role}**")
+
+    @settings.command(name="channel")
+    @checks.is_mod()
+    @checks.bot_has_perms(manage_channels=True)
+    async def channel(self, ctx, channeltype, *channel):
+        channeltypes = "staff music worldchat starboard greet goodbye".split()
+        if channeltype.lower() not in channeltypes:
+            raise cmd.BadArgument(
+                "**Channel type** must be one of: {}".format(
+                    ", ".join([f"**{l}**" for l in channeltypes])
+                )
+            )
+        if channel:
+            channel = await choose_item(
+                ctx, "text_channel", ctx.guild, " ".join(channel).lower()
+            )
+        if channel is None or not channel:
+            raise cmd.BadArgument("Could not find a channel with that name.")
+        await self.bot.db.hset(
+            f"{ctx.guild.id}:set", f"channel{channeltype}", channel.id
+        )
+        await ctx.send(f"✅ Set **{channeltype} channel** to #**{channel}**")
 
     @settings.command(name="automod")
     @checks.is_mod()
@@ -115,9 +175,7 @@ class SettingsModule(cmd.Cog):
         if count > 30:
             raise cmd.BadArgument("Offense count must be less than or equal to 30.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", f"automod{modtype}", count)
-        await ctx.send(
-            f":white_check_mark: Set automod **{modtype}** to **{count}** offenses."
-        )
+        await ctx.send(f"✅ Set automod **{modtype}** to **{count}** offenses.")
 
     @settings.command(name="logging", aliases=["log"])
     @checks.is_mod()
@@ -134,10 +192,7 @@ class SettingsModule(cmd.Cog):
         if channel is None:
             raise cmd.BadArgument("Could not find channel with that name.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", f"log{logtype}", channel.id)
-        await ctx.send(
-            f":white_check_mark: Set **log{logtype}** channel to #**{channel}**!"
-        )
-        print(ctx.bot.permissions)
+        await ctx.send(f"✅ Set **log{logtype}** channel to #**{channel}**!")
 
     @settings.command(name="greet", aliases=["welcome"])
     @checks.is_mod()

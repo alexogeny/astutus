@@ -11,7 +11,7 @@ class GreetModule(cmd.Cog):
         if greet_is_on in (None, "0"):
             return
         greet_msg = await self.bot.db.hget(f"{member.guild.id}:set", "grt")
-        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "grtc")
+        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "greetchannel")
         if not greet_msg or not greet_chan:
             return
         chan = self.bot.get_channel(int(greet_chan))
@@ -30,7 +30,7 @@ class GreetModule(cmd.Cog):
         if greet_is_on in (None, "0"):
             return
         greet_msg = await self.bot.db.hget(f"{member.guild.id}:set", "dpt")
-        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "dptc")
+        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "goodbyechannel")
         if not greet_msg or not greet_chan:
             return
         chan = self.bot.get_channel(int(greet_chan))

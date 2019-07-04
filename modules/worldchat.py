@@ -31,7 +31,7 @@ class WorldChatModule(cmd.Cog):
         ctx = await self.bot.get_context(message)
         if ctx.valid:
             return False
-        wch = int(await self.bot.db.hget("worldchat", message.guild.id) or 0)
+        wch = int(await self.bot.db.hget("channelworldchat", message.guild.id) or 0)
         if wch != message.channel.id:
             return False
         now = arrow.utcnow()
@@ -62,7 +62,7 @@ class WorldChatModule(cmd.Cog):
 
         embed.description = RET.sub("", message.content[0:300]).replace("\n", " ")
 
-        chats = await self.bot.db.hgetall("worldchat")
+        chats = await self.bot.db.hgetall("channelworldchat")
         censored = self.bot.profanity.censor(embed.description, "\\*")
         for guild, chat in chats.items():
             guild_obj = self.bot.get_guild(int(guild))

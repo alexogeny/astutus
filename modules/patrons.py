@@ -18,6 +18,7 @@ class PatronModule(cmd.Cog):
         self.bunnybot = 575101399747133443
         self.dream = 426087355250638859
         self.teto = 435221942807691266
+        self.kira = 441525718065872906
 
     @cmd.command(name="dreamzxe", aliases=["dream", "xze", "bunnybot", "dreamxze"])
     async def _dream(self, ctx):
@@ -29,6 +30,22 @@ class PatronModule(cmd.Cog):
             await ctx.send(":rabbit: The master rabbit has lost the robot rabbit.")
         elif s_dream is None and s_bunnybot is not None:
             await ctx.send(":rabbit: The robbot rabbit is trying to find the master.")
+
+    @cmd.command(name="judgement", aliases=["judge"])
+    async def _judge(self, ctx, *user):
+        if not ctx.author.id == self.kira:
+            raise cmd.BadArgument("You do not have the power to write the death note.")
+        if not user:
+            raise cmd.BadArgument("You must write a name in the death note.")
+        user = await choose_item(ctx, "member", ctx.guild, " ".join(user).lower())
+        embed = await self.bot.embed()
+        embed.description = (
+            f"I am the god of the new world! {user} is now written in the death note."
+        )
+        embed.set_image(
+            url="https://cdn.discordapp.com/attachments/478869899499012096/596230452071890964/writesinnote.gif"
+        )
+        await ctx.send(embed=embed)
 
     @cmd.command(name="bae")
     async def _bae(self, ctx):

@@ -44,7 +44,7 @@ class FunModule(cmd.Cog):
             raise cmd.BadArgument(
                 f"You can only give away 1 cookie a day, **{ctx.author}**"
             )
-        await self.bot.db.zincrement("cookies", user.id, score=1)
+        await self.bot.db.zincrement("cookies", user.id)
         await self.bot.db.hset(
             "cookie", ctx.author.id, now.shift(days=1).strftime("%Y%m%d")
         )

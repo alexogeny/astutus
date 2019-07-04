@@ -38,7 +38,11 @@ async def choose_from(ctx, choices, text, embed, timeout=30):
 async def choose_item(ctx, kind, guild, query: str):
     kind2 = kind.replace("_", " ").title().replace(" ", "")
     try:
-        test = await getattr(cmd, f"{kind2}Converter")().convert(ctx, query)
+        test = None
+        if kind == "member" and query.isdigit():
+            test = await ctx.bot.fetch_user(int(query))
+        if test is None:
+            test = await getattr(cmd, f"{kind2}Converter")().convert(ctx, query)
         if test is not None:
             return test
     except cmd.BadArgument:
@@ -47,10 +51,13 @@ async def choose_item(ctx, kind, guild, query: str):
     result = await search_for(getattr(guild, f"{kind}s"), query)
     if len(result) == 1:
         _, yes = result[0]
-        return yes
+        if "@everyone" not in str(yes):
+            return yes
     if not result:
         raise cmd.BadArgument("No {} found.".format(kind.replace("_", " ")))
-    choices = result[0:20]
+    choices = [r for r in result if "@everyone" not in str(r)][0:20]
+    if not choices:
+        raise cmd.BadArgument("No {} found.".format(kind.replace("_", " ")))
     text = f"Please choose a number from the following:"
     embed = await ctx.bot.embed()
     embed.description = "\n".join([f"{x}. {y}" for x, y in choices])

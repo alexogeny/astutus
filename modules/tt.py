@@ -167,7 +167,7 @@ class TapTitansModule(cmd.Cog):
         if not any(roles):
             raise cmd.BadArgument("No clan roles are set up.")
         if not await checks.user_has_role([r.id for r in ctx.author.roles], *roles):
-            raise cmd.BadArgument
+            raise cmd.BadArgument("You do not have a GM/Master/Timer role.")
 
     async def has_clan_permissions(self, ctx, groupdict):
         "Check if the user has any clan role."

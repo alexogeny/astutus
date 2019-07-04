@@ -151,6 +151,28 @@ class UtilityModule(cmd.Cog):
 
     @cmd.command(hidden=True)
     @checks.is_bot_owner()
+    async def migratechannels(self, ctx):
+
+        for guild in self.bot.guilds:
+            starboard = await self.bot.db.hget(f"{guild.id}:set", "starboard")
+            if starboard not in ("0", None):
+                await self.bot.db.hset(f"{guild.id}:set", "channelstarboard", starboard)
+            greetc = await self.bot.db.hget(f"{guild.id}:set", "grtc")
+            if greetc not in ("0", None):
+                await self.bot.db.hset(f"{guild.id}:set", "channelgreet", greetc)
+            dptc = await self.bot.db.hget(f"{guild.id}:set", "dptc")
+            if dptc not in ("0", None):
+                await self.bot.db.hset(f"{guild.id}:set", "channelgoodbye", dptc)
+        worldchats = await self.bot.db.hgetall("worldchat")
+        await ctx.send("Migrating world chats...")
+        for guild, worldchat in worldchats.items():
+            if worldchat not in ("0", None):
+                await self.bot.db.hset(f"{guild}:set", "channelworldchat", worldchat)
+
+        await ctx.send("Success!")
+
+    @cmd.command(hidden=True)
+    @checks.is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
         if "astutus.modules" not in module:
             module = f"modules.{module}"

@@ -206,7 +206,8 @@ class InfoModule(cmd.Cog):
             value=humanfriendly.format_size(self.process.memory_full_info().uss),
         )
         embed.add_field(
-            name="CPU", value=self.process.cpu_percent() / psutil.cpu_count()
+            name="CPU",
+            value="{:.2f}%".format(self.process.cpu_percent() / psutil.cpu_count()),
         )
         total_members = sum(1 for _ in self.bot.get_all_members())
         total_online = len(
