@@ -62,19 +62,26 @@ class WorldChatModule(cmd.Cog):
 
         embed.description = RET.sub("", message.content[0:300]).replace("\n", " ")
 
-        chats = await self.bot.db.hgetall("channelworldchat")
+        chats = await asyncio.gather(
+            [
+                self.bot.db.hget(f"{g.id}:set", "channelworldchat")
+                for g in self.bot.guilds
+            ]
+        )
+        uncensored = embed.description
         censored = self.bot.profanity.censor(embed.description, "\\*")
-        for guild, chat in chats.items():
-            guild_obj = self.bot.get_guild(int(guild))
-            if guild_obj is not None and int(guild) != message.guild.id:
-                chan = guild_obj.get_channel(int(chat))
-                if chan is not None:
+        for chat in chats.items():
+            chn = self.bot.get_channel(int(chat or 0))
+            if chn is not None:
+                guild_obj = self.bot.get_guild(chn.guild)
+                if guild_obj != message.guild:
                     censor = int(
                         await self.bot.db.hget("worldchatc", guild_obj.id) or 0
                     )
                     if not censor:
                         embed.description = censored
-                    await chan.send(embed=embed)
+                    await chn.send(embed=embed)
+                    embed.description = uncensored
 
 
 def setup(bot):

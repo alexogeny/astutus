@@ -29,7 +29,7 @@ class StarboardModule(cmd.Cog):
         if member.bot or not await self.can_star(member):
             return
         quote_chan = int(
-            await self.bot.db.hget(f"{channel.guild.id}:set", "starboard") or 0
+            await self.bot.db.hget(f"{channel.guild.id}:set", "channelstarboard") or 0
         )
         quote_chan = channel.guild.get_channel(quote_chan)
         if quote_chan is None:
