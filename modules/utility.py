@@ -175,6 +175,12 @@ class UtilityModule(cmd.Cog):
 
         await ctx.send("Success!")
 
+    @cmd.command(name="source", aliases=["sourcecode", "github", "git"])
+    async def source(self, ctx):
+        await ctx.send(
+            "How nice that you want to contribute! <https://github.com/lxmcneill/astutus>"
+        )
+
     @cmd.command(hidden=True)
     @checks.is_bot_owner()
     async def load(self, ctx: cmd.Context, *, module: str):
