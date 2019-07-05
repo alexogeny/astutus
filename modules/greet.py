@@ -7,16 +7,17 @@ class GreetModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
-        greet_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "greet")
-        if greet_is_on in (None, "0"):
+        greet_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "greet") or 0
+        if not int(greet_is_on):
             return
-        greet_msg = await self.bot.db.hget(f"{member.guild.id}:set", "grt")
-        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "greetchannel")
-        if not greet_msg or not greet_chan:
-            return
+        greet_chan = (
+            await self.bot.db.hget(f"{member.guild.id}:set", "channelgreet") or 0
+        )
         chan = self.bot.get_channel(int(greet_chan))
         if not chan:
-            await self.bot.db.hset(f"{member.guild.id}:toggle", "greet", "0")
+            return
+        greet_msg = await self.bot.db.hget(f"{member.guild.id}:set", "grt")
+        if not greet_msg:
             return
         await chan.send(
             greet_msg.format(
@@ -30,7 +31,7 @@ class GreetModule(cmd.Cog):
         if greet_is_on in (None, "0"):
             return
         greet_msg = await self.bot.db.hget(f"{member.guild.id}:set", "dpt")
-        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "goodbyechannel")
+        greet_chan = await self.bot.db.hget(f"{member.guild.id}:set", "channelgoodbye")
         if not greet_msg or not greet_chan:
             return
         chan = self.bot.get_channel(int(greet_chan))

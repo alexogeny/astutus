@@ -97,22 +97,6 @@ class SettingsModule(cmd.Cog):
         await self.bot.db.hset(f"{ctx.guild.id}:set", "pfx", prefix)
         await ctx.send(f"Set the custom server prefix to **{prefix}**")
 
-    @settings.command(name="starboard")
-    @checks.is_mod()
-    async def starboard(self, ctx, channel: Optional[cmd.TextChannelConverter] = None):
-        if not channel:
-            raise cmd.BadArgument("You need to supply a channel.")
-        await self.bot.db.hset(f"{ctx.guild.id}:set", "starboard", channel.id)
-        await ctx.send(f"Set the starboard channel to #**{channel}**!")
-
-    @settings.command(name="worldchat", aliases=["wc"])
-    @checks.is_mod()
-    async def worldchat(self, ctx, channel: Optional[cmd.TextChannelConverter] = None):
-        if not channel:
-            raise cmd.BadArgument("You need to supply a channel.")
-        await self.bot.db.hset("worldchat", ctx.guild.id, channel.id)
-        await ctx.send(f"Set the world-chat channel to #**{channel}**!")
-
     @settings.command(name="wccensor", aliases=["worldchatcensor"])
     @checks.is_mod()
     async def worldchatc(self, ctx, enabled: Optional[bool] = False):
@@ -179,9 +163,7 @@ class SettingsModule(cmd.Cog):
 
     @settings.command(name="logging", aliases=["log"])
     @checks.is_mod()
-    async def logging(
-        self, ctx, logtype, channel: Optional[cmd.TextChannelConverter] = None
-    ):
+    async def logging(self, ctx, logtype, *channel):
         logtypes = "mod joins leaves edits deletes avatars channels roles pins".split()
         if logtype.lower() not in logtypes:
             raise cmd.BadArgument(
@@ -189,58 +171,40 @@ class SettingsModule(cmd.Cog):
                     ", ".join([f"**{l}**" for l in logtypes])
                 )
             )
-        if channel is None:
-            raise cmd.BadArgument("Could not find channel with that name.")
+        if channel:
+            channel = await choose_item(
+                ctx, "text_channel", ctx.guild, " ".join(channel).lower()
+            )
+        if channel is None or not channel:
+            raise cmd.BadArgument("Could not find a channel with that name.")
         await self.bot.db.hset(f"{ctx.guild.id}:set", f"log{logtype}", channel.id)
         await ctx.send(f"✅ Set **log{logtype}** channel to #**{channel}**!")
 
     @settings.command(name="greet", aliases=["welcome"])
     @checks.is_mod()
-    async def greet(self, ctx, key: str = "message", *message):
-        if key.lower().startswith("m"):
-            msg = " ".join(message)
-            if len(msg) > 140:
-                raise cmd.BadArgument("Greets are limited to 140 characters.")
-            await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", msg)
-            await ctx.send(
-                msg.format(
-                    user=str(ctx.author),
-                    server=str(ctx.guild),
-                    mention=ctx.author.mention,
-                )
+    async def greet(self, ctx, *, message):
+        if len(message) > 140:
+            raise cmd.BadArgument("Greets are limited to 140 characters.")
+        await self.bot.db.hset(f"{ctx.guild.id}:set", "grt", message)
+        await ctx.send(
+            message.format(
+                user=str(ctx.author), server=str(ctx.guild), mention=ctx.author.mention
             )
-        elif key.lower().startswith("c"):
-            chan = await cmd.TextChannelConverter().convert(ctx, " ".join(message))
-            if chan is None:
-                raise cmd.BadArgument(f"Could not find channel: {message}")
-            await self.bot.db.hset(f"{ctx.guild.id}:set", "grtc", chan.id)
-            await ctx.send(f"Set greet channel to #**{chan}**")
+        )
 
     @settings.command(name="goodbye", aliases=["depart", "fairwell"])
     @checks.is_mod()
-    async def goodbye(self, ctx, key: str = "message", *message):
-        if key.lower().startswith("m"):
-            msg = " ".join(message)
-            if len(msg) > 140:
-                raise cmd.BadArgument(
-                    "Goodbyes are limited to 140 characters. Please choose a smaller message."
-                )
-            await self.bot.db.hset(f"{ctx.guild.id}:set", "dpt", msg)
-            await ctx.send(
-                msg.format(
-                    user=str(ctx.author),
-                    server=str(ctx.guild),
-                    mention=ctx.author.mention,
-                )
+    async def goodbye(self, ctx, *, message):
+        if len(message) > 140:
+            raise cmd.BadArgument(
+                "Goodbyes are limited to 140 characters. Please choose a smaller message."
             )
-        elif key.lower().startswith("c"):
-            channel = await cmd.TextChannelConverter().convert(ctx, " ".join(message))
-            if not channel:
-                raise cmd.BadArgument(
-                    f"Could not find channel: #**{' '.join(message)}**"
-                )
-            await self.bot.db.hset(f"{ctx.guild.id}:set", "dptc", channel.id)
-            await ctx.send(f"Set goodbye channel to #**{channel}**")
+        await self.bot.db.hset(f"{ctx.guild.id}:set", "dpt", message)
+        await ctx.send(
+            message.format(
+                user=str(ctx.author), server=str(ctx.guild), mention=ctx.author.mention
+            )
+        )
 
     @cmd.command(name="toggle")
     @checks.is_mod()

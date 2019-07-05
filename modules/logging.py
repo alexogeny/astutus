@@ -1,4 +1,5 @@
 # from imgurpython import ImgurClient
+from urllib3.util import parse_url
 import mimetypes
 import discord
 import arrow
@@ -10,6 +11,21 @@ class LoggingModule(cmd.Cog):
 
     def __init__(self, bot: cmd.Bot):
         self.bot = bot
+
+    async def parse_avatar(self, user):
+        url = user.avatar_url_as(static_format="png", size=1024)
+        parsed = parse_url(str(url))
+        ext = parsed.path.split(".")[-1]
+        ctype = f"image/{ext}"
+        return url, ctype, ext
+
+    async def log_avatar(self, user):
+        cached = await self.bot.db.hget("avatar_cache", user.id)
+        if not cached or cached is None:
+            url, ctype, ext = await self.parse_avatar(user)
+            i = await self.bot.cdn.upload_file("u", user.id, url, ext, ctype)
+            await self.bot.db.hset("avatar_cache", user.id, i)
+        return cached
 
     @cmd.Cog.listener()
     async def on_member_join(self, member):
@@ -27,15 +43,7 @@ class LoggingModule(cmd.Cog):
         embed.title = f"**{member}** joined **{member.guild}**"
         embed.description = f"{member.mention} (ID: {member.id})"
         embed.color = 0x36CE31
-        cached = await self.bot.db.hget("avatar_cache", member.id)
-        if not cached or cached is None:
-            url = member.avatar_url_as(static_format="png", size=1024)
-            urls = str(url).split("/")[-1].split("?")[0]
-            ctype, _ = mimetypes.guess_type(urls)
-            ext = ctype.split("/")[-1]
-            i = await self.bot.cdn.upload_file("u", member.id, url, ext, ctype)
-            await self.bot.db.hset("avatar_cache", member.id, i)
-            cached = i
+        cached = await self.log_avatar(member)
         embed.set_thumbnail(url=cached)
 
         created = (member.joined_at - member.created_at).days
@@ -46,12 +54,10 @@ class LoggingModule(cmd.Cog):
 
     @cmd.Cog.listener()
     async def on_member_remove(self, member):
-        log_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "logging")
-        if log_is_on in (None, "0"):
+        log_is_on = await self.bot.db.hget(f"{member.guild.id}:toggle", "logging") or 0
+        if not int(log_is_on):
             return
-        log_chan = await self.bot.db.hget(f"{member.guild.id}:set", "logleaves")
-        if not log_chan:
-            return
+        log_chan = await self.bot.db.hget(f"{member.guild.id}:set", "logleaves") or 0
         chan = self.bot.get_channel(int(log_chan))
         if not chan:
             return
@@ -60,14 +66,7 @@ class LoggingModule(cmd.Cog):
             description=f"{member.mention} (ID: {member.id})",
             color=0xFF0000,
         )
-        i = await self.bot.db.hget("avatar_cache", member.id)
-        if not i or i is None:
-            url = member.avatar_url_as(static_format="png", size=1024)
-            urls = str(url).split("/")[-1].split("?")[0]
-            ctype, _ = mimetypes.guess_type(urls)
-            ext = ctype.split("/")[-1]
-            i = await self.bot.cdn.upload_file("u", member.id, url, ext, ctype)
-            await self.bot.db.hset("avatar_cache", member.id, i)
+        i = await self.log_avatar(member)
         embed.set_thumbnail(url=i)
         await chan.send(embed=embed)
 
@@ -149,28 +148,24 @@ class LoggingModule(cmd.Cog):
     async def on_user_update(self, before, after):
         if before.bot:
             return
-        i = None
         if hash(before.avatar) != hash(after.avatar):
-            url = after.avatar_url_as(static_format="png", size=1024)
-            urls = str(url).split("/")[-1].split("?")[0]
-            ctype, _ = mimetypes.guess_type(urls)
-            ext = ctype.split("/")[-1]
-            i = await self.bot.cdn.upload_file("u", after.id, url, ext, ctype)
-            await self.bot.db.hset("avatar_cache", after.id, i)
+            await self.log_user_avatar(after)
+
+    async def log_user_avatar(self, after):
+        url, ctype, ext = await self.parse_avatar(after)
+        i = await self.bot.cdn.upload_file("u", after.id, url, ext, ctype)
+        await self.bot.db.hset("avatar_cache", after.id, i)
         chans_to_log_avatars = []
         for guild in self.bot.guilds:
-            log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging")
-            if log_is_on in (None, "0"):
-                return
-            log_chan = await self.bot.db.hget(f"{guild.id}:set", "logavatars")
-            if not log_chan or log_chan is None:
-                return
-            chan = self.bot.get_channel(int(log_chan))
-            if chan is None:
-                await self.bot.db.hdel(f"{guild.guild.id}:set", "logavatars")
-            else:
-                chans_to_log_avatars.append(chan)
-        if chans_to_log_avatars and i is not None:
+            log_is_on = await self.bot.db.hget(f"{guild.id}:toggle", "logging") or 0
+            if int(log_is_on):
+                log_chan = await self.bot.db.hget(f"{guild.id}:set", "logavatars") or 0
+                chan = self.bot.get_channel(int(log_chan))
+                if chan is None:
+                    await self.bot.db.hdel(f"{guild.guild.id}:set", "logavatars")
+                else:
+                    chans_to_log_avatars.append(chan)
+        if chans_to_log_avatars:
             embed = await self.bot.embed()
             embed.title = f"**{after}**'s new avatar"
             embed.set_image(url=i)
@@ -252,23 +247,9 @@ class LoggingModule(cmd.Cog):
             embed.add_field(
                 name=action.title(), value=", ".join([r.mention for r in roles])
             )
-        i = await self.bot.db.hget("avatar_cache", user.id)
-        if not i or i is None:
-            url = user.avatar_url_as(static_format="png", size=1024)
-            urls = str(url).split("/")[-1].split("?")[0]
-            ctype, _ = mimetypes.guess_type(urls)
-            ext = ctype.split("/")[-1]
-            i = await self.bot.cdn.upload_file("u", user.id, url, ext, ctype)
-            await self.bot.db.hset("avatar_cache", user.id, i)
+        i = await self.log_avatar(user)
         embed.set_thumbnail(url=i)
-        i = await self.bot.db.hget("avatar_cache", author.id)
-        if not i or i is None:
-            url = author.avatar_url_as(static_format="png", size=1024)
-            urls = str(url).split("/")[-1].split("?")[0]
-            ctype, _ = mimetypes.guess_type(urls)
-            ext = ctype.split("/")[-1]
-            i = await self.bot.cdn.upload_file("u", author.id, url, ext, ctype)
-            await self.bot.db.hset("avatar_cache", author.id, i)
+        i = await self.log_avatar(author)
         embed.set_author(name=f"{author} ({author.id})", icon_url=i)
         case = await log_mod.send(embed=embed)
         await self.bot.db.hset(f"{guild.id}:case", case_number, case.id)
@@ -354,14 +335,7 @@ class LoggingModule(cmd.Cog):
             embed.add_field(
                 name=action.title(), value=", ".join([r.mention for r in roles])
             )
-        i = await self.bot.db.hget("avatar_cache", user.id)
-        if not i or i is None:
-            url = user.avatar_url_as(static_format="png", size=1024)
-            urls = str(url).split("/")[-1].split("?")[0]
-            ctype, _ = mimetypes.guess_type(urls)
-            ext = ctype.split("/")[-1]
-            i = await self.bot.cdn.upload_file("u", user.id, url, ext, ctype)
-            await self.bot.db.hset("avatar_cache", user.id, i)
+        i = await self.log_avatar(user)
         embed.set_thumbnail(url=i)
         await chan.send(embed=embed)
 
