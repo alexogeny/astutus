@@ -136,9 +136,89 @@ class InfoModule(cmd.Cog):
         embed.color = 0xF86754
         await ctx.send(embed=embed)
 
+    @cmd.command(name="rolecount")
+    async def rolecount(self, ctx, *role_search):
+        if role_search:
+            role_search = await choose_item(
+                ctx, "role", ctx.guild, " ".join(role_search).lower()
+            )
+        else:
+            raise cmd.BadArgument(
+                "No role given! Use **{}roles** to see existing roles.".format(
+                    ctx.prefix
+                )
+            )
+        member_count = len(role_search.members)
+        plural = "s" if member_count != 1 else ""
+        await ctx.send(
+            "**{}** member{} {} the role @**{}**!".format(
+                member_count, plural, "has" if not plural else "have", role_search
+            )
+        )
+        return role_search
+
+    @cmd.command(name="rolelist")
+    async def rolelist(self, ctx, *role_search):
+        if role_search:
+            role_search = await choose_item(
+                ctx, "role", ctx.guild, " ".join(role_search).lower()
+            )
+        else:
+            raise cmd.BadArgument(
+                "No role given! Use **{}roles** to see existing roles.".format(
+                    ctx.prefix
+                )
+            )
+        embed = await self.bot.embed()
+        members = role_search.members[0:100]
+        # if len(role_search.members) > 100:
+        show = len(role_search.members) == len(members)
+        show = "Displaying" if show else f"{len(members)} of {len(role_search.members)}"
+        embed.title = f"{show} members with {role_search} role"
+        embed.color = role_search.color
+        embed.description = ", ".join([m.mention for m in members])
+        await ctx.send(embed=embed)
+
     @cmd.group(name="info", invoke_without_command=True, aliases=["i"])
     async def info(self, ctx):
         return
+
+    @info.command(name="role", aliases=["roles"])
+    async def roles(self, ctx, *role_search):
+        embed = await self.bot.embed()
+        if not role_search:
+            roles = ", ".join([r.mention for r in ctx.guild.roles])
+            embed.description = roles
+            await ctx.send(embed=embed)
+            return
+        if role_search:
+            role_search = " ".join(role_search).lower()
+            role_search = await choose_item(ctx, "role", ctx.guild, role_search)
+        else:
+            raise cmd.BadArgument(
+                "No role given! Use **{}roles** to see existing roles.".format(
+                    ctx.prefix
+                )
+            )
+        embed.color = role_search.color
+        embed.description = f"Information about {role_search.mention} role"
+        embed.add_field(name="ID", value=role_search.id)
+
+        days = (ctx.message.created_at - role_search.created_at).days
+        plural = "s" if days != 1 else ""
+        embed.add_field(name="Created", value=f"**{days}** day{plural} ago")
+        embed.add_field(name="Integration", value=role_search.managed)
+        embed.add_field(name="Displayed Separately", value=role_search.hoist)
+        embed.add_field(name="Pingable", value=role_search.mentionable)
+        embed.add_field(
+            name="Position", value=ctx.guild.roles[::-1].index(role_search) + 1
+        )
+        count = len(role_search.members)
+        online = len(
+            [m for m in role_search.members if m.status != discord.Status.offline]
+        )
+        embed.add_field(name="Members", value=f"{online} / {count} online")
+        await ctx.send(embed=embed)
 
     @info.command(name="user", aliases=["member"])
     @cmd.guild_only()

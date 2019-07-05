@@ -32,6 +32,7 @@ from .utils.etc import (
     snake_get,
     get_closest_match,
 )
+from .utils.discord_search import choose_item
 from .utils import tt2
 
 getcontext().prec = 4
@@ -116,7 +117,7 @@ TT_CSV_FILES = dict(
     arts="Artifact",
     equips="Equipment",
     skills="SkillTree",
-    passives='PassiveSkill'
+    passives="PassiveSkill",
 )
 TT_TITAN_LORDS = ["Lojak", "Takedar", "Jukk", "Sterl", "Mohaca", "Terro"]
 
@@ -215,63 +216,94 @@ class TapTitansModule(cmd.Cog):
             raise asyncio.CancelledError
         spawn = g.get("spawn", None)
         cooldown = g.get("cd", None)
-        reset = int(g.get('reset', 0))
-        chan = guild.get_channel(int(g.get('announce', 0)))
+        reset = int(g.get("reset", 0))
+        chan = guild.get_channel(int(g.get("announce", 0)))
+        reminded = int(g.get("reminded", 0))
         if chan is None:
             raise asyncio.CancelledError
-        msg = await chan.fetch_message(int(g.get('edit', 0)))
+        msg = await chan.fetch_message(int(g.get("edit", 0)))
         if msg is None:
-            msg = await chan.send('Respawning timer ...')
+            msg = await chan.send("Respawning timer ...")
         if cooldown is not None:
             cdn = arrow.get(cooldown)
             if now > cdn:
                 arr = now - cdn
                 hms = await get_hms(arr)
                 await self.update_timer_message(
-                   msg, TIMER_TEXT.format('cooldown ended', hms[0], hms[1], hms[2])
+                    msg, TIMER_TEXT.format("cooldown ended", hms[0], hms[1], hms[2])
                 )
+                if not reminded:
+                    print('remind people')
+                    # remind masters here
+                    r_gm, r_ms, r_tm = (
+                        int(g.get("gm", 0)),
+                        int(g.get("master", 0)),
+                        int(g.get("timer", 0)),
+                    )
+                    print(r_gm, r_ms, r_tm)
+                    to_remind = []
+                    for r in [r_gm, r_ms, r_tm]:
+                        role = guild.get_role(int(r))
+                        if role is not None:
+                            for member in role.members:
+                                if member.mention not in to_remind:
+                                    to_remind.append(member.mention)
+                    print(to_remind)
+                    await chan.send('Set the raid timer!\n{}'.format(', '.join(to_remind)))
+                    await self.bot.db.hset(f"{guild.id}:tt:{group}", 'reminded', 1)
             else:
                 arr = cdn - now
                 hms = await get_hms(arr)
                 await self.update_timer_message(
-                    msg, TIMER_TEXT.format('cooldown ends in', hms[0], hms[1], hms[2])
+                    msg, TIMER_TEXT.format("cooldown ends in", hms[0], hms[1], hms[2])
                 )
         elif spawn is not None:
             next_spawn = arrow.get(spawn).shift(hours=12 * reset)
             hms = await get_hms(next_spawn - now)
             if not reset and next_spawn >= now:
-                text = 'starts in'
+                text = "starts in"
             elif now > next_spawn:
-                text = f'reset #{reset} ends in'
+                text = f"reset #{reset} ends in"
                 if reset > 0:
                     hms = await get_hms(next_spawn.shift(hours=12 * reset) - now)
                 else:
                     hms = await get_hms(next_spawn.shift(hours=12) - now)
-                if int(g.get('depl', 0)):
-                    await self.bot.db.hset(f"{guild.id}:tt:{group}", 'depl', 0)
+                if int(g.get("depl", 0)):
+                    await self.bot.db.hset(f"{guild.id}:tt:{group}", "depl", 0)
             else:
-                text = f'reset #{reset} starts in'
+                text = f"reset #{reset} starts in"
             await self.update_timer_message(
                 msg, TIMER_TEXT.format(text, hms[0], hms[1], hms[2])
             )
             if now > next_spawn:
                 queue = await self.bot.db.lrange(f"{guild.id}:tt:{group}:q")
-                current = g.get('current', '').strip().split()
-                mode, depl = int(g.get('mode', 1)), int(g.get('depl', 0))
+                current = g.get("current", "").strip().split()
+                mode, depl = int(g.get("mode", 1)), int(g.get("depl", 0))
+                to_ping = guild.get_role(int(g.get("ping", 0)))
+                if to_ping is None or (to_ping and not to_ping.mentionable):
+                    to_ping = "@everyone"
+                else:
+                    to_ping = to_ping.mention
                 if mode == 6 and not depl:
-                    await chan.send('Raid spawned, @everyone!')
-                    edit = await chan.send('Preparing next raid timer...')
-                    for hset, val in dict(edit=edit.id, depl=1, reset=reset + 1).items():
-                            await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)
+                    await chan.send(f"Raid spawned, {to_ping}!")
+                    edit = await chan.send("Preparing next raid timer...")
+                    for hset, val in dict(
+                        edit=edit.id, depl=1, reset=reset + 1
+                    ).items():
+                        await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)
 
                     depl = 1
                 if not current and not queue:
                     if depl:
                         pass
                     else:
-                        await chan.send(f'Queue over @everyone! Ready for reset #{reset + 1}.')
+                        await chan.send(
+                            f"Queue over {to_ping}! Ready for reset #{reset + 1}."
+                        )
                         edit = await chan.send("Preparing next reset timer...")
-                        for hset, val in dict(edit=edit.id, depl=1, reset=reset + 1).items():
+                        for hset, val in dict(
+                            edit=edit.id, depl=1, reset=reset + 1
+                        ).items():
                             await self.bot.db.hset(f"{guild.id}:tt:{group}", hset, val)
                         await self.bot.db.delete(f"{guild.id}:tt:{group}:q")
                 elif current and not queue:
@@ -284,7 +316,9 @@ class TapTitansModule(cmd.Cog):
                         await self.bot.db.lrem(f"{guild.id}:tt:{group}:q", upnext[cnt])
                         cnt += 1
                     await self.bot.db.hset(
-                        f"{guild.id}:tt:{group}", "current", " ".join([str(m.id) for m in members])
+                        f"{guild.id}:tt:{group}",
+                        "current",
+                        " ".join([str(m.id) for m in members]),
                     )
                     await chan.send(
                         "It's {}'s turn to attack the raid!".format(
@@ -393,7 +427,9 @@ class TapTitansModule(cmd.Cog):
                 for n, m in TT_ROLES.items()
             ]
         )
-        queue = "is disabled" if r.get('mode') == '6' else f"size is **{r.get('mode', 1)}**"
+        queue = (
+            "is disabled" if r.get("mode") == "6" else f"size is **{r.get('mode', 1)}**"
+        )
         await ctx.send(
             f"**{r.get('name', '<clanname>')}** [{r.get('code', '00000')}] "
             f"T{r.get('tier', 1)}Z{r.get('zone', 1)}\n"
@@ -404,18 +440,27 @@ class TapTitansModule(cmd.Cog):
     @taptitans.group(name="set", usage="key val")
     @cmd.guild_only()
     @checks.is_mod()
-    async def tt_set(self, ctx, group: Optional[tt2.TTRaidGroup], key: tt2.TTKey, val):
+    async def tt_set(self, ctx, group: Optional[tt2.TTRaidGroup], key: tt2.TTKey, *val):
         "Set a settings key for tap titans clan."
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
+
         await self.has_admin_or_mod_or_master(ctx, groupdict)
-        if key in "gmmastercaptainknightrecruitapplicantguesttimer":
-            val = await cmd.RoleConverter().convert(ctx, val)
+
+        val = " ".join(val)
+        print(val)
+
+        if key in "gmmastercaptainknightrecruitapplicantguesttimerping":
+            val = await choose_item(ctx, "role", ctx.guild, val.lower())
+            if val is None or not val:
+                raise cmd.BadArgument("Could not find a role with that name.")
             await self.bot.db.hset(group, key, val.id)
         elif key == "announce":
-            val = await cmd.TextChannelConverter().convert(ctx, val)
+            val = await choose_item(ctx, "text_channel", ctx.guild, val.lower())
+            if val is None or not val:
+                raise cmd.BadArgument("Could not find a channel with that name.")
             await self.bot.db.hset(group, key, val.id)
         elif key in "zonetier":
             try:
@@ -456,57 +501,68 @@ class TapTitansModule(cmd.Cog):
             try:
                 val = int(val)
             except:
-                raise cmd.BadArgument("You must supply a number between 1 and 6. NOTE: 6 means no queuing.")
+                raise cmd.BadArgument(
+                    "Supply a number between 1-6. NOTE: 6 means no queue."
+                )
             if not 1 <= val <= 6:
-                raise cmd.BadArgument("Queue mode must be between 1 and 6. NOTE: 6 means no queuing.")
+                raise cmd.BadArgument(
+                    "Queue mode must be between 1-6. NOTE: 6 means no queue."
+                )
             await self.bot.db.hset(group, key, val)
         else:
             await self.bot.db.hset(group, key, val)
         await ctx.send(f"Set the TT2 **{key}** key to **{val}**")
 
-    @taptitans.group(name='raid', aliases=['r', 'rd', 'boss'], invoke_without_command=True)
-    async def tt_raid(self, ctx, group: Optional[tt2.TTRaidGroup], time: Optional[Duration] = None):
+    @taptitans.group(
+        name="raid", aliases=["r", "rd", "boss"], invoke_without_command=True
+    )
+    async def tt_raid(
+        self, ctx, group: Optional[tt2.TTRaidGroup], time: Optional[Duration] = None
+    ):
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
         now = arrow.utcnow()
         if time is None:
             time = now.shift(hours=24)
-        text = 'starts in'
+        text = "starts in"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
         await self.has_timer_permissions(ctx, groupdict)
         spawn = groupdict.get("spawn", None)
         cooldown = groupdict.get("cd", None)
         reset = int(groupdict.get("reset", 0))
-        announce = int(groupdict.get('announce', 0))
+        announce = int(groupdict.get("announce", 0))
         announce = ctx.guild.get_channel(announce)
         if announce is None:
             raise cmd.BadArgument("No announce channel detected.")
         if cooldown is not None:
             cdn = arrow.get(cooldown)
             if cdn > now:
-                text = 'cooldown ends in'
+                text = "cooldown ends in"
                 hms = await get_hms(cdn - now)
             else:
                 await self.bot.db.hdel(group, "reset")
+                await self.bot.db.hdel(group, "reminded")
                 await self.bot.db.hdel(group, "current")
                 await self.bot.db.hset(group, "depl", 0)
-                await self.bot.db.hset(group, 'spawn', time.timestamp)
+                await self.bot.db.hset(group, "spawn", time.timestamp)
                 await self.bot.db.hdel(group, "cd")
                 hms = await get_hms(time - now)
-                edit = await announce.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
-                await self.bot.db.hset(group, 'edit', edit.id)
+                edit = await announce.send(
+                    TIMER_TEXT.format(text, hms[0], hms[1], hms[2])
+                )
+                await self.bot.db.hset(group, "edit", edit.id)
         elif spawn is not None:
-            spwn = arrow.get(spawn).shift(hours=12*reset)
+            spwn = arrow.get(spawn).shift(hours=12 * reset)
             hms = await get_hms(spwn - now)
             if reset:
-                text = f'reset #{reset} starts in'
+                text = f"reset #{reset} starts in"
         else:
-            await self.bot.db.hset(group, 'spawn', time.timestamp)
+            await self.bot.db.hset(group, "spawn", time.timestamp)
             hms = await get_hms(time - now)
             edit = await announce.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
-            await self.bot.db.hset(group, 'edit', edit.id)
-        await ctx.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
+            await self.bot.db.hset(group, "edit", edit.id)
+        await ctx.send("✅ Raid timer set.")
 
     @tt_raid.command(name="upload", aliases=["u"])
     async def tt_raid_upload(self, ctx, group: int, date, level, *, data):
@@ -541,7 +597,9 @@ class TapTitansModule(cmd.Cog):
         base = int(self.bot.config["TT2"]["basedmg"])
         pct = float(self.bot.config["TT2"]["cardpct"])
         tcc = int(self.bot.config["TT2"]["tcc"])
-        return 100*(dmg / (((base) * ((prl / 100) + 0.99) * ((1+pct) ** (tcl - tcc)))))
+        return 100 * (
+            dmg / (((base) * ((prl / 100) + 0.99) * ((1 + pct) ** (tcl - tcc))))
+        )
 
     @tt_raid.command(name="performance", aliases=["pfm", "perf"])
     async def tt_raid_perf(
@@ -579,7 +637,8 @@ class TapTitansModule(cmd.Cog):
             perf = await self.get_raid_performance(int(prl), int(tcl), avg / 1000)
             print(perf)
             embed = discord.Embed(
-                title=f"Performance for {player} in last raid", description=f"{perf:.2f}%"
+                title=f"Performance for {player} in last raid",
+                description=f"{perf:.2f}%",
             )
             await ctx.send(embed=embed)
 
@@ -649,8 +708,7 @@ class TapTitansModule(cmd.Cog):
                 f"Can't clear unspawned raid. Use **{ctx.prefix}cancel**."
             )
         if cd is None:
-            # cd = now.shift(minutes=59, seconds=59)
-            cd = now.shift(minutes=1)
+            cd = now.shift(minutes=59, seconds=59)
         delta = cd - now
         _h, _m, _s = await get_hms(delta)
         shifter = {}
@@ -658,11 +716,8 @@ class TapTitansModule(cmd.Cog):
             shifter["minutes"] = 60 - _m
         if _s not in [0, 59]:
             shifter["seconds"] = 60 - _s
-        # if cd < spwn_arrow.shift(minutes=60):
-        #     await ctx.send(
-        #         "You cannot timetravel. Cooldown end must be 60 minutes after raid."
-        #     )
-        #     raise cmd.BadArgument
+        if cd < spwn_arrow.shift(minutes=59, seconds=58):
+            raise cmd.BadArgument("Cooldown end must be 60m after raid.")
 
         total_time = now.shift(**shifter) - spwn_arrow
         g = groupdict
@@ -694,7 +749,7 @@ class TapTitansModule(cmd.Cog):
         if not any([spawn, cd]):
             await ctx.send("No raid to cancel.")
             return
-        for k in "edit spawn cd current depl reset".split():
+        for k in "edit spawn cd current depl reset reminded".split():
             await self.bot.db.hdel(group, k)
         await self.bot.db.delete(f"{group}:q")
         await ctx.send("Cancelled the current raid.")
@@ -785,7 +840,7 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         groupdict = await self.bot.db.hgetall(group)
-        if int(groupdict.get('mode', 1)) > 5:
+        if int(groupdict.get("mode", 1)) > 5:
             return
         await self.has_clan_permissions(ctx, groupdict)
         result = groupdict.get("spawn", 0)
@@ -798,7 +853,7 @@ class TapTitansModule(cmd.Cog):
         elif resets and not depl or resets and depl:
             resets = f"reset #{resets}"
         # elif resets and depl:
-            # resets = f"reset #{resets}"
+        # resets = f"reset #{resets}"
         q = f"{group}:q"
         users = await self.bot.db.lrange(q)
         current = groupdict.get("current", "").split()
@@ -854,7 +909,7 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
-        if int(g.get('mode', 1)) > 5:
+        if int(g.get("mode", 1)) > 5:
             return
         await self.has_clan_permissions(ctx, g)
         result = g.get("spawn", 0)
@@ -885,7 +940,7 @@ class TapTitansModule(cmd.Cog):
             group = f"{ctx.guild.id}:tt:1"
         group = await self.get_raid_group_or_break(group, ctx)
         g = await self.bot.db.hgetall(group)
-        if int(g.get('mode', 1)) > 5:
+        if int(g.get("mode", 1)) > 5:
             return
         await self.has_clan_permissions(ctx, g)
         if not g.get("spawn", 0):
@@ -1209,12 +1264,15 @@ class TapTitansModule(cmd.Cog):
     #     return
 
     async def get_passive_level(self, skill, amount, mult=1.00):
-        skill = next((s for s in self.passives if s['Name'] == skill), {})
-        nxt = next((
-            int(skill[f"A{int(key[1:])}"])
-            for key in skill
-            if key.startswith("C") and int(skill[key])*mult > amount
-        ), 0)
+        skill = next((s for s in self.passives if s["Name"] == skill), {})
+        nxt = next(
+            (
+                int(skill[f"A{int(key[1:])}"])
+                for key in skill
+                if key.startswith("C") and int(skill[key]) * mult > amount
+            ),
+            0,
+        )
         return nxt
 
     async def titancount(self, stage, ip_, ab_, snap):
@@ -1258,20 +1316,34 @@ class TapTitansModule(cmd.Cog):
     ):
         "Optimal ed calculator"
         if mechanized_sword == 1.0:
-            mechanized_sword = 0.75 if int(await self.bot.db.hget(f"{ctx.author.id}:tt:set", 'ms') or 0) else 1.0
+            mechanized_sword = (
+                0.75
+                if int(await self.bot.db.hget(f"{ctx.author.id}:tt:set", "ms") or 0)
+                else 1.0
+            )
         if not angelic_guardian:
-            angelic_guardian = 8 if int(await self.bot.db.hget(f'{ctx.author.id}:tt:set', 'ag') or 0) else 0
+            angelic_guardian = (
+                8
+                if int(await self.bot.db.hget(f"{ctx.author.id}:tt:set", "ag") or 0)
+                else 0
+            )
         if stage == 1:
-            stage = int(await self.bot.db.hget(f"{ctx.author.id}:tt", 'ms') or 0)
+            stage = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ms") or 0)
         if ip == 0:
             sp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "sp") or 0)
-            ip = await self.get_passive_level('Intimidating Presence', sp, mult=mechanized_sword)
+            ip = await self.get_passive_level(
+                "Intimidating Presence", sp, mult=mechanized_sword
+            )
         if arcane_bargain == 0:
             ds = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ds") or 0)
-            arcane_bargain = await self.get_passive_level('Arcane Bargain', ds, mult=mechanized_sword)
+            arcane_bargain = await self.get_passive_level(
+                "Arcane Bargain", ds, mult=mechanized_sword
+            )
         if mystic_impact == 0:
             tp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "tp") or 0)
-            mystic_impact = await self.get_passive_level('SorcererSplashSkip', tp, mult=mechanized_sword)
+            mystic_impact = await self.get_passive_level(
+                "SorcererSplashSkip", tp, mult=mechanized_sword
+            )
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
         current_skip = mystic_impact + arcane_bargain
@@ -1308,17 +1380,21 @@ class TapTitansModule(cmd.Cog):
             result += 1
         icon = self.emoji("eternal_darkness")
         embed = discord.Embed(
-            title=f'{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS',
-            description='Since you **{}** have Angelic Guardian, you will splash up to **{}** full stages at a time with **1** Snap titan active.\nSince you **{}** have Mechanized Sword, your level up costs are {}, and thus you have {} levels of IP etc.'.format(
-                "do" if angelic_guardian else "do not", int((4 + angelic_guardian) / 2), "do" if mechanized_sword != 1.0 else "do not",
+            title=f"{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS",
+            description="Since you **{}** have Angelic Guardian, you will splash up to **{}** full stages at a time with **1** Snap titan active.\nSince you **{}** have Mechanized Sword, your level up costs are {}, and thus you have {} levels of IP etc.".format(
+                "do" if angelic_guardian else "do not",
+                int((4 + angelic_guardian) / 2),
+                "do" if mechanized_sword != 1.0 else "do not",
                 "less" if mechanized_sword != 1.0 else "more",
                 "higher" if mechanized_sword != 1.0 else "lower",
-            )
+            ),
         )
-        embed.add_field(name='**Optimal ED Level**', value=f"Level {result}", inline=False)
-        embed.add_field(name='Intimidating Presence', value=ip)
-        embed.add_field(name='Arcane Bargain', value=arcane_bargain)
-        embed.add_field(name='Mystic Impact', value=mystic_impact)
+        embed.add_field(
+            name="**Optimal ED Level**", value=f"Level {result}", inline=False
+        )
+        embed.add_field(name="Intimidating Presence", value=ip)
+        embed.add_field(name="Arcane Bargain", value=arcane_bargain)
+        embed.add_field(name="Mystic Impact", value=mystic_impact)
         embed.set_thumbnail(url=icon.url)
         await ctx.send(embed=embed)
 
@@ -1493,14 +1569,14 @@ class TapTitansModule(cmd.Cog):
             ebizu = self.emoji("coins of ebizu")
             embed = discord.Embed(
                 title=f"{ebizu} TT2 gold sources",
-                description=f'Do **{ctx.prefix}tt gold <source>** to show one of the listed gold sources.',
+                description=f"Do **{ctx.prefix}tt gold <source>** to show one of the listed gold sources.",
                 color=0xE2BB39,
             )
             embed.add_field(
-                name='Available Gold Sources',
+                name="Available Gold Sources",
                 value="\n".join(
                     [f"{self.emoji(val[2])} {k}" for k, val in GOLD_SOURCES.items()]
-                )
+                ),
             )
             embed.set_thumbnail(url=str(ebizu.url).replace(".gif", ".png"))
         else:
@@ -1579,26 +1655,31 @@ class TapTitansModule(cmd.Cog):
     async def tt_my_ms(self, ctx, ms: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ms", insert=ms)
 
-    @tt_my.command(name='tournamentpoints', aliases=['tourneypoints', 'tp'])
+    @tt_my.command(name="tournamentpoints", aliases=["tourneypoints", "tp"])
     async def tt_my_tp(self, ctx, tp: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "tp", insert=tp)
-    
-    @tt_my.command(name='dustspent', aliases=['dust', 'ds'])
+
+    @tt_my.command(name="dustspent", aliases=["dust", "ds"])
     async def tt_my_ds(self, ctx, ds: Optional[int] = None):
         await self.get_or_set(ctx, f"{ctx.author.id}:tt", "ds", insert=ds)
-    
-    @tt_my.command(name='equipset', aliases=['set'])
-    async def tt_my_set(self, ctx, itemset: str, unlocked: Optional[str] = 'yes'):
+
+    @tt_my.command(name="equipset", aliases=["set"])
+    async def tt_my_set(self, ctx, itemset: str, unlocked: Optional[str] = "yes"):
         print(unlocked)
-        unlocked = 1 if unlocked == 'yes' else 0
+        unlocked = 1 if unlocked == "yes" else 0
         print(unlocked)
-        if itemset.lower() in ['ms', 'ag', 'ap']:
-            print('hello')
-            test = await self.bot.db.hset(f"{ctx.author.id}:tt:set", itemset.lower(), unlocked)
+        if itemset.lower() in ["ms", "ag", "ap"]:
+            print("hello")
+            test = await self.bot.db.hset(
+                f"{ctx.author.id}:tt:set", itemset.lower(), unlocked
+            )
             print(test)
-            await ctx.send(':white_check_mark: {} **{}** set for **{}**'.format(
-                "Unlocked" if unlocked else "locked", itemset.upper(), ctx.author
-            ))
+            await ctx.send(
+                ":white_check_mark: {} **{}** set for **{}**".format(
+                    "Unlocked" if unlocked else "locked", itemset.upper(), ctx.author
+                )
+            )
+
 
 def setup(bot):
     bot.add_cog(TapTitansModule(bot))

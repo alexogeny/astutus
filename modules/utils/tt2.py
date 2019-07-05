@@ -153,6 +153,7 @@ class TTKey(cmd.Converter):
             "farm",
             "mode",
             "code",
+            "ping",
             "name",
         ]:
             raise cmd.BadArgument(f"**{arg}** not a valid setting for TT2.")
@@ -161,7 +162,7 @@ class TTKey(cmd.Converter):
         elif arg == "grandmaster":
             arg == "gm"
         if (
-            arg in "gmmastercaptainknightrecruitapplicantguesttimer"
+            arg in "gmmastercaptainknightrecruitapplicantguesttimerping"
             and not can_manage_roles()
         ):
             raise cmd.BadArgument("You need the manage role permission.")

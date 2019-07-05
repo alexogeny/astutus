@@ -150,7 +150,7 @@ class LoggingModule(cmd.Cog):
         if before.bot:
             return
         i = None
-        if before.avatar != after.avatar:
+        if hash(before.avatar) != hash(after.avatar):
             url = after.avatar_url_as(static_format="png", size=1024)
             urls = str(url).split("/")[-1].split("?")[0]
             ctype, _ = mimetypes.guess_type(urls)

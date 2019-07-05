@@ -141,7 +141,7 @@ class SettingsModule(cmd.Cog):
     @checks.is_mod()
     @checks.bot_has_perms(manage_channels=True)
     async def channel(self, ctx, channeltype, *channel):
-        channeltypes = "staff music worldchat starboard greet goodbye".split()
+        channeltypes = "poll staff music worldchat starboard greet goodbye".split()
         if channeltype.lower() not in channeltypes:
             raise cmd.BadArgument(
                 "**Channel type** must be one of: {}".format(
