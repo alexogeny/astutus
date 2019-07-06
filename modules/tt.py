@@ -221,7 +221,10 @@ class TapTitansModule(cmd.Cog):
         reminded = int(g.get("reminded", 0))
         if chan is None:
             raise asyncio.CancelledError
-        msg = await chan.fetch_message(int(g.get("edit", 0)))
+        try:
+            msg = await chan.fetch_message(int(g.get("edit", 0)))
+        except:
+            msg = await chan.send('Discord error. Respawning timer ...')
         if msg is None:
             msg = await chan.send("Respawning timer ...")
         if cooldown is not None:
@@ -450,7 +453,6 @@ class TapTitansModule(cmd.Cog):
         await self.has_admin_or_mod_or_master(ctx, groupdict)
 
         val = " ".join(val)
-        print(val)
 
         if key in "gmmastercaptainknightrecruitapplicantguesttimerping":
             val = await choose_item(ctx, "role", ctx.guild, val.lower())
@@ -734,7 +736,7 @@ class TapTitansModule(cmd.Cog):
         spwn_arrow = arrow.get(spawn)
         if now < spwn_arrow:
             raise cmd.BadArgument(
-                f"Can't clear unspawned raid. Use **{ctx.prefix}cancel**."
+                f"Can't clear unspawned raid. Use **{ctx.prefix}cancel** to cancel it."
             )
         if cd is None:
             cd = now.shift(minutes=59, seconds=59)
@@ -762,7 +764,11 @@ class TapTitansModule(cmd.Cog):
         await self.bot.db.hdel(group, "spawn")
         await self.bot.db.hdel(group, "edit")
         cleared = f"**{_h}**h **{_m}**m **{_s}**s"
-        msg = await ctx.send(f"Raid cooldown ends in {cleared}.")
+        announce = int(groupdict.get("announce", 0))
+        announce = ctx.guild.get_channel(announce)
+        if announce is None:
+            raise cmd.BadArgument("Could not find announce channel. :<")
+        msg = await announce.send(f"Raid cooldown ends in {cleared}.")
         await self.bot.db.hset(group, "edit", msg.id)
 
     @tt_raid.command(name="cancel", aliases=["abort", "stop"])
