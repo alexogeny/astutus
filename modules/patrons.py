@@ -135,14 +135,14 @@ class PatronModule(cmd.Cog):
                     ", ".join("day week month year".split())
                 )
             )
-        mapper = dict(day=0, week=7, month=30, year=365)
+        mapper = dict(day=0, week=-7, month=-30, year=-365)
         back_to = arrow.utcnow().shift(days=mapper[period.lower()])
         count = 0
         _, scores = await self.bot.db.zscan("immo")
         scores = dict(zip(scores[0::2], scores[1::2]))
         for score, val in scores.items():
-            if arrow.get(score) <= back_to:
-                count += int(val)
+            if arrow.Arrow.strptime(score, "%Y%m%d") >= back_to:
+                count += int(val or 0)
         immo = self.bot.get_user(self.immo)
         plural = "s" if count != 1 else ""
         await ctx.send(

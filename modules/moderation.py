@@ -110,18 +110,12 @@ class ModerationModule(cmd.Cog):
     async def mute_muted_role(self, role: discord.Role, guild: discord.Guild):
         for channel in guild.channels:
             perms = channel.overwrites_for(role)
-            if type(channel) is discord.TextChannel and perms.send_messages:
-                try:
-                    await channel.set_permissions(
-                        role, send_messages=False, add_reactions=False
-                    )
-                except:
-                    pass
-            elif type(channel) is discord.VoiceChannel and perms.speak:
-                try:
-                    await channel.set_permissions(role, speak=False)
-                except:
-                    pass
+            if isinstance(channel, discord.TextChannel) and perms.send_messages:
+                await channel.set_permissions(
+                    role, send_messages=False, add_reactions=False
+                )
+            elif isinstance(channel, discord.VoiceChannel) and perms.speak:
+                await channel.set_permissions(role, speak=False)
 
     async def create_muted_role(self, guild):
         perms = discord.Permissions()
@@ -143,11 +137,11 @@ class ModerationModule(cmd.Cog):
             reason="Creating Muted role since one does not exist already.",
         )
         await self.mute_muted_role(role, guild)
-        await self.bot.db.hset(f"{guild.id}:role", "muted", role.id)
+        await self.bot.db.hset(f"{guild.id}:set", "rolemuted", role.id)
         return role
 
     async def get_muted_role(self, guild):
-        r = await self.bot.db.hget(f"{guild.id}:role", "muted")
+        r = await self.bot.db.hget(f"{guild.id}:set", "rolemuted") or 0
         if r:
             r = guild.get_role(int(r))
         if r is None:
@@ -326,13 +320,19 @@ class ModerationModule(cmd.Cog):
         role = await self.get_or_create_muted_role(ctx.guild)
         await self.mute_muted_role(role, ctx.guild)
         muted = []
+
         for m in members:
+            if m == ctx.author.id:
+                raise cmd.BadArgument('You cannot mute yourself.')
             mem = ctx.guild.get_member(m)
             if mem:
                 await checks.executable(ctx, mem)
                 await mem.add_roles(role, reason=reason)
                 await self.bot.db.zadd(f"{ctx.guild.id}:mutes", m, duration.timestamp)
                 muted.append(mem)
+        if not muted:
+            raise cmd.BadArgument('Did not mute anyone.')
+
         result = ", ".join([f"**{k}**" for k in muted])
         duration = duration.humanize()
         if duration == "just now":
@@ -510,7 +510,7 @@ class ModerationModule(cmd.Cog):
             plural = "s" if int(cases) != 1 else ""
             plural2 = "" if plural == "s" else "s"
             raise cmd.BadArgument(
-                f"**{case}** is not a valid case number. **{cases}** case{plural} exist{plural2}."
+                f"Invalid case #. **{cases}** case{plural} exist{plural2}."
             )
         case_file = await self.bot.db.hget(f"{ctx.guild.id}:case", case)
         chan = await self.bot.db.hget(f"{ctx.guild.id}:set", "logmod")
@@ -519,8 +519,8 @@ class ModerationModule(cmd.Cog):
             raise cmd.BadArgument("Moderation channel is missing.")
         message = await chan.fetch_message(int(case_file))
         embed = message.embeds[0]
-        embed.remove_field(0)
-        embed.insert_field_at(0, name="Reason", value=" ".join(reason))
+        embed.remove_field(2)
+        embed.insert_field_at(2, name="Reason", value=" ".join(reason))
         await message.edit(embed=embed)
         await ctx.send(f":white_check_mark: Set case #**{case}** reason.")
 

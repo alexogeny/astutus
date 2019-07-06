@@ -1,9 +1,7 @@
+import re
 import asyncio
 import arrow
-import discord
 from discord.ext import commands as cmd
-from .utils import checks
-import re
 
 URL = re.compile(
     r"(?:(?:https?|ftp|file|mailto):?)(?://)?(?:[-\w.]|(?:%[\da-fA-F]{2}))+|(?:[\w:]+\@\w+\.\w+)"

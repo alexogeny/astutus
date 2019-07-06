@@ -1,9 +1,11 @@
 # from imgurpython import ImgurClient
-from urllib3.util import parse_url
 import mimetypes
-import discord
+from difflib import unified_diff
+from urllib3.util import parse_url
 import arrow
+import discord
 from discord.ext import commands as cmd
+from discord.utils import get
 
 
 class LoggingModule(cmd.Cog):
@@ -74,12 +76,10 @@ class LoggingModule(cmd.Cog):
     async def on_message_edit(self, before, after):
         if not hasattr(after, "guild") or after.author.bot:
             return
-        log_is_on = await self.bot.db.hget(f"{before.guild.id}:toggle", "logging")
-        if log_is_on in (None, "0"):
+        log = await self.bot.db.hget(f"{before.guild.id}:toggle", "logging") or 0
+        if not int(log):
             return
-        log_chan = await self.bot.db.hget(f"{before.guild.id}:set", "logedits")
-        if not log_chan or log_chan is None:
-            return
+        log_chan = await self.bot.db.hget(f"{before.guild.id}:set", "logedits") or 0
         chan = self.bot.get_channel(int(log_chan))
         if chan is None:
             await self.bot.db.hdel(f"{before.guild.id}:set", "logedits")
@@ -88,14 +88,17 @@ class LoggingModule(cmd.Cog):
             title=f"Message by @**{before.author}** in #**{before.channel}** was edited",
             description=f"{before.author.mention} (ID: {before.author.id})",
         )
-        embed.add_field(
-            name="Content Before", value=before.content[0:400], inline=False
+        diff = unified_diff(
+            before.content.split("\n"),
+            after.content.split("\n"),
+            fromfile="before",
+            tofile="after",
+            lineterm="",
         )
-        embed.add_field(name="Content After", value=after.content[0:400], inline=False)
-        try:
-            await chan.send(embed=embed)
-        except discord.errors.HTTPException:
-            pass
+        embed.add_field(
+            name="Changes", value="```diff\n{}\n```".format("\n".join(list(diff)))
+        )
+        await chan.send(embed=embed)
 
     @cmd.Cog.listener()
     async def on_message(self, message):
@@ -164,7 +167,8 @@ class LoggingModule(cmd.Cog):
                 if chan is None:
                     await self.bot.db.hdel(f"{guild.guild.id}:set", "logavatars")
                 else:
-                    chans_to_log_avatars.append(chan)
+                    if get(guild.members, id=after.id) is not None:
+                        chans_to_log_avatars.append(chan)
         if chans_to_log_avatars:
             embed = await self.bot.embed()
             embed.title = f"**{after}**'s new avatar"

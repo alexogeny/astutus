@@ -541,12 +541,10 @@ class TapTitansModule(cmd.Cog):
                 text = "cooldown ends in"
                 hms = await get_hms(cdn - now)
             else:
-                await self.bot.db.hdel(group, "reset")
-                await self.bot.db.hdel(group, "reminded")
-                await self.bot.db.hdel(group, "current")
+                for key in "reset reminded current cd".split():
+                    await self.bot.db.hdel(group, key)
                 await self.bot.db.hset(group, "depl", 0)
                 await self.bot.db.hset(group, "spawn", time.timestamp)
-                await self.bot.db.hdel(group, "cd")
                 hms = await get_hms(time - now)
                 edit = await announce.send(
                     TIMER_TEXT.format(text, hms[0], hms[1], hms[2])
@@ -563,6 +561,37 @@ class TapTitansModule(cmd.Cog):
             edit = await announce.send(TIMER_TEXT.format(text, hms[0], hms[1], hms[2]))
             await self.bot.db.hset(group, "edit", edit.id)
         await ctx.send("✅ Raid timer set.")
+    
+    @tt_raid.command(name='when', aliases=['spawn'])
+    async def tt_raid_when(self, ctx, group: Optional[tt2.TTRaidGroup]):
+        if group is None:
+            group = f"{ctx.guild.id}:tt:1"
+        now = arrow.utcnow()
+        text = "starts in"
+        group = await self.get_raid_group_or_break(group, ctx)
+        groupdict = await self.bot.db.hgetall(group)
+        await self.has_clan_permissions(ctx, groupdict)
+        spawn = groupdict.get("spawn", None)
+        cooldown = groupdict.get("cd", None)
+        reset = int(groupdict.get("reset", 0))
+        
+        if cooldown is not None:
+            cdn = arrow.get(cooldown)
+            if cdn > now:
+                text = "cooldown ends in"
+                hms = await get_hms(cdn - now)
+            
+        elif spawn is not None:
+            spwn = arrow.get(spawn).shift(hours=12 * reset)
+            hms = await get_hms(spwn - now)
+            if reset:
+                text = f"reset #{reset} starts in"
+        
+        embed = await self.bot.embed()
+        embed.timestamp = spwn.datetime
+        embed.description = TIMER_TEXT.format(text, hms[0], hms[1], hms[2])
+        embed.set_footer(text=f"{text[:-3]}", icon_url=ctx.guild.me.avatar_url)
+        await ctx.send(embed=embed)
 
     @tt_raid.command(name="upload", aliases=["u"])
     async def tt_raid_upload(self, ctx, group: int, date, level, *, data):

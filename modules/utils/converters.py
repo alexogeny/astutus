@@ -1,5 +1,6 @@
 from discord.ext import commands as cmd
 import discord
+from .discord_search import choose_item
 
 
 class Truthy(cmd.Converter):
@@ -21,57 +22,27 @@ class Truthy(cmd.Converter):
             raise cmd.BadArgument(
                 "You must supply a value that's either 'true' or 'false'."
             )
-        elif arg in ["on", "true", "1", "yes", "weak"]:
+        if arg in ["on", "true", "1", "yes", "weak"]:
             return 1
-        elif arg in ["2", "strong"]:
+        if arg in ["2", "strong"]:
             return 2
         return 0
 
 
 class ChannelID(cmd.Converter):
     async def convert(self, ctx: cmd.Context, argument):
-        try:
-            c = await cmd.TextChannelConverter().convert(ctx, argument)
-        except cmd.BadArgument:
-            try:
-                return int(argument, base=10)
-            except ValueError:
-                try:
-                    c = next(
-                        (
-                            c
-                            for c in ctx.guild.text_channels
-                            if any(
-                                (
-                                    c.name.lower() == argument.lower(),
-                                    argument.lower() in c.name.lower(),
-                                )
-                            )
-                        ),
-                        None,
-                    )
-                except:
-                    pass
-                if not c:
-                    raise cmd.BadArgument(
-                        f"Sorry, the phrase **{argument}** did not return any channels."
-                    )
-
-        return c.id
+        channel = await choose_item(ctx, "text_channel", ctx.guild, argument.lower())
+        if channel is None:
+            raise cmd.BadArgument(f"Could not find channel: **{argument}**.")
+        return channel.id
 
 
 class MemberID(cmd.Converter):
     async def convert(self, ctx: cmd.Context, argument):
-        try:
-            m = await cmd.MemberConverter().convert(ctx, argument)
-        except cmd.BadArgument:
-            try:
-                return int(argument, base=10)
-            except:
-                raise cmd.BadArgument(
-                    f"Sorry, the phrase **{argument}** did not return any members."
-                )
-        return m.id
+        member = await choose_item(ctx, "member", ctx.guild, argument.lower())
+        if member is None:
+            raise cmd.BadArgument(f"Could not find member: **{argument}**.")
+        return member.id
 
 
 class ActionReason(cmd.Converter):

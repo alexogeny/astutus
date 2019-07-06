@@ -164,7 +164,7 @@ class SettingsModule(cmd.Cog):
     @settings.command(name="logging", aliases=["log"])
     @checks.is_mod()
     async def logging(self, ctx, logtype, *channel):
-        logtypes = "mod joins leaves edits deletes avatars channels roles pins".split()
+        logtypes = "mod joins leaves edits deletes avatars channels roles pins commands".split()
         if logtype.lower() not in logtypes:
             raise cmd.BadArgument(
                 "**Log type** must be one of: {}".format(
