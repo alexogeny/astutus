@@ -221,12 +221,14 @@ class TapTitansModule(cmd.Cog):
         reminded = int(g.get("reminded", 0))
         if chan is None:
             raise asyncio.CancelledError
-        # try:
-        msg = await chan.fetch_message(int(g.get("edit", 0)))
-        # except:
-            # msg = await chan.send('Discord error. Respawning timer ...')
+        try:
+            msg = await chan.fetch_message(int(g.get("edit", 0)))
+        except:
+            msg = await chan.send('Discord error. Respawning timer ...')
+            await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
         if msg is None:
             msg = await chan.send("Respawning timer ...")
+            await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
         if cooldown is not None:
             cdn = arrow.get(cooldown)
             if now > cdn:
