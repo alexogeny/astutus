@@ -1338,49 +1338,22 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(
         name="edskip",
         aliases=["ed"],
-        usage="stage ip mystic_impact arcain_bargain anni_plat",
     )
     async def tt_ed(
         self,
         ctx,
         stage: int = 1,
-        ip: Optional[int] = 0,
-        mystic_impact: Optional[int] = 0,
-        arcane_bargain: Optional[int] = 0,
-        angelic_guardian: Optional[bool] = False,
-        mechanized_sword: Optional[float] = 1.0,
-        anniversary_platinum: Optional[float] = 1.0,
+        ip: int = 0,
+        mystic_impact: int = 0,
+        arcane_bargain: int = 0,
+        angelic_guardian: bool = False,
+        anniversary_platinum: float = 1.0,
     ):
         "Optimal ed calculator"
-        if mechanized_sword == 1.0:
-            mechanized_sword = (
-                0.75
-                if int(await self.bot.db.hget(f"{ctx.author.id}:tt:set", "ms") or 0)
-                else 1.0
-            )
-        if not angelic_guardian:
-            angelic_guardian = (
-                8
-                if int(await self.bot.db.hget(f"{ctx.author.id}:tt:set", "ag") or 0)
-                else 0
-            )
+        angelic_guardian = 8 if angelic_guardian else 0
         if stage == 1:
-            stage = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ms") or 0)
-        if ip == 0:
-            sp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "sp") or 0)
-            ip = await self.get_passive_level(
-                "Intimidating Presence", sp, mult=mechanized_sword
-            )
-        if arcane_bargain == 0:
-            ds = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ds") or 0)
-            arcane_bargain = await self.get_passive_level(
-                "Arcane Bargain", ds, mult=mechanized_sword
-            )
-        if mystic_impact == 0:
-            tp = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "tp") or 0)
-            mystic_impact = await self.get_passive_level(
-                "SorcererSplashSkip", tp, mult=mechanized_sword
-            )
+            stage = int(await self.bot.db.hget(f"{ctx.author.id}:tt", "ms") or 1)
+
         count = await self.titancount(stage, ip, arcane_bargain, 0)
         count2 = floor(count / 2)
         current_skip = mystic_impact + arcane_bargain
@@ -1416,15 +1389,10 @@ class TapTitansModule(cmd.Cog):
             current_skip = mystic_impact + arcane_bargain + ed_boosts[result]
             result += 1
         icon = self.emoji("eternal_darkness")
-        embed = discord.Embed(
-            title=f"{icon} Optimal ED for @**{ctx.author}** at **{stage}** MS",
-            description="Since you **{}** have Angelic Guardian, you will splash up to **{}** full stages at a time with **1** Snap titan active.\nSince you **{}** have Mechanized Sword, your level up costs are {}, and thus you have {} levels of IP etc.".format(
-                "do" if angelic_guardian else "do not",
-                int((4 + angelic_guardian) / 2),
-                "do" if mechanized_sword != 1.0 else "do not",
-                "less" if mechanized_sword != 1.0 else "more",
-                "higher" if mechanized_sword != 1.0 else "lower",
-            ),
+        embed = await self.bot.embed()
+        embed.title = f"{icon} Your optimal ED at **{stage}** MS"
+        embed.description = "You will splash **{}** stages with **1** Snap active.".format(
+            int((4 + angelic_guardian) / 2),
         )
         embed.add_field(
             name="**Optimal ED Level**", value=f"Level {result}", inline=False
@@ -1432,6 +1400,7 @@ class TapTitansModule(cmd.Cog):
         embed.add_field(name="Intimidating Presence", value=ip)
         embed.add_field(name="Arcane Bargain", value=arcane_bargain)
         embed.add_field(name="Mystic Impact", value=mystic_impact)
+        embed.add_field(name='Titan Count', value=f'{count} ({count2} with Snap)')
         embed.set_thumbnail(url=icon.url)
         await ctx.send(embed=embed)
 

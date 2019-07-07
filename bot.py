@@ -181,7 +181,7 @@ class AstutusBot(cmds.AutoShardedBot):
         log_cmd = ctx.guild.get_channel(int(log_commands))
         if log_cmd is not None:
             embed = await ctx.bot.embed()
-            embed.description = f"{ctx.author.mention} used command **{ctx.command}** in {ctx.channel.mention}"
+            embed.description = f"{ctx.author.mention} used command **{ctx.command.qualified_name}** in {ctx.channel.mention}"
             embed.color = ctx.author.color
             await log_cmd.send(embed=embed)
         await self.invoke(ctx)
