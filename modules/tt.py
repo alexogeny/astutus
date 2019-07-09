@@ -226,7 +226,7 @@ class TapTitansModule(cmd.Cog):
         # except:
             # msg = await chan.send('Discord error. Respawning timer ...')
             # await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
-        if msg is None:
+        if msg is None and (spawn or cooldown):
             msg = await chan.send("Respawning timer ...")
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
         if cooldown is not None:
