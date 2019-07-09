@@ -221,11 +221,11 @@ class TapTitansModule(cmd.Cog):
         reminded = int(g.get("reminded", 0))
         if chan is None:
             raise asyncio.CancelledError
-        try:
-            msg = await chan.fetch_message(int(g.get("edit", 0)))
-        except:
-            msg = await chan.send('Discord error. Respawning timer ...')
-            await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
+        # try:
+        msg = await chan.fetch_message(int(g.get("edit", 0)))
+        # except:
+            # msg = await chan.send('Discord error. Respawning timer ...')
+            # await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
         if msg is None:
             msg = await chan.send("Respawning timer ...")
             await self.bot.db.hset(f"{guild.id}:tt:{group}", "edit", msg.id)
@@ -238,14 +238,14 @@ class TapTitansModule(cmd.Cog):
                     msg, TIMER_TEXT.format("cooldown ended", hms[0], hms[1], hms[2])
                 )
                 if not reminded:
-                    print('remind people')
+                    # print('remind people')
                     # remind masters here
                     r_gm, r_ms, r_tm = (
                         int(g.get("gm", 0)),
                         int(g.get("master", 0)),
                         int(g.get("timer", 0)),
                     )
-                    print(r_gm, r_ms, r_tm)
+                    # print(r_gm, r_ms, r_tm)
                     to_remind = []
                     for r in [r_gm, r_ms, r_tm]:
                         role = guild.get_role(int(r))
@@ -253,7 +253,7 @@ class TapTitansModule(cmd.Cog):
                             for member in role.members:
                                 if member.mention not in to_remind:
                                     to_remind.append(member.mention)
-                    print(to_remind)
+                    # print(to_remind)
                     await chan.send('Set the raid timer!\n{}'.format(', '.join(to_remind)))
                     await self.bot.db.hset(f"{guild.id}:tt:{group}", 'reminded', 1)
             else:
@@ -545,9 +545,10 @@ class TapTitansModule(cmd.Cog):
                 text = "cooldown ends in"
                 hms = await get_hms(cdn - now)
             else:
-                for key in "reset reminded current cd".split():
+                for key in "reset reminded current cd depl".split():
                     await self.bot.db.hdel(group, key)
-                await self.bot.db.hset(group, "depl", 0)
+                await self.bot.db.delete(f"{group}:q")
+                # await self.bot.db.hset(group, "depl", 0)
                 await self.bot.db.hset(group, "spawn", time.timestamp)
                 hms = await get_hms(time - now)
                 edit = await announce.send(
@@ -763,8 +764,9 @@ class TapTitansModule(cmd.Cog):
         )
         shft_arrow = now.shift(minutes=_m > 0 and _m or 0, seconds=_s > 0 and _s or 0)
         await self.bot.db.hset(group, "cd", shft_arrow.timestamp)
-        await self.bot.db.hdel(group, "spawn")
-        await self.bot.db.hdel(group, "edit")
+        for k in "edit spawn current depl reset reminded".split():
+            await self.bot.db.hdel(group, k)
+        await self.bot.db.delete(f"{group}:q")
         cleared = f"**{_h}**h **{_m}**m **{_s}**s"
         announce = int(groupdict.get("announce", 0))
         announce = ctx.guild.get_channel(announce)
