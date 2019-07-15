@@ -873,7 +873,7 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(
         name="queue", aliases=["q"], case_insensitive=True, usage="show|clear|skip"
     )
-    async def tt_queue(self, ctx, group: Optional[tt2.TTRaidGroup], list=None):
+    async def tt_queue(self, ctx, group: Optional[tt2.TTRaidGroup], show=None):
         "Enter into the tap titans raid queue."
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
@@ -896,7 +896,7 @@ class TapTitansModule(cmd.Cog):
         q = f"{group}:q"
         users = await self.bot.db.lrange(q)
         current = groupdict.get("current", "").split()
-        if not list:
+        if not show:
             if not str(ctx.author.id) in users:
                 await self.bot.db.rpush(q, ctx.author.id)
                 users.append(ctx.author.id)
@@ -905,13 +905,13 @@ class TapTitansModule(cmd.Cog):
                     f"You're already #**{users.index(str(ctx.author.id))+1}** in the queue."
                 )
                 return
-        elif list in ["clear", "wipe", "erase"]:
+        elif show in ["clear", "wipe", "erase"]:
             await self.has_timer_permissions(ctx, groupdict)
             await self.bot.db.delete(q)
             await self.bot.hdel(group, "current")
             await ctx.send(":white_check_mark: Queue has been cleared!")
             return
-        elif list in ["skip"]:
+        elif show in ["skip"]:
             await self.has_timer_permissions(ctx, groupdict)
             await self.bot.hdel(group, "current")
         if str(ctx.author.id) in current:
