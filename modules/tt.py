@@ -873,7 +873,7 @@ class TapTitansModule(cmd.Cog):
     @taptitans.command(
         name="queue", aliases=["q"], case_insensitive=True, usage="show|clear|skip"
     )
-    async def tt_queue(self, ctx, group: Optional[tt2.TTRaidGroup], show=None):
+    async def tt_queue(self, ctx, group: Optional[tt2.TTRaidGroup], show: Optional[str] = None):
         "Enter into the tap titans raid queue."
         if group is None:
             group = f"{ctx.guild.id}:tt:1"
