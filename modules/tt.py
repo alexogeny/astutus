@@ -896,7 +896,8 @@ class TapTitansModule(cmd.Cog):
         q = f"{group}:q"
         users = await self.bot.db.lrange(q)
         current = groupdict.get("current", "").split()
-        if not show:
+        print('show')
+        if not show or show is None:
             if not str(ctx.author.id) in users:
                 await self.bot.db.rpush(q, ctx.author.id)
                 users.append(ctx.author.id)
@@ -907,13 +908,16 @@ class TapTitansModule(cmd.Cog):
                 return
         elif show in ["clear", "wipe", "erase"]:
             await self.has_timer_permissions(ctx, groupdict)
+            print('clear queue')
             await self.bot.db.delete(q)
             await self.bot.hdel(group, "current")
             await ctx.send(":white_check_mark: Queue has been cleared!")
             return
         elif show in ["skip"]:
             await self.has_timer_permissions(ctx, groupdict)
-            await self.bot.hdel(group, "current")
+            await self.bot.db.hdel(group, "current")
+            await ctx.send(":white_check_mark: current attackers cleared")
+            return
         if str(ctx.author.id) in current:
             raise cmd.BadArgument(f"You're attacking. Use **{ctx.prefix}tt d**")
         u = []
