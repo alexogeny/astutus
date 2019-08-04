@@ -190,14 +190,18 @@ class SarModule(cmd.Cog):
                 },
             )
         else:
-            res = await self.bot.get_cog("PostgreModule").sql_update(
-                "sar",
-                ctx.guild.id,
-                {
-                    f"group{next_free}_name": name,
-                    f"group{next_free}_excl": excl,
-                },
-            )
+            try:
+                res = await self.bot.get_cog("PostgreModule").sql_update(
+                    "sar",
+                    ctx.guild.id,
+                    {
+                        f"group{next_free}_name": name,
+                        f"group{next_free}_excl": excl,
+                    },
+                )
+            except Exception as e:
+                print(e)
+                raise cmd.BadArgument('Bad db error. Check logs.')
 
         await ctx.send(f":white_check_mark: Created SAR group #{next_free}: {name}")
 
