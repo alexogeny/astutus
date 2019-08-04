@@ -152,8 +152,8 @@ class ModerationModule(cmd.Cog):
 
     async def get_or_create_muted_role(self, guild):
         r = await self.get_muted_role(guild)
-        if not r:
-            r = await self.create_muted_role(guild)
+        #if not r:
+        #    r = await self.create_muted_role(guild)
         return r
 
     @cmd.command()
