@@ -190,13 +190,12 @@ class SarModule(cmd.Cog):
                 },
             )
         else:
-            await self.bot.get_cog("PostgreModule").sql_update(
+            res = await self.bot.get_cog("PostgreModule").sql_update(
                 "sar",
                 ctx.guild.id,
                 {
                     f"group{next_free}_name": name,
                     f"group{next_free}_excl": excl,
-                    f"group{next_free}_roles": "",
                 },
             )
 
