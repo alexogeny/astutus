@@ -27,7 +27,6 @@ class SarModule(cmd.Cog):
         if not data or data is None:
             return groups
         data = dict(data)
-        print(data)
         for i in [1, 2, 3, 4, 5]:
             group = data.get(f"group{i}_name", None)
             if group is not None:
@@ -39,13 +38,13 @@ class SarModule(cmd.Cog):
                         roles_mapped.append(guild_role)
                 excl = data.get(f"group{i}_excl")
                 groups[group] = dict(roles=roles_mapped, id=i, excl=excl)
-        return groups
+        return groups, data
 
     @cmd.guild_only()
     @checks.bot_has_perms(manage_roles=True)
     @cmd.group(name="sar", aliases=["iam"], invoke_without_command=True)
     async def sar(self, ctx):
-        groups = await self.get_sars(ctx)
+        groups, _ = await self.get_sars(ctx)
         if not groups:
             raise cmd.BadArgument("No self-assignable roles in this server. :<")
 
@@ -148,7 +147,7 @@ class SarModule(cmd.Cog):
 
     @sar.group(name="group", aliases=["groups"], invoke_without_command=True)
     async def sar_group(self, ctx):
-        groups = await self.get_sars(ctx)
+        groups, _ = await self.get_sars(ctx)
         if not groups:
             raise cmd.BadArgument(
                 "No SAR groups for {}. Add one with **{}sar group create <name>**".format(
@@ -170,7 +169,7 @@ class SarModule(cmd.Cog):
     @sar_group.command(name="create")
     async def sar_group_create(self, ctx, name, excl: Optional[bool] = True):
         name = name[0:20]
-        groups = await self.get_sars(ctx)
+        groups, data = await self.get_sars(ctx)
         if len(groups) > 4:
             raise cmd.BadArgument("5 group SAR limit reached.")
         if name.lower() in [g.lower() for g in list(groups.keys())]:
@@ -179,8 +178,7 @@ class SarModule(cmd.Cog):
             (i for i in [1, 2, 3, 4, 5] if i not in [groups[g]["id"] for g in groups]),
             None,
         )
-        print(next_free)
-        if not groups:
+        if not groups and not data:
             res = await self.bot.get_cog("PostgreModule").sql_insert(
                 "sar",
                 {
@@ -202,15 +200,13 @@ class SarModule(cmd.Cog):
             except Exception as e:
                 print(e)
                 raise cmd.BadArgument('Bad db error. Check logs.')
-            else:
-                print(res)
         await ctx.send(f":white_check_mark: Created SAR group #{next_free}: {name}")
 
     @checks.is_mod()
     @checks.bot_has_perms(manage_roles=True)
     @sar_group.command(name="delete")
     async def sar_group_delete(self, ctx, name):
-        groups = await self.get_sars(ctx)
+        groups, _ = await self.get_sars(ctx)
         if not groups:
             raise cmd.BadArgument("No SAR groups exist.")
 
@@ -239,7 +235,7 @@ class SarModule(cmd.Cog):
     @checks.bot_has_perms(manage_roles=True)
     @sar_group.command(name="rename")
     async def sar_group_rename(self, ctx, name, newname):
-        groups = await self.get_sars(ctx)
+        groups, _ = await self.get_sars(ctx)
         if not groups:
             raise cmd.BadArgument("No SAR groups exist.")
         group_to_edit = next((g for g in groups if g.lower() == name.lower()), None)
@@ -260,7 +256,7 @@ class SarModule(cmd.Cog):
     @sar_group.command(name="add")
     async def sar_group_add(self, ctx, group, *roles: cmd.Greedy[cmd.RoleConverter]):
         group = group[0:20]
-        groups = await self.get_sars(ctx)
+        groups, _ = await self.get_sars(ctx)
         if not groups:
             raise cmd.BadArgument("No SAR groups exist.")
         group_to_edit = next((g for g in groups if g.lower() == group.lower()), None)
@@ -295,7 +291,7 @@ class SarModule(cmd.Cog):
     @sar_group.command(name="remove")
     async def sar_group_remove(self, ctx, group, *roles: cmd.Greedy[cmd.RoleConverter]):
         group = group[0:20]
-        groups = await self.get_sars(ctx)
+        groups, _ = await self.get_sars(ctx)
         if not groups:
             raise cmd.BadArgument("No SAR groups exist.")
         group_to_edit = next((g for g in groups if g.lower() == group.lower()), None)
