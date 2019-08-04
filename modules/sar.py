@@ -110,11 +110,13 @@ class SarModule(cmd.Cog):
         excl = groups[get_group]["excl"]
         roles = groups[get_group]["roles"]
         to_add = None if not int(msg.content) else roles[int(msg.content) - 1]
+        if int(msg.content) == 0:
+            to_add = 'remove all'
         log = self.bot.get_cog("LoggingModule")
         if to_add in ctx.author.roles:
             raise cmd.BadArgument("You already have this role!")
         if to_add not in ctx.author.roles:
-            if excl:
+            if excl or to_add == 'remove all':
                 to_remove = [r for r in roles if r in ctx.author.roles]
                 if to_remove:
                     await ctx.author.remove_roles(*to_remove)
@@ -126,7 +128,7 @@ class SarModule(cmd.Cog):
                         to_remove,
                         mod=False,
                     )
-            if to_add is not None:
+            if to_add not in [None, 'remove all']:
                 await ctx.author.add_roles(to_add)
                 await log.on_member_role_add(
                     ctx.guild,
