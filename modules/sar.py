@@ -27,6 +27,7 @@ class SarModule(cmd.Cog):
         if not data or data is None:
             return groups
         data = dict(data)
+        print(data)
         for i in [1, 2, 3, 4, 5]:
             group = data.get(f"group{i}_name", None)
             if group is not None:
