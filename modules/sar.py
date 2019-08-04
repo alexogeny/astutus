@@ -202,7 +202,8 @@ class SarModule(cmd.Cog):
             except Exception as e:
                 print(e)
                 raise cmd.BadArgument('Bad db error. Check logs.')
-
+            else:
+                print(res)
         await ctx.send(f":white_check_mark: Created SAR group #{next_free}: {name}")
 
     @checks.is_mod()
