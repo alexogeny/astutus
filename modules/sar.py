@@ -179,6 +179,7 @@ class SarModule(cmd.Cog):
             (i for i in [1, 2, 3, 4, 5] if i not in [groups[g]["id"] for g in groups]),
             None,
         )
+        print(next_free)
         if not groups:
             res = await self.bot.get_cog("PostgreModule").sql_insert(
                 "sar",
